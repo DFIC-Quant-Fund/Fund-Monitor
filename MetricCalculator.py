@@ -1,10 +1,11 @@
 import numpy as np
 import pandas as pd
+import Portfolio
 
 class MetricCalculator:
 
-    def __init__(self):
-        pass
+    def __init__(self, portfolio):
+        self.portfolio = portfolio
 
     def compounded_portfolio_return(self, df, column='Total'):
         df['Daily_Return'] = df[column].pct_change()  # Daily return = (P(t) - P(t-1)) / P(t-1)
@@ -56,7 +57,7 @@ class MetricCalculator:
         df['Daily_Return'] = df[column].pct_change()
         portfolio_return = df['Daily_Return'].mean() * 252  # Annualized portfolio return
         market_return = market_returns.mean() * 252  # Annualized market return
-        beta_value = beta(self, df, market_returns, column)
+        beta_value = self.beta(self, df, market_returns, column)
         alpha = portfolio_return - (risk_free_rate + beta_value * (market_return - risk_free_rate))
         return alpha
 
