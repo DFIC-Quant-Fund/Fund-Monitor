@@ -4,7 +4,7 @@ import yfinance as yf
 
 starting_cash = 101644.99
 start_date = '2022-05-01'
-end_date = '2025-01-01'
+end_date = '2025-01-17'
 
 input_folder = 'input'
 output_folder = 'output'
@@ -17,6 +17,8 @@ holdings_file = 'holdings.csv'
 
 market_values_file = 'market_values.csv'
 dividend_values_file = 'dividend_values.csv'
+exchange_rates_file = 'exchange_rates.csv'
+exchange_rate_table_file = 'exchange_rate_table.csv'
 
 class Portfolio:
     def __init__(self, start_date, end_date, starting_cash):
@@ -33,6 +35,22 @@ class Portfolio:
 
         self.market_values = None
         self.dividend_values = None
+        self.exchange_rates = None
+
+    def load_exchange_rates(self):
+        self.exchange_rates = pd.DataFrame(index=pd.date_range(self.start_date, self.end_date))
+
+        exchange_rates = {
+            "CAD": pd.Series(1.0, index=self.exchange_rates.index),
+            "USD": yf.Ticker('CAD=X').history(start=self.start_date, end=self.end_date)['Close']
+        }
+
+        # Normalize dates
+        for key, value in exchange_rates.items():
+            exchange_rates[key].index = pd.to_datetime(value.index).tz_localize(None)
+            self.exchange_rates[key] = exchange_rates[key]
+
+        pd.DataFrame(self.exchange_rates).to_csv(os.path.join(output_folder, exchange_rates_file), index_label='Date')
 
     def load_trades_data(self):
         self.trades = pd.read_csv(os.path.join(input_folder, trades_file))
@@ -75,18 +93,36 @@ class Portfolio:
                 for index, row in self.trades.loc[date].iterrows():
                     ticker = row['Ticker']
                     amount = row['Amount']
+                    try:
+                        currency = yf.Ticker(ticker).info['currency']
+                    except:
+                        currency = 'CAD'
                     self.holdings.at[date, ticker] = self.holdings.loc[date, ticker] + amount
-                    self.cash -= amount * row['Price'] # TODO: Account for currency conversion
+                    self.cash -= amount * row['Price'] * self.exchange_rates.loc[date, currency]
             else:
                 print(f"No trades on {date}")
+
+    def load_exchange_rate_table(self):
+        self.exchange_rate_table = pd.DataFrame(index=pd.date_range(self.start_date, self.end_date))
+
+        for ticker in self.tickers:
+            try:
+                currency = yf.Ticker(ticker).info['currency']
+            except:
+                currency = 'CAD'
+            print(f"Currency for {ticker}: {currency}")
+            self.exchange_rate_table[ticker] = self.exchange_rates[currency] 
+
+        pd.DataFrame(self.exchange_rate_table).to_csv(os.path.join(output_folder, exchange_rate_table_file), index_label='Date')
 
     def calculate_market_values(self):
         holdings_data = self.holdings[self.tickers]
         price_data = self.prices[self.tickers]
+        exchange_rate_table_data = self.exchange_rate_table[self.tickers]
 
-        self.market_values = price_data * holdings_data
+        self.market_values = price_data * holdings_data * exchange_rate_table_data
 
-        value = self.market_values.loc['2024-12-31'].sum() # TODO: Account for currency conversion
+        value = self.market_values.loc['2025-01-16'].sum()
 
         print(f"Market Value: {value}, Cash: {self.cash}")
         print(f"Total Value: {value + self.cash}")
@@ -96,10 +132,11 @@ class Portfolio:
     def calculate_dividend_values(self):
         holdings_data = self.holdings[self.tickers]
         dividend_data = self.dividends[self.tickers]
+        exchange_rate_table_data = self.exchange_rate_table[self.tickers]
 
-        self.dividend_values = dividend_data * holdings_data
+        self.dividend_values = dividend_data * holdings_data * exchange_rate_table_data
 
-        value = self.dividend_values.sum().sum() # TODO: Account for currency conversion
+        value = self.dividend_values.sum().sum()
 
         print(f"Dividend Value: {value}")
 
@@ -116,7 +153,12 @@ class Portfolio:
 
 if __name__ == '__main__':
     portfolio = Portfolio(start_date, end_date, starting_cash)
+
+    portfolio.load_exchange_rates()
+
     portfolio.load_trades_data()
+
+    portfolio.load_exchange_rate_table()
 
     print(f"Starting Cash: {portfolio.cash}")
 
