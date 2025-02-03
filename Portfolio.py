@@ -4,7 +4,7 @@ import yfinance as yf
 
 starting_cash = 101644.99
 start_date = '2022-05-01'
-end_date = '2025-01-17'
+end_date = '2025-02-02'
 
 input_folder = 'input'
 output_folder = 'output'
@@ -36,6 +36,7 @@ class Portfolio:
         self.market_values = None
         self.dividend_values = None
         self.exchange_rates = None
+        self.exchange_rate_table = None        
 
     def load_exchange_rates(self):
         self.exchange_rates = pd.DataFrame(index=pd.date_range(self.start_date, self.end_date))
@@ -90,7 +91,7 @@ class Portfolio:
                 print(f"Trades on {date}")
                 print(f"{self.trades.loc[date]}")
 
-                for index, row in self.trades.loc[date].iterrows():
+                for _, row in self.trades.loc[date].iterrows():
                     ticker = row['Ticker']
                     amount = row['Amount']
                     try:
@@ -115,17 +116,21 @@ class Portfolio:
 
         pd.DataFrame(self.exchange_rate_table).to_csv(os.path.join(output_folder, exchange_rate_table_file), index_label='Date')
 
+    def save_price_data(self):
+        pd.DataFrame(self.prices).to_csv(os.path.join(output_folder, prices_file), index_label='Date')
+
+    def save_dividend_data(self):
+        pd.DataFrame(self.dividends).to_csv(os.path.join(output_folder, dividends_file), index_label='Date')
+
+    def save_holdings_data(self):
+        pd.DataFrame(self.holdings).to_csv(os.path.join(output_folder, holdings_file), index_label='Date')
+
     def calculate_market_values(self):
         holdings_data = self.holdings[self.tickers]
         price_data = self.prices[self.tickers]
         exchange_rate_table_data = self.exchange_rate_table[self.tickers]
 
         self.market_values = price_data * holdings_data * exchange_rate_table_data
-
-        value = self.market_values.loc['2025-01-16'].sum()
-
-        print(f"Market Value: {value}, Cash: {self.cash}")
-        print(f"Total Value: {value + self.cash}")
 
         pd.DataFrame(self.market_values).to_csv(os.path.join(output_folder, market_values_file), index_label='Date')
 
@@ -138,43 +143,33 @@ class Portfolio:
 
         value = self.dividend_values.sum().sum()
 
-        print(f"Dividend Value: {value}")
+        print(f"Dividends Value: {value:.2f}")
 
         pd.DataFrame(self.dividend_values).to_csv(os.path.join(output_folder, dividend_values_file), index_label='Date')
 
-    def save_price_data(self):
-        pd.DataFrame(self.prices).to_csv(os.path.join(output_folder, prices_file), index_label='Date')
+    def calculate_final_values(self):
+        final_row = self.market_values.loc['2025-01-31']
+        profit_net_loss = ((final_row.sum() + self.cash) / starting_cash - 1) * 100
 
-    def save_dividend_data(self):
-        pd.DataFrame(self.dividends).to_csv(os.path.join(output_folder, dividends_file), index_label='Date')
-
-    def save_holdings_data(self):
-        pd.DataFrame(self.holdings).to_csv(os.path.join(output_folder, holdings_file), index_label='Date')
+        print(f"Market Value: {final_row.sum():.2f}, Cash: {self.cash:.2f}, Total Value: {(final_row.sum() + self.cash):.2f}")
+        print(f"Profit/Loss: {profit_net_loss:.2f}%")
 
 if __name__ == '__main__':
     portfolio = Portfolio(start_date, end_date, starting_cash)
 
     portfolio.load_exchange_rates()
-
     portfolio.load_trades_data()
-
     portfolio.load_exchange_rate_table()
-
-    print(f"Starting Cash: {portfolio.cash}")
 
     portfolio.load_prices_data()
     portfolio.load_dividends_data()
     portfolio.load_holdings_data()
 
-    print(portfolio.prices.head())
-    print(portfolio.dividends.head())
-    print(portfolio.holdings.head())
-
     portfolio.save_price_data()
     portfolio.save_dividend_data()
     portfolio.save_holdings_data()
 
-    print(f"Final Cash: {portfolio.cash}")
-
     portfolio.calculate_market_values()
     portfolio.calculate_dividend_values()
+
+    portfolio.calculate_final_values()
