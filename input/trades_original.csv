@@ -1,4 +1,4 @@
-Trade,Date,Currency,Security Name,Ticker,Price,Amount,Market Value,Transaction Fees,Cashflow,Holdings,Previous Average Price,Average Price,Trade PnL
+Trade,Date,Currency,Security Name,Ticker,Price,Quantity,Market Value,Transaction Fees,Cashflow,Holdings,Previous Average Price,Average Price,Trade PnL
 Buy,2022-05-05,CAD,Nomad Royalty Company,NSR,10.58,265,2803.7,0,-2803.7,265,0,10.58,0
 Buy,2022-05-05,USD,Electronic Arts,EA,121.57,16,1945.12,0,-1945.12,16,0,121.57,0
 Buy,2022-05-05,USD,Intuitive Surgical,ISRG,238.04,8,1904.32,0,-1904.32,8,0,238.04,0
