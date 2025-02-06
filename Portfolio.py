@@ -158,6 +158,9 @@ class Portfolio:
         dividends_total = self.dividend_values.sum().sum()
 
         print()
+        print(f"Start Date: {self.start_date}")
+        print(f"End Date: {self.end_date}")
+        print()
         print(f"Starting Cash: {starting_cash:.2f}")
         print()
         print(f"Cash: {cash_total:.2f}")
