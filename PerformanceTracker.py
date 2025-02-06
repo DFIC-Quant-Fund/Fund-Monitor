@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 #     print(output_df.head())
 
-def aggregate_data(market_values_file, cash_file, output_file):
+def aggregate_data(market_values_file, cash_file, dividends_file, output_file):
     market_values = pd.read_csv(market_values_file)
     cash_value = pd.read_csv(cash_file)
     market_values['Date'] = pd.to_datetime(market_values['Date'])
@@ -27,18 +27,24 @@ def aggregate_data(market_values_file, cash_file, output_file):
     market_values[numeric_columns] = market_values[numeric_columns].apply(pd.to_numeric, errors='coerce')
     cash_value['Cash'] = cash_value['Cash'].apply(pd.to_numeric, errors='coerce')
 
-    market_values['Total_Portfolio_Value'] = market_values[numeric_columns].sum(axis=1) + cash_value['Cash']
+    dividends = pd.read_csv(dividends_file)
+    # get the sum of all dividends for each day and all previous days
+    dividends['Date'] = pd.to_datetime(dividends['Date'])
+    dividends['Daily Total'] = dividends[numeric_columns].sum(axis=1)
+    dividends['Cum Sum'] = dividends['Daily Total'].cumsum()
+    # print(dividends.head())
+
+    market_values['Total_Portfolio_Value'] = market_values[numeric_columns].sum(axis=1) + cash_value['Cash'] + dividends['Cum Sum']
     output_df = market_values[['Date', 'Total_Portfolio_Value']].copy()
     output_df = output_df.sort_values('Date')
     output_df['pct_change'] = output_df['Total_Portfolio_Value'].pct_change()
 
     output_df.to_csv(output_file, index=False, float_format='%.6f')
 
-
 def total_return():
     df = pd.read_csv('output/portfolio_total.csv')
     total_return = (df['Total_Portfolio_Value'].iloc[-1] - df['Total_Portfolio_Value'].iloc[0]) / df['Total_Portfolio_Value'].iloc[0]
-    # print(f"Total Return including dividends: {total_return*100:.2f}%")
+
     return total_return
 
 # def daily_compounded_return():
@@ -120,6 +126,35 @@ def annualized_downside_volatility():
     # print(f"Annualized Downside Volatility: {annualized_downside_volatility:.4f}")
     return annualized_downside_volatility
 
+def sharpe_ratio(risk_free_rate=0.0436):
+    df = pd.read_csv('output/portfolio_total.csv')
+    daily_return = df['pct_change']
+    daily_sharpe_ratio = (daily_return.mean() - risk_free_rate/252) / daily_return.std()
+    annualized_sharpe_ratio = daily_sharpe_ratio * (252 ** 0.5)
+
+    return daily_sharpe_ratio, annualized_sharpe_ratio
+
+def sortino_ratio(risk_free_rate=0.0436):
+    df = pd.read_csv('output/portfolio_total.csv')
+    daily_return = df['pct_change']
+    downside_returns = daily_return[daily_return < 0]
+    daily_sortino_ratio = (daily_return.mean() - risk_free_rate/252) / downside_returns.std()
+    annualized_sortino_ratio = daily_sortino_ratio * (252 ** 0.5)
+
+    return daily_sortino_ratio, annualized_sortino_ratio
+    
+def market_variance():
+    # implement both daily and annualized
+    pass
+
+def market_volatility():
+    # implement both daily and annualized
+    pass
+
+
+
+
+
 
 
 def plot_portfolio_value():
@@ -139,16 +174,16 @@ def plot_portfolio_value():
 def main():
     market_values_file = "output/market_values.csv"
     cash_file = "output/cash.csv"
+    dividend_file = "output/dividend_values.csv"
     output_file = "output/portfolio_total.csv"
-    aggregate_data(market_values_file, cash_file, output_file)
+    RISK_FREE_RATE1 = 0.0436 # 3-month treasury rate
+    RISK_FREE_RATE2 = 0.05
 
-if __name__ == '__main__':
-    # main()
-    # plot_portfolio_value()
+    aggregate_data(market_values_file, cash_file, dividend_file, output_file)
 
     print(f"Total Return including dividends: {total_return()*100:.2f}%")
     
-    # revisit these.
+    # What do these even mean?
     # print(f"Daily Compounded Return: {daily_compounded_return()*100:.4f}%")
     # print(f"Annualized Compounded Return: {annualized_compounded_return()*100:.2f}%")
     
@@ -162,7 +197,16 @@ if __name__ == '__main__':
     print(f"Annualized Downside Variance: {annualized_downside_variance()*100:.2f}%")
     print(f"Daily Downside Volatility: {daily_downside_volatility()*100:.4f}%")
     print(f"Annualized Downside Volatility: {annualized_downside_volatility()*100:.2f}%")
+    print(f"Sharpe Ratio (Daily): {sharpe_ratio(RISK_FREE_RATE1)[0]:.4f}")
+    print(f"Sharpe Ratio (Annualized): {sharpe_ratio(RISK_FREE_RATE2)[1]:.2f}")
+    print(f"Sortino Ratio (Daily): {sortino_ratio(RISK_FREE_RATE1)[0]:.4f}")
+    print(f"Sortino Ratio (Annualized): {sortino_ratio(RISK_FREE_RATE2)[1]:.2f}")
+    
+
+if __name__ == '__main__':
+    main()
+    plot_portfolio_value()
 
 
-# notes: % changes are only to 2 decimals in portfolio_total.csv
-# definitely something wrong here, possibly because of that.
+    # notes: % changes are only to 2 decimals in portfolio_total.csv
+    # definitely something wrong here, possibly because of that.
