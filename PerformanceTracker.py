@@ -142,6 +142,9 @@ def sortino_ratio(risk_free_rate=0.0436):
     annualized_sortino_ratio = daily_sortino_ratio * (252 ** 0.5)
 
     return daily_sortino_ratio, annualized_sortino_ratio
+
+def maximum_drawdown():
+    pass
     
 def market_variance():
     # implement both daily and annualized
@@ -151,11 +154,20 @@ def market_volatility():
     # implement both daily and annualized
     pass
 
+def beta():
+    pass
 
+def alpha():
+    pass
 
+def risk_adjusted_return():
+    pass
 
+def treynor_ratio():
+    pass
 
-
+def information_ratio():
+    pass
 
 def plot_portfolio_value():
     df = pd.read_csv('output/portfolio_total.csv')
