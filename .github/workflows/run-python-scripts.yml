@@ -1,5 +1,4 @@
 name: Run Python Scripts
-run-name: "Daily Task - ${{ github.run_id }} - ${{ github.event.schedule || format('{0:yyyy-MM-dd}', github.run_started_at) }}"
 
 on:
     schedule:
