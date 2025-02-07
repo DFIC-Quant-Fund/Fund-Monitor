@@ -1,0 +1,27 @@
+Metric,Value
+Total Return including dividends,54.97%
+Daily Average Return,0.0651%
+Annualized Average Return,17.81%
+Daily Variance,0.0065%
+Annualized Variance,1.65%
+Daily Volatility,0.8086%
+Annualized Volatility,12.84%
+Daily Downside Variance,0.0033%
+Annualized Downside Variance,0.84%
+Daily Downside Volatility,0.5765%
+Annualized Downside Volatility,9.15%
+Sharpe Ratio (Annualized),0.94
+Sortino Ratio (Annualized),1.32
+Maximum Drawdown,-5.01%
+Benchmark Variance (Daily),0.0038%
+Benchmark Variance (Annualized),0.95%
+Benchmark Volatility (Daily),0.6128%
+Benchmark Volatility (Annualized),9.73%
+Benchmark Average Return (Daily),0.0459%
+Benchmark Average Return (Annualized),12.25%
+Beta,1.1876
+Alpha,4.0765%
+Portfolio Risk Premium,13.45%
+Risk Adjusted Return (three month treasury rate),14.56%
+Treynor Ratio (three month treasury rate),0.11
+Information Ratio (Custom Benchmark),0.05
