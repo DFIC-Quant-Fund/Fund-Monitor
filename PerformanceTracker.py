@@ -46,6 +46,7 @@ def get_spy_benchmark():
     prices = pd.read_csv('output/prices.csv')
     dividend_df = pd.read_csv('output/dividends.csv')[['Date', 'SPY']]
 
+    # upon further thought, I guess dividends are baked into the price?
     dividend_df['Date'] = pd.to_datetime(dividend_df['Date'])
     dividend_df = dividend_df.set_index('Date')
     dividend_df['SPY'].fillna(0)
@@ -62,7 +63,8 @@ def get_spy_benchmark():
     exchange_rates.set_index('Date', inplace=True)
 
     benchmark_df.set_index('Date', inplace=True)
-    benchmark_df['SPY'] = (benchmark_df['SPY'] + dividend_df['SPY']) * exchange_rates['USD']
+    benchmark_df['SPY'] = (benchmark_df['SPY'] + dividend_df['SPY'].cumsum()) * exchange_rates['USD']
+    # benchmark_df['SPY'] = (benchmark_df['SPY']) * exchange_rates['USD']
     benchmark_df['pct_change'] = benchmark_df['SPY'].pct_change()
 
     # can write this to csv if we want but don't rly need it so I left it for now
@@ -84,10 +86,10 @@ def create_custom_benchmark():
     agg_initial_shares = 0.2*STARTING_CASH/(prices['AGG'].iloc[0] * initial_exchange_rate)
     xbb_initial_shares = 0.2*STARTING_CASH/prices['XBB.TO'].iloc[0]
 
-    xiu_dividends = dividends['XIU.TO'] * xiu_initial_shares
-    spy_dividends = dividends['SPY'] * spy_initial_shares * exchange_rates['USD']
-    agg_dividends = dividends['AGG'] * agg_initial_shares * exchange_rates['USD']
-    xbb_dividends = dividends['XBB.TO'] * xbb_initial_shares
+    xiu_dividends = dividends['XIU.TO'].cumsum() * xiu_initial_shares
+    spy_dividends = dividends['SPY'].cumsum() * spy_initial_shares * exchange_rates['USD']
+    agg_dividends = dividends['AGG'].cumsum() * agg_initial_shares * exchange_rates['USD']
+    xbb_dividends = dividends['XBB.TO'].cumsum() * xbb_initial_shares
 
     xiu_value = xiu_initial_shares * prices['XIU.TO'] + xiu_dividends
     spy_value = (spy_initial_shares * prices['SPY'] * exchange_rates['USD'] + spy_dividends).rename('SPY')
@@ -267,6 +269,8 @@ def beta(benchmark='custom'):
 
 def alpha(risk_free_rate, benchmark='custom'): 
     annual_benchmark_return = benchmark_average_return(benchmark)[1]
+    print("benchmark: ", benchmark)
+    print("annual_benchmark_return ", annual_benchmark_return)
 
     alpha = (annualized_average_return() - risk_free_rate) - beta() * (annual_benchmark_return - risk_free_rate)
 
@@ -287,21 +291,22 @@ def risk_adjusted_return(risk_free_return):
 def treynor_ratio(risk_free_return):
     return portfolio_risk_premium(risk_free_return) / beta()
 
-def information_ratio(benchmark='custom'):
-    if benchmark == 'custom':
-        benchmark_df = pd.read_csv('output/custom_benchmark.csv')
-    else:
-        benchmark_df = get_spy_benchmark()
+# def information_ratio(benchmark='custom'):
+#     # df = pd.read_csv('output/portfolio_total.csv')
+#     # daily_portfolio_return = df['pct_change'].dropna()
+#     # daily_benchmark_return = benchmark_df['pct_change'].dropna()
+#     _, annual_benchmark_return = benchmark_average_return(benchmark)
 
-    df = pd.read_csv('output/portfolio_total.csv')
-    daily_portfolio_return = df['pct_change'].dropna()
-    daily_benchmark_return = benchmark_df['pct_change'].dropna()
+#     # excess_returns = daily_portfolio_return - daily_benchmark_return
+#     excess_returns = annualized_average_return() - annual_benchmark_return
 
-    excess_returns = daily_portfolio_return - daily_benchmark_return
-    tracking_error = excess_returns.std()
-    information_ratio = excess_returns.mean() / tracking_error
+#     print("annualized_average_return of portfolio: ", annualized_average_return())
+#     print("annual_benchmark_return: ", annual_benchmark_return)
 
-    return information_ratio
+#     tracking_error = excess_returns.std()
+#     information_ratio = excess_returns.mean() / tracking_error
+
+#     return information_ratio
 
 def plot_portfolio_value():
     df = pd.read_csv('output/portfolio_total.csv')
@@ -358,7 +363,7 @@ def main():
     print(f"Portfolio Risk Premium: {portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%")
     print(f"Risk Adjusted Return (three month treasury rate): {risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%")
     print(f"Treynor Ratio (three month treasury rate): {treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}")
-    print(f"Information Ratio (Custom Benchmark): {information_ratio():.2f}")
+    # print(f"Information Ratio (Custom Benchmark): {information_ratio():.2f}")
 
     # output all these calculations to a csv file
     with open('output/performance_metrics.csv', 'w') as f:
@@ -377,21 +382,34 @@ def main():
         f.write(f"Sharpe Ratio (Annualized),{sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
         f.write(f"Sortino Ratio (Annualized),{sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
         f.write(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
-        f.write(f"Benchmark Variance (Daily),{benchmark_variance()[0]*100:.4f}%\n")
-        f.write(f"Benchmark Variance (Annualized),{benchmark_variance()[1]*100:.2f}%\n")
-        f.write(f"Benchmark Volatility (Daily),{benchmark_volatility()[0]*100:.4f}%\n")
-        f.write(f"Benchmark Volatility (Annualized),{benchmark_volatility()[1]*100:.2f}%\n")
-        f.write(f"Benchmark Average Return (Daily),{benchmark_average_return()[0]*100:.4f}%\n")
-        f.write(f"Benchmark Average Return (Annualized),{benchmark_average_return()[1]*100:.2f}%\n")
-        f.write(f"Beta,{beta():.4f}\n")
-        f.write(f"Alpha,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
+
+        f.write(f"Custom Benchmark Variance (Daily),{benchmark_variance()[0]*100:.4f}%\n")
+        f.write(f"SPY Benchmark Variance (Daily),{benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
+        f.write(f"Custom Benchmark Variance (Annualized),{benchmark_variance()[1]*100:.2f}%\n")
+        f.write(f"SPY Benchmark Variance (Annualized),{benchmark_variance(benchmark='SPY')[1]*100:.2f}%\n")
+
+        f.write(f"Custom Benchmark Volatility (Daily),{benchmark_volatility()[0]*100:.4f}%\n")
+        f.write(f"SPY Benchmark Volatility (Daily),{benchmark_volatility(benchmark='SPY')[0]*100:.4f}%\n")
+        f.write(f"Custom Benchmark Volatility (Annualized),{benchmark_volatility()[1]*100:.2f}%\n")
+        f.write(f"SPY Benchmark Volatility (Annualized),{benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
+
+        f.write(f"Custom Benchmark Average Return (Daily),{benchmark_average_return()[0]*100:.4f}%\n")
+        f.write(f"SPY Benchmark Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
+        f.write(f"Custom Benchmark Average Return (Annualized),{benchmark_average_return()[1]*100:.2f}%\n")
+        f.write(f"SPY Benchmark Average Return (Annualized),{benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
+    
+        f.write(f"Portfolio Beta,{beta():.4f}\n")
+        f.write(f"Portfolio Alpha against custom benchmark,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
+        f.write(f"Portfolio Alpha against SPY benchmark,{100*alpha(THREE_MTH_TREASURY_RATE, benchmark='SPY'):.4f}%\n")
+
         f.write(f"Portfolio Risk Premium,{portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
         f.write(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
         f.write(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
-        f.write(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
+        # f.write(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
 
 
 if __name__ == '__main__':
+    create_custom_benchmark()
     main()
     plot_portfolio_value()
 
