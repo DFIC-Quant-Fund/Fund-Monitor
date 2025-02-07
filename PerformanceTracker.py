@@ -43,29 +43,37 @@ def aggregate_data(market_values_file, cash_file, dividends_file, output_file):
     output_df.to_csv(output_file, index=False, float_format='%.6f')
 
 def get_spy_benchmark():
-    df = pd.read_csv('output/prices.csv')
+    prices = pd.read_csv('output/prices.csv')
+    dividend_df = pd.read_csv('output/dividends.csv')[['Date', 'SPY']]
+
+    dividend_df['Date'] = pd.to_datetime(dividend_df['Date'])
+    dividend_df = dividend_df.set_index('Date')
+    dividend_df['SPY'].fillna(0)
+
     # create a new dataframe with only the date and SPY columns
-    benchmark_df = df[['Date', 'SPY']].copy()
+    benchmark_df = prices[['Date', 'SPY']].copy()
     benchmark_df['Date'] = pd.to_datetime(benchmark_df['Date'])
     benchmark_df = benchmark_df.sort_values('Date')
+
     # use exchange_rates.csv to convert USD to CAD in the SPY column
     exchange_rates = pd.read_csv('output/exchange_rates.csv')
     exchange_rates['Date'] = pd.to_datetime(exchange_rates['Date'])
     exchange_rates = exchange_rates.sort_values('Date')
     exchange_rates.set_index('Date', inplace=True)
+
     benchmark_df.set_index('Date', inplace=True)
-    benchmark_df['SPY'] = benchmark_df['SPY'] * exchange_rates['USD']
+    benchmark_df['SPY'] = (benchmark_df['SPY'] + dividend_df['SPY']) * exchange_rates['USD']
     benchmark_df['pct_change'] = benchmark_df['SPY'].pct_change()
 
+    # can write this to csv if we want but don't rly need it so I left it for now
     return benchmark_df
 
-def get_custom_benchmark():
+def create_custom_benchmark():
     STARTING_CASH = 101644.99
-    start_date = '2022-05-01'
-    end_date = pd.Timestamp.now().strftime('%Y-%m-%d')
     exchange_rates = pd.read_csv('output/exchange_rates.csv')
     prices = pd.read_csv('output/prices.csv')
     prices['Date'] = pd.to_datetime(prices['Date'])
+    dividends = pd.read_csv('output/dividends.csv')[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
 
     initial_exchange_rate = exchange_rates['USD'].iloc[0]
 
@@ -76,26 +84,27 @@ def get_custom_benchmark():
     agg_initial_shares = 0.2*STARTING_CASH/(prices['AGG'].iloc[0] * initial_exchange_rate)
     xbb_initial_shares = 0.2*STARTING_CASH/prices['XBB.TO'].iloc[0]
 
-    xiu_value = xiu_initial_shares * prices['XIU.TO']
-    spy_value = (spy_initial_shares * prices['SPY'] * exchange_rates['USD']).rename('SPY')
-    agg_value = (agg_initial_shares * prices['AGG'] * exchange_rates['USD']).rename('AGG')
-    xbb_value = xbb_initial_shares * prices['XBB.TO']
+    xiu_dividends = dividends['XIU.TO'] * xiu_initial_shares
+    spy_dividends = dividends['SPY'] * spy_initial_shares * exchange_rates['USD']
+    agg_dividends = dividends['AGG'] * agg_initial_shares * exchange_rates['USD']
+    xbb_dividends = dividends['XBB.TO'] * xbb_initial_shares
+
+    xiu_value = xiu_initial_shares * prices['XIU.TO'] + xiu_dividends
+    spy_value = (spy_initial_shares * prices['SPY'] * exchange_rates['USD'] + spy_dividends).rename('SPY')
+    agg_value = (agg_initial_shares * prices['AGG'] * exchange_rates['USD'] + agg_dividends).rename('AGG')
+    xbb_value = xbb_initial_shares * prices['XBB.TO'] + xbb_dividends
 
     # combine the above four value variables into one dataframe with the date index
     custom_benchmark = pd.concat([xiu_value, spy_value, agg_value, xbb_value], axis=1)
     custom_benchmark['Total'] = custom_benchmark.sum(axis=1)
     custom_benchmark['Date'] = prices['Date']
     custom_benchmark.set_index('Date', inplace=True)
+    custom_benchmark['pct_change'] = custom_benchmark['Total'].pct_change()
 
     print("Custom Benchmark:", custom_benchmark.head())
     
     #output the custom benchmark to a csv file
     custom_benchmark.to_csv('output/custom_benchmark.csv', index=True)
-
-
-
-    
-
 
 
 def total_return():
@@ -253,11 +262,12 @@ def main():
     RISK_FREE_RATE1 = 0.0436 # 3-month treasury rate
     RISK_FREE_RATE2 = 0.05
 
+    # run these once only after running portfolio.py once
     # aggregate_data(market_values_file, cash_file, dividend_file, output_file)
+    # create_custom_benchmark()
 
     print(f"Total Return including dividends: {total_return()*100:.2f}%")
     
-    # What do these even mean?
     # print(f"Daily Compounded Return: {daily_compounded_return()*100:.4f}%")
     # print(f"Annualized Compounded Return: {annualized_compounded_return()*100:.2f}%")
     
@@ -278,9 +288,8 @@ def main():
     print(f"Maximum Drawdown: {maximum_drawdown()*100:.2f}%")
 
 if __name__ == '__main__':
-    # main()
-    # plot_portfolio_value()
-    get_custom_benchmark()
+    main()
+    plot_portfolio_value()
 
     # notes: % changes are only to 2 decimals in portfolio_total.csv
     # definitely something wrong here, possibly because of that.
