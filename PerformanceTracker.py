@@ -144,7 +144,12 @@ def sortino_ratio(risk_free_rate=0.0436):
     return daily_sortino_ratio, annualized_sortino_ratio
 
 def maximum_drawdown():
-    pass
+    # calculate the maximum drawdown
+    df = pd.read_csv('output/portfolio_total.csv')
+    daily_return = df['pct_change']
+    
+    return daily_return.min()
+
     
 def market_variance():
     # implement both daily and annualized
@@ -213,7 +218,7 @@ def main():
     print(f"Sharpe Ratio (Annualized): {sharpe_ratio(RISK_FREE_RATE2)[1]:.2f}")
     print(f"Sortino Ratio (Daily): {sortino_ratio(RISK_FREE_RATE1)[0]:.4f}")
     print(f"Sortino Ratio (Annualized): {sortino_ratio(RISK_FREE_RATE2)[1]:.2f}")
-    
+    print(f"Maximum Drawdown: {maximum_drawdown()*100:.2f}%")
 
 if __name__ == '__main__':
     main()
