@@ -127,14 +127,14 @@ def total_return():
 
 def daily_average_return():
     df = pd.read_csv('output/portfolio_total.csv')
-    daily_returns = df['pct_change']
+    daily_returns = df['pct_change'].dropna()
     average_return = daily_returns.mean()
 
     return average_return
 
 def annualized_average_return():
     df = pd.read_csv('output/portfolio_total.csv')
-    daily_returns = df['pct_change']
+    daily_returns = df['pct_change'].dropna()
     average_daily_return = daily_returns.mean()
     annualized_avg_return = (1+average_daily_return) ** 252 - 1
 
@@ -142,10 +142,9 @@ def annualized_average_return():
 
 def daily_variance():
     df = pd.read_csv('output/portfolio_total.csv')
-    daily_returns = df['pct_change']
-    # daily_return = df['Total_Portfolio_Value'].pct_change() # does this work?
+    daily_returns = df['pct_change'].dropna()
     daily_variance = daily_returns.var()
-    # print(f"Daily Variance: {daily_variance:.4f}")
+
     return daily_variance
 
 def annualized_variance():
@@ -157,7 +156,7 @@ def annualized_variance():
 def daily_volatility():
     df = pd.read_csv('output/portfolio_total.csv')
     # daily_return = df['Total_Portfolio_Value'].pct_change()
-    daily_return = df['pct_change']
+    daily_return = df['pct_change'].dropna()
     daily_volatility = daily_return.std()
 
     # print(f"Daily Volatility: {daily_volatility:.4f}")
@@ -171,7 +170,7 @@ def annualized_volatility():
 
 def daily_downside_variance():
     df = pd.read_csv('output/portfolio_total.csv')
-    daily_return = df['pct_change']
+    daily_return = df['pct_change'].dropna()
     downside_returns = daily_return[daily_return < 0]
     downside_variance = downside_returns.var()
     # print(f"Daily Downside Variance: {downside_variance:.4f}")
@@ -192,17 +191,17 @@ def annualized_downside_volatility():
     # print(f"Annualized Downside Volatility: {annualized_downside_volatility:.4f}")
     return annualized_downside_volatility
 
-def sharpe_ratio(risk_free_rate=0.0436):
+def sharpe_ratio(risk_free_rate):
     df = pd.read_csv('output/portfolio_total.csv')
-    daily_return = df['pct_change']
+    daily_return = df['pct_change'].dropna()
     daily_sharpe_ratio = (daily_return.mean() - risk_free_rate/252) / daily_return.std()
     annualized_sharpe_ratio = daily_sharpe_ratio * (252 ** 0.5)
 
     return daily_sharpe_ratio, annualized_sharpe_ratio
 
-def sortino_ratio(risk_free_rate=0.0436):
+def sortino_ratio(risk_free_rate):
     df = pd.read_csv('output/portfolio_total.csv')
-    daily_return = df['pct_change']
+    daily_return = df['pct_change'].dropna()
     downside_returns = daily_return[daily_return < 0]
     daily_sortino_ratio = (daily_return.mean() - risk_free_rate/252) / downside_returns.std()
     annualized_sortino_ratio = daily_sortino_ratio * (252 ** 0.5)
@@ -212,33 +211,97 @@ def sortino_ratio(risk_free_rate=0.0436):
 def maximum_drawdown():
     # calculate the maximum drawdown
     df = pd.read_csv('output/portfolio_total.csv')
-    daily_return = df['pct_change']
+    daily_return = df['pct_change'].dropna()
     
     return daily_return.min()
 
     
-def market_variance():
-    # implement both daily and annualized
-    pass
+def benchmark_variance(benchmark='custom'):
+    if benchmark == 'custom':
+        benchmark_df = pd.read_csv('output/custom_benchmark.csv')
+    else:
+        benchmark_df = get_spy_benchmark()
+    
+    daily_benchmark_variance = benchmark_df['pct_change'].dropna().var()
+    annualized_benchmark_variance = daily_benchmark_variance * 252
+    return daily_benchmark_variance, annualized_benchmark_variance
+    
 
-def market_volatility():
-    # implement both daily and annualized
-    pass
+def benchmark_volatility(benchmark='custom'):
+    if benchmark == 'custom':
+        benchmark_df = pd.read_csv('output/custom_benchmark.csv')
+    else:
+        benchmark_df = get_spy_benchmark()
+    
+    daily_benchmark_volatility = benchmark_df['pct_change'].dropna().std()
+    annualized_benchmark_volatility = daily_benchmark_volatility * (252 ** 0.5)
 
-def beta():
-    pass
+    return daily_benchmark_volatility, annualized_benchmark_volatility
 
-def alpha():
-    pass
+def benchmark_average_return(benchmark='custom'):
+    if benchmark == 'custom':
+        benchmark_df = pd.read_csv('output/custom_benchmark.csv')
+    else:
+        benchmark_df = get_spy_benchmark()
+    
+    daily_benchmark_return = benchmark_df['pct_change'].dropna().mean()
+    annualized_benchmark_return = (1+daily_benchmark_return) ** 252 - 1
 
-def risk_adjusted_return():
-    pass
+    return daily_benchmark_return, annualized_benchmark_return
 
-def treynor_ratio():
-    pass
+def beta(benchmark='custom'):
+    if benchmark == 'custom':
+        benchmark_df = pd.read_csv('output/custom_benchmark.csv')
+    else:
+        benchmark_df = get_spy_benchmark()
+    
+    df = pd.read_csv('output/portfolio_total.csv')
+    daily_portfolio_return = df['pct_change'].dropna()
 
-def information_ratio():
-    pass
+    daily_benchmark_var, _ = benchmark_variance(benchmark)
+    covariance = daily_portfolio_return.cov(benchmark_df['pct_change'])
+    beta = covariance / daily_benchmark_var
+
+    return beta
+    
+
+def alpha(risk_free_rate, benchmark='custom'): 
+    annual_benchmark_return = benchmark_average_return(benchmark)[1]
+
+    alpha = (annualized_average_return() - risk_free_rate) - beta() * (annual_benchmark_return - risk_free_rate)
+
+    return alpha
+    
+def portfolio_risk_premium(risk_free_return):
+    return annualized_average_return() - risk_free_return
+
+def risk_adjusted_return(risk_free_return):
+    benchmark_vol = benchmark_volatility()[1]
+    portfolio_volatility = annualized_volatility()
+    portfolio_risk_prem = portfolio_risk_premium(risk_free_return)
+
+    risk_adjusted_return = portfolio_risk_prem * benchmark_vol / portfolio_volatility + risk_free_return
+    
+    return risk_adjusted_return
+
+def treynor_ratio(risk_free_return):
+    return portfolio_risk_premium(risk_free_return) / beta()
+
+def information_ratio(benchmark='custom'):
+    if benchmark == 'custom':
+        benchmark_df = pd.read_csv('output/custom_benchmark.csv')
+    else:
+        benchmark_df = get_spy_benchmark()
+
+    df = pd.read_csv('output/portfolio_total.csv')
+    daily_portfolio_return = df['pct_change'].dropna()
+    daily_benchmark_return = benchmark_df['pct_change'].dropna()
+
+    excess_returns = daily_portfolio_return - daily_benchmark_return
+    tracking_error = excess_returns.std()
+    information_ratio = excess_returns.mean() / tracking_error
+
+    return information_ratio
 
 def plot_portfolio_value():
     df = pd.read_csv('output/portfolio_total.csv')
@@ -259,8 +322,8 @@ def main():
     cash_file = "output/cash.csv"
     dividend_file = "output/dividend_values.csv"
     output_file = "output/portfolio_total.csv"
-    RISK_FREE_RATE1 = 0.0436 # 3-month treasury rate
-    RISK_FREE_RATE2 = 0.05
+    THREE_MTH_TREASURY_RATE = 0.0436 # 3-month treasury rate
+    FIVE_PERCENT = 0.05
 
     # run these once only after running portfolio.py once
     # aggregate_data(market_values_file, cash_file, dividend_file, output_file)
@@ -281,11 +344,21 @@ def main():
     print(f"Annualized Downside Variance: {annualized_downside_variance()*100:.2f}%")
     print(f"Daily Downside Volatility: {daily_downside_volatility()*100:.4f}%")
     print(f"Annualized Downside Volatility: {annualized_downside_volatility()*100:.2f}%")
-    print(f"Sharpe Ratio (Daily): {sharpe_ratio(RISK_FREE_RATE1)[0]:.4f}")
-    print(f"Sharpe Ratio (Annualized): {sharpe_ratio(RISK_FREE_RATE2)[1]:.2f}")
-    print(f"Sortino Ratio (Daily): {sortino_ratio(RISK_FREE_RATE1)[0]:.4f}")
-    print(f"Sortino Ratio (Annualized): {sortino_ratio(RISK_FREE_RATE2)[1]:.2f}")
+    print(f"Sharpe Ratio (Annualized): {sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}")
+    print(f"Sortino Ratio (Annualized): {sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}")
     print(f"Maximum Drawdown: {maximum_drawdown()*100:.2f}%")
+    print(f"Benchmark Variance (Daily): {benchmark_variance()[0]*100:.4f}%")
+    print(f"Benchmark Variance (Annualized): {benchmark_variance()[1]*100:.2f}%")
+    print(f"Benchmark Volatility (Daily): {benchmark_volatility()[0]*100:.4f}%")
+    print(f"Benchmark Volatility (Annualized): {benchmark_volatility()[1]*100:.2f}%")
+    print(f"Benchmark Average Return (Daily): {benchmark_average_return()[0]*100:.4f}%")
+    print(f"Benchmark Average Return (Annualized): {benchmark_average_return()[1]*100:.2f}%")
+    print(f"Beta: {beta():.4f}")
+    print(f"Alpha: {alpha(THREE_MTH_TREASURY_RATE):.4f}")
+    print(f"Portfolio Risk Premium: {portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%")
+    print(f"Risk Adjusted Return (Risk Free Rate 1): {risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%")
+    print(f"Treynor Ratio (Risk Free Rate 1): {treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}")
+    print(f"Information Ratio (Custom Benchmark): {information_ratio():.2f}")
 
 if __name__ == '__main__':
     main()
