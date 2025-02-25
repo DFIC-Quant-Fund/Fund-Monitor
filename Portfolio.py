@@ -1,4 +1,5 @@
 import os
+import sys
 import pandas as pd
 import yfinance as yf
 
@@ -25,9 +26,8 @@ class Portfolio:
         self.starting_cash = starting_cash
         self.current_cash_balance = starting_cash
 
-        self.folder_prefix = folder_prefix
-        self.input_folder = os.path.join(folder_prefix, 'input')
-        self.output_folder = os.path.join(folder_prefix, 'output')
+        self.input_folder = os.path.join("data", folder_prefix, "input")
+        self.output_folder = os.path.join("data", folder_prefix, "output")
         os.makedirs(self.output_folder, exist_ok=True)
 
         self.tickers = None
@@ -184,7 +184,11 @@ class Portfolio:
         self.valid_dates = sp500.index.union(tsx.index)
 
 if __name__ == '__main__':
-    portfolio = Portfolio(start_date, end_date, starting_cash)
+    if len(sys.argv) < 2:
+        print("Usage: python3 Portfolio.py <folder_prefix>")
+        sys.exit(1)
+    folder_prefix = sys.argv[1]
+    portfolio = Portfolio(start_date, end_date, starting_cash, folder_prefix)
 
     portfolio.load_exchange_rates()
     portfolio.load_trades_data()

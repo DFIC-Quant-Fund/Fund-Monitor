@@ -1,4 +1,6 @@
+import os
 import pandas as pd
+import sys
 import matplotlib.pyplot as plt
 import yfinance as yf
 
@@ -43,8 +45,8 @@ def aggregate_data(market_values_file, cash_file, dividends_file, output_file):
     output_df.to_csv(output_file, index=False, float_format='%.6f')
 
 def get_spy_benchmark():
-    prices = pd.read_csv('output/prices.csv')
-    dividend_df = pd.read_csv('output/dividends.csv')[['Date', 'SPY']]
+    prices = pd.read_csv(os.path.join(output_folder, 'prices.csv'))
+    dividend_df = pd.read_csv(os.path.join(output_folder, 'dividends.csv'))[['Date', 'SPY']]
 
     # upon further thought, I guess dividends are baked into the price?
     dividend_df['Date'] = pd.to_datetime(dividend_df['Date'])
@@ -57,7 +59,7 @@ def get_spy_benchmark():
     benchmark_df = benchmark_df.sort_values('Date')
 
     # use exchange_rates.csv to convert USD to CAD in the SPY column
-    exchange_rates = pd.read_csv('output/exchange_rates.csv')
+    exchange_rates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
     exchange_rates['Date'] = pd.to_datetime(exchange_rates['Date'])
     exchange_rates = exchange_rates.sort_values('Date')
     exchange_rates.set_index('Date', inplace=True)
@@ -72,10 +74,10 @@ def get_spy_benchmark():
 
 def create_custom_benchmark():
     STARTING_CASH = 101644.99
-    exchange_rates = pd.read_csv('output/exchange_rates.csv')
-    prices = pd.read_csv('output/prices.csv')
+    exchange_rates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
+    prices = pd.read_csv(os.path.join(output_folder, 'prices.csv'))
     prices['Date'] = pd.to_datetime(prices['Date'])
-    dividends = pd.read_csv('output/dividends.csv')[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
+    dividends = pd.read_csv(os.path.join(output_folder, 'dividends.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
 
     initial_exchange_rate = exchange_rates['USD'].iloc[0]
 
@@ -106,11 +108,11 @@ def create_custom_benchmark():
     print("Custom Benchmark:", custom_benchmark.head())
     
     #output the custom benchmark to a csv file
-    custom_benchmark.to_csv('output/custom_benchmark.csv', index=True)
+    custom_benchmark.to_csv(os.path.join(output_folder, 'custom_benchmark.csv'), index=True)
 
 
 def total_return():
-    df = pd.read_csv('output/portfolio_total.csv')
+    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     total_return = (df['Total_Portfolio_Value'].iloc[-1] - df['Total_Portfolio_Value'].iloc[0]) / df['Total_Portfolio_Value'].iloc[0]
 
     return total_return
@@ -128,14 +130,14 @@ def total_return():
 #     return annualized_return
 
 def daily_average_return():
-    df = pd.read_csv('output/portfolio_total.csv')
+    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     daily_returns = df['pct_change'].dropna()
     average_return = daily_returns.mean()
 
     return average_return
 
 def annualized_average_return():
-    df = pd.read_csv('output/portfolio_total.csv')
+    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     daily_returns = df['pct_change'].dropna()
     average_daily_return = daily_returns.mean()
     annualized_avg_return = (1+average_daily_return) ** 252 - 1
@@ -143,20 +145,20 @@ def annualized_average_return():
     return annualized_avg_return
 
 def daily_variance():
-    df = pd.read_csv('output/portfolio_total.csv')
+    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     daily_returns = df['pct_change'].dropna()
     daily_variance = daily_returns.var()
 
     return daily_variance
 
 def annualized_variance():
-    df = pd.read_csv('output/portfolio_total.csv')
+    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     annualized_variance = daily_variance() * 252
     # print(f"Annualized Variance: {annualized_variance:.4f}")
     return annualized_variance
 
 def daily_volatility():
-    df = pd.read_csv('output/portfolio_total.csv')
+    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     # daily_return = df['Total_Portfolio_Value'].pct_change()
     daily_return = df['pct_change'].dropna()
     daily_volatility = daily_return.std()
@@ -171,7 +173,7 @@ def annualized_volatility():
     return annualized_volatility
 
 def daily_downside_variance():
-    df = pd.read_csv('output/portfolio_total.csv')
+    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     daily_return = df['pct_change'].dropna()
     downside_returns = daily_return[daily_return < 0]
     downside_variance = downside_returns.var()
@@ -194,7 +196,7 @@ def annualized_downside_volatility():
     return annualized_downside_volatility
 
 def sharpe_ratio(risk_free_rate):
-    df = pd.read_csv('output/portfolio_total.csv')
+    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     daily_return = df['pct_change'].dropna()
     daily_sharpe_ratio = (daily_return.mean() - risk_free_rate/252) / daily_return.std()
     annualized_sharpe_ratio = daily_sharpe_ratio * (252 ** 0.5)
@@ -202,7 +204,7 @@ def sharpe_ratio(risk_free_rate):
     return daily_sharpe_ratio, annualized_sharpe_ratio
 
 def sortino_ratio(risk_free_rate):
-    df = pd.read_csv('output/portfolio_total.csv')
+    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     daily_return = df['pct_change'].dropna()
     downside_returns = daily_return[daily_return < 0]
     daily_sortino_ratio = (daily_return.mean() - risk_free_rate/252) / downside_returns.std()
@@ -212,7 +214,7 @@ def sortino_ratio(risk_free_rate):
 
 def maximum_drawdown():
     # calculate the maximum drawdown
-    df = pd.read_csv('output/portfolio_total.csv')
+    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     daily_return = df['pct_change'].dropna()
     
     return daily_return.min()
@@ -220,7 +222,7 @@ def maximum_drawdown():
     
 def benchmark_variance(benchmark='custom'):
     if benchmark == 'custom':
-        benchmark_df = pd.read_csv('output/custom_benchmark.csv')
+        benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
     else:
         benchmark_df = get_spy_benchmark()
     
@@ -231,7 +233,7 @@ def benchmark_variance(benchmark='custom'):
 
 def benchmark_volatility(benchmark='custom'):
     if benchmark == 'custom':
-        benchmark_df = pd.read_csv('output/custom_benchmark.csv')
+        benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
     else:
         benchmark_df = get_spy_benchmark()
     
@@ -242,7 +244,7 @@ def benchmark_volatility(benchmark='custom'):
 
 def benchmark_average_return(benchmark='custom'):
     if benchmark == 'custom':
-        benchmark_df = pd.read_csv('output/custom_benchmark.csv')
+        benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
     else:
         benchmark_df = get_spy_benchmark()
     
@@ -253,11 +255,11 @@ def benchmark_average_return(benchmark='custom'):
 
 def beta(benchmark='custom'):
     if benchmark == 'custom':
-        benchmark_df = pd.read_csv('output/custom_benchmark.csv')
+        benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
     else:
         benchmark_df = get_spy_benchmark()
     
-    df = pd.read_csv('output/portfolio_total.csv')
+    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     daily_portfolio_return = df['pct_change'].dropna()
 
     daily_benchmark_var, _ = benchmark_variance(benchmark)
@@ -309,7 +311,7 @@ def information_ratio(benchmark='custom'):
     return information_ratio
 
 def plot_portfolio_value():
-    df = pd.read_csv('output/portfolio_total.csv')
+    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     df['Date'] = pd.to_datetime(df['Date'])
     fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -320,13 +322,13 @@ def plot_portfolio_value():
     ax.legend(loc='lower right')
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.savefig('output/portfolio_plot.png')
+    plt.savefig(os.path.join(output_folder, 'portfolio_plot.png'))
 
 def main():
-    market_values_file = "output/market_values.csv"
-    cash_file = "output/cash.csv"
-    dividend_file = "output/dividend_values.csv"
-    output_file = "output/portfolio_total.csv"
+    market_values_file = os.path.join(output_folder, "market_values.csv")
+    cash_file = os.path.join(output_folder, "cash.csv") 
+    dividend_file = os.path.join(output_folder, "dividend_values.csv") 
+    output_file = os.path.join(output_folder, "portfolio_total.csv") 
     THREE_MTH_TREASURY_RATE = 0.0436 # 3-month treasury rate
     FIVE_PERCENT = 0.05
 
@@ -374,7 +376,7 @@ def main():
     # print(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
 
     # output all these calculations to a csv file
-    with open('output/performance_metrics.csv', 'w') as f:
+    with open(os.path.join(output_folder, 'performance_metrics.csv'), 'w') as f:
         f.write("Metric,Value\n")
         f.write(f"Total Return including dividends,{total_return()*100:.2f}%\n")
         f.write(f"Daily Average Return,{daily_average_return()*100:.4f}%\n")
@@ -417,6 +419,11 @@ def main():
 
 
 if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("Usage: python3 PerformanceTracker.py <folder_prefix>")
+        sys.exit(1)
+    folder_prefix = sys.argv[1]
+    output_folder = os.path.join("data", folder_prefix, "output")
     main()
     plot_portfolio_value()
 
