@@ -21,6 +21,6 @@ jobs:
                 python3 -m pip install --upgrade pip
                 pip install -r requirements.txt
           - name: Run Portfolio.py Script
-            run: python Portfolio.py
+            run: python Portfolio.py fund
           - name: Run PerformanceTracker.py Script
-            run: python PerformanceTracker.py
+            run: python PerformanceTracker.py fund
