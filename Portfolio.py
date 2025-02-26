@@ -185,8 +185,7 @@ class Portfolio:
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("Usage: python3 Portfolio.py <folder_prefix>")
-        sys.exit(1)
+        sys.exit("Usage: python3 Portfolio.py <folder_prefix>")
     folder_prefix = sys.argv[1]
     portfolio = Portfolio(start_date, end_date, starting_cash, folder_prefix)
 

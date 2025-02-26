@@ -420,8 +420,7 @@ def main():
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("Usage: python3 PerformanceTracker.py <folder_prefix>")
-        sys.exit(1)
+        sys.exit("Usage: python3 PerformanceTracker.py <folder_prefix>")
     folder_prefix = sys.argv[1]
     output_folder = os.path.join("data", folder_prefix, "output")
     main()
