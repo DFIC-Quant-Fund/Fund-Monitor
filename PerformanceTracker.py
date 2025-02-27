@@ -1,3 +1,6 @@
+from _pydatetime import datetime
+from datetime import timedelta
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import yfinance as yf
@@ -321,6 +324,54 @@ def plot_portfolio_value():
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.savefig('output/portfolio_plot.png')
+def calculate_period_performance():
+    df = pd.read_csv("output/portfolio_total.csv")
+    df['Date'] = pd.to_datetime(df['Date'])
+    df = df.sort_values('Date')
+
+    latest_date = df['Date'].max()
+    one_day = latest_date - timedelta(days=1)
+    one_week = latest_date - timedelta(days=7)
+    one_month = latest_date - timedelta(days=30)
+    ytd = pd.Timestamp(year=latest_date.year, month=1, day=1)
+    one_year = latest_date - timedelta(days=365)
+    inception = df['Date'].min() - timedelta(days=0)
+    def closest_date(target_date):
+        target_date = pd.to_datetime(target_date)
+        valid_dates = df[df['Date'] <= target_date]['Date']
+        return valid_dates.max()
+
+    closest_1d = closest_date(one_day)
+    closest_1w = closest_date(one_week)
+    closest_1m = closest_date(one_month)
+    closest_ytd = closest_date(ytd)
+    closest_1y = closest_date(one_year)
+    closest_inc = closest_date(inception)
+
+    latest_value = df[df['Date'] == latest_date]['Total_Portfolio_Value'].values[0]
+    one_day_value = df[df['Date'] == closest_1d]['Total_Portfolio_Value'].values[0]
+    one_week_value = df[df['Date'] == closest_1w]['Total_Portfolio_Value'].values[0]
+    one_month_value = df[df['Date'] == closest_1m]['Total_Portfolio_Value'].values[0]
+    ytd_value = df[df['Date'] == closest_ytd]['Total_Portfolio_Value'].values[0]
+    one_year_value = df[df['Date'] == closest_1y]['Total_Portfolio_Value'].values[0]
+    inception_value = df[df['Date'] == closest_inc]['Total_Portfolio_Value'].values[0]
+
+    one_day_return = (latest_value / one_day_value) - 1
+    one_week_return = (latest_value / one_week_value) - 1
+    one_month_return = (latest_value / one_month_value) - 1
+    ytd_return = (latest_value / ytd_value) - 1
+    one_year_return = (latest_value / one_year_value) - 1
+    inception_return = (latest_value / inception_value) - 1
+
+    return {
+        "1d": one_day_return * 100,
+        "1w": one_week_return * 100,
+        "1m": one_month_return * 100,
+        "YTD": ytd_return * 100,
+        "1y": one_year_return * 100,
+        "Inception": inception_return * 100
+    }
+
 
 def main():
     market_values_file = "output/market_values.csv"
@@ -333,6 +384,7 @@ def main():
     # run these once only after running portfolio.py once
     aggregate_data(market_values_file, cash_file, dividend_file, output_file)
     create_custom_benchmark()
+    period_metrics = calculate_period_performance()
 
     print(f"Total Return including dividends,{total_return()*100:.2f}%\n")
     print(f"Daily Average Return,{daily_average_return()*100:.4f}%\n")
@@ -372,6 +424,14 @@ def main():
     print(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
     print(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
     # print(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
+
+    print("--- Portfolio Returns ---\n")
+    print(f"1 Day Return,{period_metrics['1d']:.2f}%\n")
+    print(f"1 Week Return,{period_metrics['1w']:.2f}%\n")
+    print(f"1 Month Return,{period_metrics['1m']:.2f}%\n")
+    print(f"Year-to-Date Return,{period_metrics['YTD']:.2f}%\n")
+    print(f"1 Year Return,{period_metrics['1y']:.2f}%\n")
+    print(f"Inception,{period_metrics['Inception']:.2f}%\n")
 
     # output all these calculations to a csv file
     with open('output/performance_metrics.csv', 'w') as f:
@@ -414,6 +474,13 @@ def main():
         f.write(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
         f.write(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
         # f.write(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
+        f.write("--- Portfolio Returns ---\n")
+        f.write(f"1 Day Return,{period_metrics['1d']:.2f}%\n")
+        f.write(f"1 Week Return,{period_metrics['1w']:.2f}%\n")
+        f.write(f"1 Month Return,{period_metrics['1m']:.2f}%\n")
+        f.write(f"Year-to-Date Return,{period_metrics['YTD']:.2f}%\n")
+        f.write(f"1 Year Return,{period_metrics['1y']:.2f}%\n")
+        f.write(f"Inception,{period_metrics['Inception']:.2f}%\n")
 
 
 if __name__ == '__main__':
