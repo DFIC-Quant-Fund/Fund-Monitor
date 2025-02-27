@@ -1,6 +1,4 @@
-from _pydatetime import datetime
 from datetime import timedelta
-
 import pandas as pd
 import matplotlib.pyplot as plt
 import yfinance as yf
@@ -325,9 +323,8 @@ def plot_portfolio_value():
     plt.tight_layout()
     plt.savefig('output/portfolio_plot.png')
 def calculate_period_performance():
-    df = pd.read_csv("output/portfolio_total.csv")
+    df = pd.read_csv('output/portfolio_total.csv')
     df['Date'] = pd.to_datetime(df['Date'])
-    df = df.sort_values('Date')
 
     latest_date = df['Date'].max()
     one_day = latest_date - timedelta(days=1)
@@ -335,16 +332,21 @@ def calculate_period_performance():
     one_month = latest_date - timedelta(days=30)
     ytd = pd.Timestamp(year=latest_date.year, month=1, day=1)
     one_year = latest_date - timedelta(days=365)
-    inception = df['Date'].min() - timedelta(days=0)
-    def closest_date(target_date):
+    inception = df['Date'].min()
+    def closest_date(target_date, side='left'):
         target_date = pd.to_datetime(target_date)
-        valid_dates = df[df['Date'] <= target_date]['Date']
-        return valid_dates.max()
+        if side == 'left':
+            valid_dates = df[df['Date'] <= target_date]['Date']
+            return valid_dates.max()
+        elif side == 'right':
+            valid_dates = df[df['Date'] >= target_date]['Date']
+            return valid_dates.min()
+
 
     closest_1d = closest_date(one_day)
     closest_1w = closest_date(one_week)
     closest_1m = closest_date(one_month)
-    closest_ytd = closest_date(ytd)
+    closest_ytd = closest_date(ytd, side='right')
     closest_1y = closest_date(one_year)
     closest_inc = closest_date(inception)
 
@@ -364,12 +366,12 @@ def calculate_period_performance():
     inception_return = (latest_value / inception_value) - 1
 
     return {
-        "1d": one_day_return * 100,
-        "1w": one_week_return * 100,
-        "1m": one_month_return * 100,
-        "YTD": ytd_return * 100,
-        "1y": one_year_return * 100,
-        "Inception": inception_return * 100
+        "1d": one_day_return,
+        "1w": one_week_return,
+        "1m": one_month_return,
+        "YTD": ytd_return,
+        "1y": one_year_return,
+        "Inception": inception_return
     }
 
 
@@ -426,12 +428,12 @@ def main():
     # print(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
 
     print("--- Portfolio Returns ---\n")
-    print(f"1 Day Return,{period_metrics['1d']:.2f}%\n")
-    print(f"1 Week Return,{period_metrics['1w']:.2f}%\n")
-    print(f"1 Month Return,{period_metrics['1m']:.2f}%\n")
-    print(f"Year-to-Date Return,{period_metrics['YTD']:.2f}%\n")
-    print(f"1 Year Return,{period_metrics['1y']:.2f}%\n")
-    print(f"Inception,{period_metrics['Inception']:.2f}%\n")
+    print(f"1 Day Return,{period_metrics['1d']*100:.2f}%\n")
+    print(f"1 Week Return,{period_metrics['1w']*100:.2f}%\n")
+    print(f"1 Month Return,{period_metrics['1m']*100:.2f}%\n")
+    print(f"Year-to-Date Return,{period_metrics['YTD']*100:.2f}%\n")
+    print(f"1 Year Return,{period_metrics['1y']*100:.2f}%\n")
+    print(f"Inception,{period_metrics['Inception']*100:.2f}%\n")
 
     # output all these calculations to a csv file
     with open('output/performance_metrics.csv', 'w') as f:
@@ -475,12 +477,12 @@ def main():
         f.write(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
         # f.write(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
         f.write("--- Portfolio Returns ---\n")
-        f.write(f"1 Day Return,{period_metrics['1d']:.2f}%\n")
-        f.write(f"1 Week Return,{period_metrics['1w']:.2f}%\n")
-        f.write(f"1 Month Return,{period_metrics['1m']:.2f}%\n")
-        f.write(f"Year-to-Date Return,{period_metrics['YTD']:.2f}%\n")
-        f.write(f"1 Year Return,{period_metrics['1y']:.2f}%\n")
-        f.write(f"Inception,{period_metrics['Inception']:.2f}%\n")
+        f.write(f"1 Day Return,{period_metrics['1d']*100:.2f}%\n")
+        f.write(f"1 Week Return,{period_metrics['1w']*100:.2f}%\n")
+        f.write(f"1 Month Return,{period_metrics['1m']*100:.2f}%\n")
+        f.write(f"Year-to-Date Return,{period_metrics['YTD']*100:.2f}%\n")
+        f.write(f"1 Year Return,{period_metrics['1y']*100:.2f}%\n")
+        f.write(f"Inception,{period_metrics['Inception']*100:.2f}%\n")
 
 
 if __name__ == '__main__':
