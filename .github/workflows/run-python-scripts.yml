@@ -17,7 +17,8 @@ jobs:
           - name: Set up Python
             uses: actions/setup-python@v5
             with:
-                python-version: '3.x'
+                python-version: '>=3.10'
+                cache: pip
           - name: Install dependencies
             run: |
                 python3 -m pip install --upgrade pip
@@ -26,9 +27,12 @@ jobs:
             run: python Portfolio.py fund
           - name: Run PerformanceTracker.py Script
             run: python PerformanceTracker.py fund
-          - name: Upload Output Files to Repository
+          - name: Get Previous Date
+            id: get_previous_date
+            run: echo "date=$(date --date="yesterday" +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          - name: Upload Output Files to Main Branch
             if: ${{ github.ref == 'refs/heads/main' }}
             uses: stefanzweifel/git-auto-commit-action@v5
             with:
               file_pattern: 'data/fund/output/**'
-              commit_message: Upload data for $(date +'%Y-%m-%d')
+              commit_message: "Actions daily upload data for ${{ steps.get_previous_date.outputs.date }}"
