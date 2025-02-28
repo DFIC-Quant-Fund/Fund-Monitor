@@ -322,6 +322,26 @@ def plot_portfolio_value():
     plt.tight_layout()
     plt.savefig('output/portfolio_plot.png')
 
+def print_fixed_income_mkt_value():
+    df = pd.read_csv('output/market_values.csv')
+    df_xrates = pd.read_csv('output/exchange_rates.csv')
+    ex = df_xrates['USD'].iloc[-1]
+    xbb = df['XBB.TO'].iloc[-1]
+    agg = df['AGG'].iloc[-1]
+    spsb = df['SPSB'].iloc[-1]
+
+    print("XBB.TO current market value (CAD): ", xbb)
+    print("AGG current market value (USD): ", agg)
+    print("SPSB current market value (USD): ", spsb)
+    print("total market value: ", sum([xbb, agg, spsb]))
+
+    print("USD fixed income mkt share of AGG: ", agg / sum([agg, spsb]))
+    print("USD fixed income mkt share of SPSB: ", spsb / sum([agg, spsb]))
+
+    print("USD/CAD fixed income mkt share of XBB: ", xbb / sum([xbb, agg*ex, spsb*ex]))
+    print("USD/CAD fixed income mkt share of agg: ", agg*ex / sum([xbb, agg*ex, spsb*ex]))
+    print("USD/CAD fixed income mkt share of spsb: ", spsb*ex / sum([xbb, agg*ex, spsb*ex]))
+
 def main():
     market_values_file = "output/market_values.csv"
     cash_file = "output/cash.csv"
@@ -331,94 +351,96 @@ def main():
     FIVE_PERCENT = 0.05
 
     # run these once only after running portfolio.py once
-    aggregate_data(market_values_file, cash_file, dividend_file, output_file)
-    create_custom_benchmark()
+    # aggregate_data(market_values_file, cash_file, dividend_file, output_file)
+    # create_custom_benchmark()
 
-    print(f"Total Return including dividends,{total_return()*100:.2f}%\n")
-    print(f"Daily Average Return,{daily_average_return()*100:.4f}%\n")
-    print(f"Annualized Average Return,{annualized_average_return()*100:.2f}%\n")
-    print(f"Daily Variance,{daily_variance()*100:.4f}%\n")
-    print(f"Annualized Variance,{annualized_variance()*100:.2f}%\n")
-    print(f"Daily Volatility,{daily_volatility()*100:.4f}%\n")
-    print(f"Annualized Volatility,{annualized_volatility()*100:.2f}%\n")
-    print(f"Daily Downside Variance,{daily_downside_variance()*100:.4f}%\n")
-    print(f"Annualized Downside Variance,{annualized_downside_variance()*100:.2f}%\n")
-    print(f"Daily Downside Volatility,{daily_downside_volatility()*100:.4f}%\n")
-    print(f"Annualized Downside Volatility,{annualized_downside_volatility()*100:.2f}%\n")
-    print(f"Sharpe Ratio (Annualized),{sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
-    print(f"Sortino Ratio (Annualized),{sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
-    print(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
+    print_fixed_income_mkt_value()
 
-    print(f"Custom Benchmark Variance (Daily),{benchmark_variance()[0]*100:.4f}%\n")
-    print(f"SPY Benchmark Variance (Daily),{benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
-    print(f"Custom Benchmark Variance (Annualized),{benchmark_variance()[1]*100:.2f}%\n")
-    print(f"SPY Benchmark Variance (Annualized),{benchmark_variance(benchmark='SPY')[1]*100:.2f}%\n")
+    # print(f"Total Return including dividends,{total_return()*100:.2f}%\n")
+    # print(f"Daily Average Return,{daily_average_return()*100:.4f}%\n")
+    # print(f"Annualized Average Return,{annualized_average_return()*100:.2f}%\n")
+    # print(f"Daily Variance,{daily_variance()*100:.4f}%\n")
+    # print(f"Annualized Variance,{annualized_variance()*100:.2f}%\n")
+    # print(f"Daily Volatility,{daily_volatility()*100:.4f}%\n")
+    # print(f"Annualized Volatility,{annualized_volatility()*100:.2f}%\n")
+    # print(f"Daily Downside Variance,{daily_downside_variance()*100:.4f}%\n")
+    # print(f"Annualized Downside Variance,{annualized_downside_variance()*100:.2f}%\n")
+    # print(f"Daily Downside Volatility,{daily_downside_volatility()*100:.4f}%\n")
+    # print(f"Annualized Downside Volatility,{annualized_downside_volatility()*100:.2f}%\n")
+    # print(f"Sharpe Ratio (Annualized),{sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
+    # print(f"Sortino Ratio (Annualized),{sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
+    # print(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
 
-    print(f"Custom Benchmark Volatility (Daily),{benchmark_volatility()[0]*100:.4f}%\n")
-    print(f"SPY Benchmark Volatility (Daily),{benchmark_volatility(benchmark='SPY')[0]*100:.4f}%\n")
-    print(f"Custom Benchmark Volatility (Annualized),{benchmark_volatility()[1]*100:.2f}%\n")
-    print(f"SPY Benchmark Volatility (Annualized),{benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
+    # print(f"Custom Benchmark Variance (Daily),{benchmark_variance()[0]*100:.4f}%\n")
+    # print(f"SPY Benchmark Variance (Daily),{benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
+    # print(f"Custom Benchmark Variance (Annualized),{benchmark_variance()[1]*100:.2f}%\n")
+    # print(f"SPY Benchmark Variance (Annualized),{benchmark_variance(benchmark='SPY')[1]*100:.2f}%\n")
 
-    print(f"Custom Benchmark Average Return (Daily),{benchmark_average_return()[0]*100:.4f}%\n")
-    print(f"SPY Benchmark Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
-    print(f"Custom Benchmark Average Return (Annualized),{benchmark_average_return()[1]*100:.2f}%\n")
-    print(f"SPY Benchmark Average Return (Annualized),{benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
+    # print(f"Custom Benchmark Volatility (Daily),{benchmark_volatility()[0]*100:.4f}%\n")
+    # print(f"SPY Benchmark Volatility (Daily),{benchmark_volatility(benchmark='SPY')[0]*100:.4f}%\n")
+    # print(f"Custom Benchmark Volatility (Annualized),{benchmark_volatility()[1]*100:.2f}%\n")
+    # print(f"SPY Benchmark Volatility (Annualized),{benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
 
-    print(f"Portfolio Beta,{beta():.4f}\n")
-    print(f"Portfolio Alpha against custom benchmark,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
-    print(f"Portfolio Alpha against SPY benchmark,{100*alpha(THREE_MTH_TREASURY_RATE, benchmark='SPY'):.4f}%\n")
+    # print(f"Custom Benchmark Average Return (Daily),{benchmark_average_return()[0]*100:.4f}%\n")
+    # print(f"SPY Benchmark Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
+    # print(f"Custom Benchmark Average Return (Annualized),{benchmark_average_return()[1]*100:.2f}%\n")
+    # print(f"SPY Benchmark Average Return (Annualized),{benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
 
-    print(f"Portfolio Risk Premium,{portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
-    print(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
-    print(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
+    # print(f"Portfolio Beta,{beta():.4f}\n")
+    # print(f"Portfolio Alpha against custom benchmark,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
+    # print(f"Portfolio Alpha against SPY benchmark,{100*alpha(THREE_MTH_TREASURY_RATE, benchmark='SPY'):.4f}%\n")
+
+    # print(f"Portfolio Risk Premium,{portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
+    # print(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
+    # print(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
     # print(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
 
     # output all these calculations to a csv file
-    with open('output/performance_metrics.csv', 'w') as f:
-        f.write("Metric,Value\n")
-        f.write(f"Total Return including dividends,{total_return()*100:.2f}%\n")
-        f.write(f"Daily Average Return,{daily_average_return()*100:.4f}%\n")
-        f.write(f"Annualized Average Return,{annualized_average_return()*100:.2f}%\n")
-        f.write(f"Daily Variance,{daily_variance()*100:.4f}%\n")
-        f.write(f"Annualized Variance,{annualized_variance()*100:.2f}%\n")
-        f.write(f"Daily Volatility,{daily_volatility()*100:.4f}%\n")
-        f.write(f"Annualized Volatility,{annualized_volatility()*100:.2f}%\n")
-        f.write(f"Daily Downside Variance,{daily_downside_variance()*100:.4f}%\n")
-        f.write(f"Annualized Downside Variance,{annualized_downside_variance()*100:.2f}%\n")
-        f.write(f"Daily Downside Volatility,{daily_downside_volatility()*100:.4f}%\n")
-        f.write(f"Annualized Downside Volatility,{annualized_downside_volatility()*100:.2f}%\n")
-        f.write(f"Sharpe Ratio (Annualized),{sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
-        f.write(f"Sortino Ratio (Annualized),{sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
-        f.write(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
+    # with open('output/performance_metrics.csv', 'w') as f:
+    #     f.write("Metric,Value\n")
+    #     f.write(f"Total Return including dividends,{total_return()*100:.2f}%\n")
+    #     f.write(f"Daily Average Return,{daily_average_return()*100:.4f}%\n")
+    #     f.write(f"Annualized Average Return,{annualized_average_return()*100:.2f}%\n")
+    #     f.write(f"Daily Variance,{daily_variance()*100:.4f}%\n")
+    #     f.write(f"Annualized Variance,{annualized_variance()*100:.2f}%\n")
+    #     f.write(f"Daily Volatility,{daily_volatility()*100:.4f}%\n")
+    #     f.write(f"Annualized Volatility,{annualized_volatility()*100:.2f}%\n")
+    #     f.write(f"Daily Downside Variance,{daily_downside_variance()*100:.4f}%\n")
+    #     f.write(f"Annualized Downside Variance,{annualized_downside_variance()*100:.2f}%\n")
+    #     f.write(f"Daily Downside Volatility,{daily_downside_volatility()*100:.4f}%\n")
+    #     f.write(f"Annualized Downside Volatility,{annualized_downside_volatility()*100:.2f}%\n")
+    #     f.write(f"Sharpe Ratio (Annualized),{sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
+    #     f.write(f"Sortino Ratio (Annualized),{sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
+    #     f.write(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
 
-        f.write(f"Custom Benchmark Variance (Daily),{benchmark_variance()[0]*100:.4f}%\n")
-        f.write(f"SPY Benchmark Variance (Daily),{benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
-        f.write(f"Custom Benchmark Variance (Annualized),{benchmark_variance()[1]*100:.2f}%\n")
-        f.write(f"SPY Benchmark Variance (Annualized),{benchmark_variance(benchmark='SPY')[1]*100:.2f}%\n")
+    #     f.write(f"Custom Benchmark Variance (Daily),{benchmark_variance()[0]*100:.4f}%\n")
+    #     f.write(f"SPY Benchmark Variance (Daily),{benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
+    #     f.write(f"Custom Benchmark Variance (Annualized),{benchmark_variance()[1]*100:.2f}%\n")
+    #     f.write(f"SPY Benchmark Variance (Annualized),{benchmark_variance(benchmark='SPY')[1]*100:.2f}%\n")
 
-        f.write(f"Custom Benchmark Volatility (Daily),{benchmark_volatility()[0]*100:.4f}%\n")
-        f.write(f"SPY Benchmark Volatility (Daily),{benchmark_volatility(benchmark='SPY')[0]*100:.4f}%\n")
-        f.write(f"Custom Benchmark Volatility (Annualized),{benchmark_volatility()[1]*100:.2f}%\n")
-        f.write(f"SPY Benchmark Volatility (Annualized),{benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
+    #     f.write(f"Custom Benchmark Volatility (Daily),{benchmark_volatility()[0]*100:.4f}%\n")
+    #     f.write(f"SPY Benchmark Volatility (Daily),{benchmark_volatility(benchmark='SPY')[0]*100:.4f}%\n")
+    #     f.write(f"Custom Benchmark Volatility (Annualized),{benchmark_volatility()[1]*100:.2f}%\n")
+    #     f.write(f"SPY Benchmark Volatility (Annualized),{benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
 
-        f.write(f"Custom Benchmark Average Return (Daily),{benchmark_average_return()[0]*100:.4f}%\n")
-        f.write(f"SPY Benchmark Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
-        f.write(f"Custom Benchmark Average Return (Annualized),{benchmark_average_return()[1]*100:.2f}%\n")
-        f.write(f"SPY Benchmark Average Return (Annualized),{benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
+    #     f.write(f"Custom Benchmark Average Return (Daily),{benchmark_average_return()[0]*100:.4f}%\n")
+    #     f.write(f"SPY Benchmark Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
+    #     f.write(f"Custom Benchmark Average Return (Annualized),{benchmark_average_return()[1]*100:.2f}%\n")
+    #     f.write(f"SPY Benchmark Average Return (Annualized),{benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
     
-        f.write(f"Portfolio Beta,{beta():.4f}\n")
-        f.write(f"Portfolio Alpha against custom benchmark,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
-        f.write(f"Portfolio Alpha against SPY benchmark,{100*alpha(THREE_MTH_TREASURY_RATE, benchmark='SPY'):.4f}%\n")
+    #     f.write(f"Portfolio Beta,{beta():.4f}\n")
+    #     f.write(f"Portfolio Alpha against custom benchmark,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
+    #     f.write(f"Portfolio Alpha against SPY benchmark,{100*alpha(THREE_MTH_TREASURY_RATE, benchmark='SPY'):.4f}%\n")
 
-        f.write(f"Portfolio Risk Premium,{portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
-        f.write(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
-        f.write(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
+    #     f.write(f"Portfolio Risk Premium,{portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
+    #     f.write(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
+    #     f.write(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
         # f.write(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
 
 
 if __name__ == '__main__':
     main()
-    plot_portfolio_value()
+    # plot_portfolio_value()
 
     # notes: % changes are only to 2 decimals in portfolio_total.csv
     # definitely something wrong here, possibly because of that.
