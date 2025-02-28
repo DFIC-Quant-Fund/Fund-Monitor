@@ -325,6 +325,7 @@ def plot_portfolio_value():
     plt.tight_layout()
     plt.savefig(os.path.join(output_folder, 'portfolio_plot.png'))
 
+
 def calculate_period_performance():
     df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     df['Date'] = pd.to_datetime(df['Date'])
