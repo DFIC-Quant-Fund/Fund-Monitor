@@ -491,6 +491,7 @@ if __name__ == '__main__':
         sys.exit("Usage: python3 PerformanceTracker.py <folder_prefix>")
     folder_prefix = sys.argv[1]
     output_folder = os.path.join("data", folder_prefix, "output")
+    os.makedirs(output_folder, exist_ok=True)
     main()
     plot_portfolio_value()
 
