@@ -325,7 +325,7 @@ def plot_portfolio_value():
     plt.tight_layout()
     plt.savefig('output/portfolio_plot.png')
 def calculate_period_performance():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+    df = pd.read_csv('output/portfolio_total.csv')
     df['Date'] = pd.to_datetime(df['Date'])
 
     latest_date = df['Date'].max()
