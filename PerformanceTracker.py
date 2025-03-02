@@ -336,53 +336,20 @@ def maximum_drawdown():
     return daily_return.min()
 
     
-def benchmark_variance(benchmark='custom'):
-    if benchmark == 'custom':
-        benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
-    else:
-        benchmark = Benchmark()
-        benchmark_df = benchmark.get_spy_benchmark()
-    
-    daily_benchmark_variance = benchmark_df['pct_change'].dropna().var()
-    annualized_benchmark_variance = daily_benchmark_variance * 252
-    return daily_benchmark_variance, annualized_benchmark_variance
     
 
-def benchmark_volatility(benchmark='custom'):
-    if benchmark == 'custom':
-        benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
-    else:
-        benchmark = Benchmark()
-        benchmark_df = benchmark.get_spy_benchmark()
-    
-    daily_benchmark_volatility = benchmark_df['pct_change'].dropna().std()
-    annualized_benchmark_volatility = daily_benchmark_volatility * (252 ** 0.5)
-
-    return daily_benchmark_volatility, annualized_benchmark_volatility
-
-def benchmark_average_return(benchmark='custom'):
-    if benchmark == 'custom':
-        benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
-    else:
-        benchmark = Benchmark()
-        benchmark_df = benchmark.get_spy_benchmark()
-    
-    daily_benchmark_return = benchmark_df['pct_change'].dropna().mean()
-    annualized_benchmark_return = (1+daily_benchmark_return) ** 252 - 1
-
-    return daily_benchmark_return, annualized_benchmark_return
 
 def beta(benchmark='custom'):
+    benchmark_class = Benchmark()
     if benchmark == 'custom':
         benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
     else:
-        benchmark = Benchmark()
-        benchmark_df = benchmark.get_spy_benchmark()
+        benchmark_df = benchmark_class.get_spy_benchmark()
     
     df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     daily_portfolio_return = df['pct_change'].dropna()
 
-    daily_benchmark_var, _ = benchmark_variance(benchmark)
+    daily_benchmark_var, _ = benchmark_class.benchmark_variance(benchmark)
     covariance = daily_portfolio_return.cov(benchmark_df['pct_change'])
     beta = covariance / daily_benchmark_var
 
@@ -390,7 +357,8 @@ def beta(benchmark='custom'):
     
 
 def alpha(risk_free_rate, benchmark='custom'): 
-    annual_benchmark_return = benchmark_average_return(benchmark)[1]
+    benchmark_class = Benchmark()
+    annual_benchmark_return = benchmark_class.benchmark_average_return(benchmark)[1]
     portfolio_performance = PortfolioPerformance()
     print("benchmark: ", benchmark)
     print("annual_benchmark_return ", annual_benchmark_return)
@@ -405,7 +373,8 @@ def portfolio_risk_premium(risk_free_return):
 
 def risk_adjusted_return(risk_free_return):
     risk_metrics = RiskMetrics()
-    benchmark_vol = benchmark_volatility()[1]
+    benchmark = Benchmark()
+    benchmark_vol = benchmark.benchmark_volatility()[1]
     portfolio_volatility = risk_metrics.annualized_volatility()
     portfolio_risk_prem = portfolio_risk_premium(risk_free_return)
 
@@ -420,7 +389,8 @@ def information_ratio(benchmark='custom'):
     # df = pd.read_csv('output/portfolio_total.csv')
     # daily_portfolio_return = df['pct_change'].dropna()
     # daily_benchmark_return = benchmark_df['pct_change'].dropna()
-    _, annual_benchmark_return = benchmark_average_return(benchmark)
+    benchmark_class = Benchmark()
+    _, annual_benchmark_return = benchmark_class.benchmark_average_return(benchmark)
     portfolio_performance = PortfolioPerformance()
 
     # excess_returns = daily_portfolio_return - daily_benchmark_return
@@ -469,20 +439,20 @@ def main():
     print(f"Sortino Ratio (Annualized),{sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
     print(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
 
-    print(f"Custom Benchmark Variance (Daily),{benchmark_variance()[0]*100:.4f}%\n")
-    print(f"SPY Benchmark Variance (Daily),{benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
-    print(f"Custom Benchmark Variance (Annualized),{benchmark_variance()[1]*100:.2f}%\n")
-    print(f"SPY Benchmark Variance (Annualized),{benchmark_variance(benchmark='SPY')[1]*100:.2f}%\n")
+    print(f"Custom Benchmark Variance (Daily),{benchmark.benchmark_variance()[0]*100:.4f}%\n")
+    print(f"SPY Benchmark Variance (Daily),{benchmark.benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
+    print(f"Custom Benchmark Variance (Annualized),{benchmark.benchmark_variance()[1]*100:.2f}%\n")
+    print(f"SPY Benchmark Variance (Annualized),{benchmark.benchmark_variance(benchmark='SPY')[1]*100:.2f}%\n")
 
-    print(f"Custom Benchmark Volatility (Daily),{benchmark_volatility()[0]*100:.4f}%\n")
-    print(f"SPY Benchmark Volatility (Daily),{benchmark_volatility(benchmark='SPY')[0]*100:.4f}%\n")
-    print(f"Custom Benchmark Volatility (Annualized),{benchmark_volatility()[1]*100:.2f}%\n")
-    print(f"SPY Benchmark Volatility (Annualized),{benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
+    print(f"Custom Benchmark Volatility (Daily),{benchmark.benchmark_volatility()[0]*100:.4f}%\n")
+    print(f"SPY Benchmark Volatility (Daily),{benchmark.benchmark_volatility(benchmark='SPY')[0]*100:.4f}%\n")
+    print(f"Custom Benchmark Volatility (Annualized),{benchmark.benchmark_volatility()[1]*100:.2f}%\n")
+    print(f"SPY Benchmark Volatility (Annualized),{benchmark.benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
 
-    print(f"Custom Benchmark Average Return (Daily),{benchmark_average_return()[0]*100:.4f}%\n")
-    print(f"SPY Benchmark Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
-    print(f"Custom Benchmark Average Return (Annualized),{benchmark_average_return()[1]*100:.2f}%\n")
-    print(f"SPY Benchmark Average Return (Annualized),{benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
+    print(f"Custom Benchmark Average Return (Daily),{benchmark.benchmark_average_return()[0]*100:.4f}%\n")
+    print(f"SPY Benchmark Average Return (Daily),{benchmark.benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
+    print(f"Custom Benchmark Average Return (Annualized),{benchmark.benchmark_average_return()[1]*100:.2f}%\n")
+    print(f"SPY Benchmark Average Return (Annualized),{benchmark.benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
 
     print(f"Portfolio Beta,{beta():.4f}\n")
     print(f"Portfolio Alpha against custom benchmark,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
@@ -518,20 +488,20 @@ def main():
         f.write(f"Sortino Ratio (Annualized),{sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
         f.write(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
 
-        f.write(f"Custom Benchmark Variance (Daily),{benchmark_variance()[0]*100:.4f}%\n")
-        f.write(f"SPY Benchmark Variance (Daily),{benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
-        f.write(f"Custom Benchmark Variance (Annualized),{benchmark_variance()[1]*100:.2f}%\n")
-        f.write(f"SPY Benchmark Variance (Annualized),{benchmark_variance(benchmark='SPY')[1]*100:.2f}%\n")
+        f.write(f"Custom Benchmark Variance (Daily),{benchmark.benchmark_variance()[0]*100:.4f}%\n")
+        f.write(f"SPY Benchmark Variance (Daily),{benchmark.benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
+        f.write(f"Custom Benchmark Variance (Annualized),{benchmark.benchmark_variance()[1]*100:.2f}%\n")
+        f.write(f"SPY Benchmark Variance (Annualized),{benchmark.benchmark_variance(benchmark='SPY')[1]*100:.2f}%\n")
 
-        f.write(f"Custom Benchmark Volatility (Daily),{benchmark_volatility()[0]*100:.4f}%\n")
-        f.write(f"SPY Benchmark Volatility (Daily),{benchmark_volatility(benchmark='SPY')[0]*100:.4f}%\n")
-        f.write(f"Custom Benchmark Volatility (Annualized),{benchmark_volatility()[1]*100:.2f}%\n")
-        f.write(f"SPY Benchmark Volatility (Annualized),{benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
+        f.write(f"Custom Benchmark Volatility (Daily),{benchmark.benchmark_volatility()[0]*100:.4f}%\n")
+        f.write(f"SPY Benchmark Volatility (Daily),{benchmark.benchmark_volatility(benchmark='SPY')[0]*100:.4f}%\n")
+        f.write(f"Custom Benchmark Volatility (Annualized),{benchmark.benchmark_volatility()[1]*100:.2f}%\n")
+        f.write(f"SPY Benchmark Volatility (Annualized),{benchmark.benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
 
-        f.write(f"Custom Benchmark Average Return (Daily),{benchmark_average_return()[0]*100:.4f}%\n")
-        f.write(f"SPY Benchmark Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
-        f.write(f"Custom Benchmark Average Return (Annualized),{benchmark_average_return()[1]*100:.2f}%\n")
-        f.write(f"SPY Benchmark Average Return (Annualized),{benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
+        f.write(f"Custom Benchmark Average Return (Daily),{benchmark.benchmark_average_return()[0]*100:.4f}%\n")
+        f.write(f"SPY Benchmark Average Return (Daily),{benchmark.benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
+        f.write(f"Custom Benchmark Average Return (Annualized),{benchmark.benchmark_average_return()[1]*100:.2f}%\n")
+        f.write(f"SPY Benchmark Average Return (Annualized),{benchmark.benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
     
         f.write(f"Portfolio Beta,{beta():.4f}\n")
         f.write(f"Portfolio Alpha against custom benchmark,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
