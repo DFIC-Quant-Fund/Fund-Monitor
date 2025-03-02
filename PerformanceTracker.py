@@ -336,7 +336,8 @@ class Ratios:
         return daily_sortino_ratio, annualized_sortino_ratio
     
     def treynor_ratio(self, risk_free_return):
-        return portfolio_risk_premium(risk_free_return) / beta()
+        market_comparison = MarketComparison()
+        return market_comparison.portfolio_risk_premium(risk_free_return) / market_comparison.beta()
 
     def information_ratio(self, benchmark='custom'):
         # df = pd.read_csv('output/portfolio_total.csv')
@@ -357,50 +358,52 @@ class Ratios:
 
         return information_ratio
 
+class MarketComparison:
+    def __init__(self):
+        pass
 
+    def beta(self, benchmark='custom'):
+        benchmark_class = Benchmark()
+        if benchmark == 'custom':
+            benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
+        else:
+            benchmark_df = benchmark_class.get_spy_benchmark()
+        
+        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+        daily_portfolio_return = df['pct_change'].dropna()
 
-def beta(benchmark='custom'):
-    benchmark_class = Benchmark()
-    if benchmark == 'custom':
-        benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
-    else:
-        benchmark_df = benchmark_class.get_spy_benchmark()
-    
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    daily_portfolio_return = df['pct_change'].dropna()
+        daily_benchmark_var, _ = benchmark_class.benchmark_variance(benchmark)
+        covariance = daily_portfolio_return.cov(benchmark_df['pct_change'])
+        beta = covariance / daily_benchmark_var
 
-    daily_benchmark_var, _ = benchmark_class.benchmark_variance(benchmark)
-    covariance = daily_portfolio_return.cov(benchmark_df['pct_change'])
-    beta = covariance / daily_benchmark_var
+        return beta
+        
 
-    return beta
-    
+    def alpha(self, risk_free_rate, benchmark='custom'): 
+        benchmark_class = Benchmark()
+        annual_benchmark_return = benchmark_class.benchmark_average_return(benchmark)[1]
+        portfolio_performance = PortfolioPerformance()
+        print("benchmark: ", benchmark)
+        print("annual_benchmark_return ", annual_benchmark_return)
 
-def alpha(risk_free_rate, benchmark='custom'): 
-    benchmark_class = Benchmark()
-    annual_benchmark_return = benchmark_class.benchmark_average_return(benchmark)[1]
-    portfolio_performance = PortfolioPerformance()
-    print("benchmark: ", benchmark)
-    print("annual_benchmark_return ", annual_benchmark_return)
+        alpha = (portfolio_performance.annualized_average_return() - risk_free_rate) - self.beta() * (annual_benchmark_return - risk_free_rate)
 
-    alpha = (portfolio_performance.annualized_average_return() - risk_free_rate) - beta() * (annual_benchmark_return - risk_free_rate)
+        return alpha
+        
+    def portfolio_risk_premium(self, risk_free_return):
+        portfolio_performance = PortfolioPerformance()
+        return portfolio_performance.annualized_average_return() - risk_free_return
 
-    return alpha
-    
-def portfolio_risk_premium(risk_free_return):
-    portfolio_performance = PortfolioPerformance()
-    return portfolio_performance.annualized_average_return() - risk_free_return
+    def risk_adjusted_return(self, risk_free_return):
+        risk_metrics = RiskMetrics()
+        benchmark = Benchmark()
+        benchmark_vol = benchmark.benchmark_volatility()[1]
+        portfolio_volatility = risk_metrics.annualized_volatility()
+        portfolio_risk_prem = self.portfolio_risk_premium(risk_free_return)
 
-def risk_adjusted_return(risk_free_return):
-    risk_metrics = RiskMetrics()
-    benchmark = Benchmark()
-    benchmark_vol = benchmark.benchmark_volatility()[1]
-    portfolio_volatility = risk_metrics.annualized_volatility()
-    portfolio_risk_prem = portfolio_risk_premium(risk_free_return)
-
-    risk_adjusted_return = portfolio_risk_prem * benchmark_vol / portfolio_volatility + risk_free_return
-    
-    return risk_adjusted_return
+        risk_adjusted_return = portfolio_risk_prem * benchmark_vol / portfolio_volatility + risk_free_return
+        
+        return risk_adjusted_return
 
 
 
@@ -417,6 +420,7 @@ def main():
     portfolio_performance = PortfolioPerformance()
     risk_metrics = RiskMetrics()
     ratios = Ratios()
+    market_comparison = MarketComparison()
 
     # run these once only after running portfolio.py once
     data_processor.aggregate_data(market_values_file, cash_file, dividend_file, output_file)
@@ -453,12 +457,12 @@ def main():
     print(f"Custom Benchmark Average Return (Annualized),{benchmark.benchmark_average_return()[1]*100:.2f}%\n")
     print(f"SPY Benchmark Average Return (Annualized),{benchmark.benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
 
-    print(f"Portfolio Beta,{beta():.4f}\n")
-    print(f"Portfolio Alpha against custom benchmark,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
-    print(f"Portfolio Alpha against SPY benchmark,{100*alpha(THREE_MTH_TREASURY_RATE, benchmark='SPY'):.4f}%\n")
+    print(f"Portfolio Beta,{market_comparison.beta():.4f}\n")
+    print(f"Portfolio Alpha against custom benchmark,{100*market_comparison.alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
+    print(f"Portfolio Alpha against SPY benchmark,{100*market_comparison.alpha(THREE_MTH_TREASURY_RATE, benchmark='SPY'):.4f}%\n")
 
-    print(f"Portfolio Risk Premium,{portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
-    print(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
+    print(f"Portfolio Risk Premium,{market_comparison.portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
+    print(f"Risk Adjusted Return (three month treasury rate),{market_comparison.risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
     print(f"Treynor Ratio (three month treasury rate),{ratios.treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
     # print(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
     print("--- Portfolio Returns ---\n")
@@ -502,12 +506,12 @@ def main():
         f.write(f"Custom Benchmark Average Return (Annualized),{benchmark.benchmark_average_return()[1]*100:.2f}%\n")
         f.write(f"SPY Benchmark Average Return (Annualized),{benchmark.benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
     
-        f.write(f"Portfolio Beta,{beta():.4f}\n")
-        f.write(f"Portfolio Alpha against custom benchmark,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
-        f.write(f"Portfolio Alpha against SPY benchmark,{100*alpha(THREE_MTH_TREASURY_RATE, benchmark='SPY'):.4f}%\n")
+        f.write(f"Portfolio Beta,{market_comparison.beta():.4f}\n")
+        f.write(f"Portfolio Alpha against custom benchmark,{100*market_comparison.alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
+        f.write(f"Portfolio Alpha against SPY benchmark,{100*market_comparison.alpha(THREE_MTH_TREASURY_RATE, benchmark='SPY'):.4f}%\n")
 
-        f.write(f"Portfolio Risk Premium,{portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
-        f.write(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
+        f.write(f"Portfolio Risk Premium,{market_comparison.portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
+        f.write(f"Risk Adjusted Return (three month treasury rate),{market_comparison.risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
         f.write(f"Treynor Ratio (three month treasury rate),{ratios.treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
         # f.write(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
         f.write("--- Portfolio Returns ---\n")
