@@ -295,6 +295,13 @@ class RiskMetrics:
         # print(f"Annualized Downside Volatility: {annualized_downside_volatility:.4f}")
         return annualized_downside_volatility
 
+    def maximum_drawdown(self):
+        # calculate the maximum drawdown
+        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+        daily_return = df['pct_change'].dropna()
+        
+        return daily_return.min()
+
 # def daily_compounded_return():
 #     df = pd.read_csv('output/portfolio_total.csv')
 #     daily_changes = df['pct_change']
@@ -307,36 +314,49 @@ class RiskMetrics:
 
 #     return annualized_return
 
+class Ratios:
+    def __init__(self):
+        pass
 
+    def sharpe_ratio(self, risk_free_rate):
+        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+        daily_return = df['pct_change'].dropna()
+        daily_sharpe_ratio = (daily_return.mean() - risk_free_rate/252) / daily_return.std()
+        annualized_sharpe_ratio = daily_sharpe_ratio * (252 ** 0.5)
 
+        return daily_sharpe_ratio, annualized_sharpe_ratio
 
+    def sortino_ratio(self, risk_free_rate):
+        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+        daily_return = df['pct_change'].dropna()
+        downside_returns = daily_return[daily_return < 0]
+        daily_sortino_ratio = (daily_return.mean() - risk_free_rate/252) / downside_returns.std()
+        annualized_sortino_ratio = daily_sortino_ratio * (252 ** 0.5)
 
-def sharpe_ratio(risk_free_rate):
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    daily_return = df['pct_change'].dropna()
-    daily_sharpe_ratio = (daily_return.mean() - risk_free_rate/252) / daily_return.std()
-    annualized_sharpe_ratio = daily_sharpe_ratio * (252 ** 0.5)
-
-    return daily_sharpe_ratio, annualized_sharpe_ratio
-
-def sortino_ratio(risk_free_rate):
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    daily_return = df['pct_change'].dropna()
-    downside_returns = daily_return[daily_return < 0]
-    daily_sortino_ratio = (daily_return.mean() - risk_free_rate/252) / downside_returns.std()
-    annualized_sortino_ratio = daily_sortino_ratio * (252 ** 0.5)
-
-    return daily_sortino_ratio, annualized_sortino_ratio
-
-def maximum_drawdown():
-    # calculate the maximum drawdown
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    daily_return = df['pct_change'].dropna()
+        return daily_sortino_ratio, annualized_sortino_ratio
     
-    return daily_return.min()
+    def treynor_ratio(self, risk_free_return):
+        return portfolio_risk_premium(risk_free_return) / beta()
 
-    
-    
+    def information_ratio(self, benchmark='custom'):
+        # df = pd.read_csv('output/portfolio_total.csv')
+        # daily_portfolio_return = df['pct_change'].dropna()
+        # daily_benchmark_return = benchmark_df['pct_change'].dropna()
+        benchmark_class = Benchmark()
+        _, annual_benchmark_return = benchmark_class.benchmark_average_return(benchmark)
+        portfolio_performance = PortfolioPerformance()
+
+        # excess_returns = daily_portfolio_return - daily_benchmark_return
+        excess_returns = portfolio_performance.annualized_average_return() - annual_benchmark_return
+
+        # print("annualized_average_return of portfolio: ", annualized_average_return())
+        # print("annual_benchmark_return: ", annual_benchmark_return)
+
+        tracking_error = excess_returns.std() # this doesn't make sense rn since they're just scalars
+        information_ratio = excess_returns.mean() / tracking_error
+
+        return information_ratio
+
 
 
 def beta(benchmark='custom'):
@@ -382,28 +402,6 @@ def risk_adjusted_return(risk_free_return):
     
     return risk_adjusted_return
 
-def treynor_ratio(risk_free_return):
-    return portfolio_risk_premium(risk_free_return) / beta()
-
-def information_ratio(benchmark='custom'):
-    # df = pd.read_csv('output/portfolio_total.csv')
-    # daily_portfolio_return = df['pct_change'].dropna()
-    # daily_benchmark_return = benchmark_df['pct_change'].dropna()
-    benchmark_class = Benchmark()
-    _, annual_benchmark_return = benchmark_class.benchmark_average_return(benchmark)
-    portfolio_performance = PortfolioPerformance()
-
-    # excess_returns = daily_portfolio_return - daily_benchmark_return
-    excess_returns = portfolio_performance.annualized_average_return() - annual_benchmark_return
-
-    # print("annualized_average_return of portfolio: ", annualized_average_return())
-    # print("annual_benchmark_return: ", annual_benchmark_return)
-
-    tracking_error = excess_returns.std() # this doesn't make sense rn since they're just scalars
-    information_ratio = excess_returns.mean() / tracking_error
-
-    return information_ratio
-
 
 
 def main():
@@ -418,6 +416,7 @@ def main():
     benchmark = Benchmark()
     portfolio_performance = PortfolioPerformance()
     risk_metrics = RiskMetrics()
+    ratios = Ratios()
 
     # run these once only after running portfolio.py once
     data_processor.aggregate_data(market_values_file, cash_file, dividend_file, output_file)
@@ -435,9 +434,9 @@ def main():
     print(f"Annualized Downside Variance,{risk_metrics.annualized_downside_variance()*100:.2f}%\n")
     print(f"Daily Downside Volatility,{risk_metrics.daily_downside_volatility()*100:.4f}%\n")
     print(f"Annualized Downside Volatility,{risk_metrics.annualized_downside_volatility()*100:.2f}%\n")
-    print(f"Sharpe Ratio (Annualized),{sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
-    print(f"Sortino Ratio (Annualized),{sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
-    print(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
+    print(f"Sharpe Ratio (Annualized),{ratios.sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
+    print(f"Sortino Ratio (Annualized),{ratios.sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
+    print(f"Maximum Drawdown,{risk_metrics.maximum_drawdown()*100:.2f}%\n")
 
     print(f"Custom Benchmark Variance (Daily),{benchmark.benchmark_variance()[0]*100:.4f}%\n")
     print(f"SPY Benchmark Variance (Daily),{benchmark.benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
@@ -460,7 +459,7 @@ def main():
 
     print(f"Portfolio Risk Premium,{portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
     print(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
-    print(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
+    print(f"Treynor Ratio (three month treasury rate),{ratios.treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
     # print(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
     print("--- Portfolio Returns ---\n")
     print(f"1 Day Return,{period_metrics['1d'] * 100:.2f}%\n")
@@ -484,9 +483,9 @@ def main():
         f.write(f"Annualized Downside Variance,{risk_metrics.annualized_downside_variance()*100:.2f}%\n")
         f.write(f"Daily Downside Volatility,{risk_metrics.daily_downside_volatility()*100:.4f}%\n")
         f.write(f"Annualized Downside Volatility,{risk_metrics.annualized_downside_volatility()*100:.2f}%\n")
-        f.write(f"Sharpe Ratio (Annualized),{sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
-        f.write(f"Sortino Ratio (Annualized),{sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
-        f.write(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
+        f.write(f"Sharpe Ratio (Annualized),{ratios.sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
+        f.write(f"Sortino Ratio (Annualized),{ratios.sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
+        f.write(f"Maximum Drawdown,{risk_metrics.maximum_drawdown()*100:.2f}%\n")
 
         f.write(f"Custom Benchmark Variance (Daily),{benchmark.benchmark_variance()[0]*100:.4f}%\n")
         f.write(f"SPY Benchmark Variance (Daily),{benchmark.benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
@@ -509,7 +508,7 @@ def main():
 
         f.write(f"Portfolio Risk Premium,{portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
         f.write(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
-        f.write(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
+        f.write(f"Treynor Ratio (three month treasury rate),{ratios.treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
         # f.write(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
         f.write("--- Portfolio Returns ---\n")
         f.write(f"1 Day Return,{period_metrics['1d'] * 100:.2f}%\n")
