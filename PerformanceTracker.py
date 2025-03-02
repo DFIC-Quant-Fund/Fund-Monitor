@@ -240,74 +240,60 @@ class PortfolioPerformance:
             "Inception": inception_return
         }
 
-def get_spy_benchmark():
-    prices = pd.read_csv(os.path.join(output_folder, 'prices.csv'))
-    dividend_df = pd.read_csv(os.path.join(output_folder, 'dividends.csv'))[['Date', 'SPY']]
+class RiskMetrics:
+    def __init__(self):
+        pass
 
-    # upon further thought, I guess dividends are baked into the price?
-    dividend_df['Date'] = pd.to_datetime(dividend_df['Date'])
-    dividend_df = dividend_df.set_index('Date')
-    dividend_df['SPY'].fillna(0)
+    def daily_variance(self):
+        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+        daily_returns = df['pct_change'].dropna()
+        daily_variance = daily_returns.var()
 
-    # create a new dataframe with only the date and SPY columns
-    benchmark_df = prices[['Date', 'SPY']].copy()
-    benchmark_df['Date'] = pd.to_datetime(benchmark_df['Date'])
-    benchmark_df = benchmark_df.sort_values('Date')
+        return daily_variance
 
-    # use exchange_rates.csv to convert USD to CAD in the SPY column
-    exchange_rates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
-    exchange_rates['Date'] = pd.to_datetime(exchange_rates['Date'])
-    exchange_rates = exchange_rates.sort_values('Date')
-    exchange_rates.set_index('Date', inplace=True)
+    def annualized_variance(self):
+        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+        annualized_variance = self.daily_variance() * 252
+        # print(f"Annualized Variance: {annualized_variance:.4f}")
+        return annualized_variance
 
-    benchmark_df.set_index('Date', inplace=True)
-    benchmark_df['SPY'] = (benchmark_df['SPY'] + dividend_df['SPY'].cumsum()) * exchange_rates['USD']
-    # benchmark_df['SPY'] = (benchmark_df['SPY']) * exchange_rates['USD']
-    benchmark_df['pct_change'] = benchmark_df['SPY'].pct_change()
+    def annualized_volatility(self):
+        annualized_volatility = self.annualized_variance() ** 0.5
+        # print(f"Annualized Volatility: {annualized_volatility:.4f}")
 
-    # can write this to csv if we want but don't rly need it so I left it for now
-    return benchmark_df
+        return annualized_volatility
 
-def create_custom_benchmark():
-    STARTING_CASH = 101644.99
-    exchange_rates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
-    prices = pd.read_csv(os.path.join(output_folder, 'prices.csv'))
-    prices['Date'] = pd.to_datetime(prices['Date'])
-    dividends = pd.read_csv(os.path.join(output_folder, 'dividends.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
+    def daily_volatility(self):
+        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+        # daily_return = df['Total_Portfolio_Value'].pct_change()
+        daily_return = df['pct_change'].dropna()
+        daily_volatility = daily_return.std()
 
-    initial_exchange_rate = exchange_rates['USD'].iloc[0]
+        # print(f"Daily Volatility: {daily_volatility:.4f}")
+        return daily_volatility
 
-    # assuming we can buy fractional shares for now I guess or else use //
-    # and leave remainder as cash
-    xiu_initial_shares = 0.3*STARTING_CASH/prices['XIU.TO'].iloc[0]
-    spy_initial_shares = 0.3*STARTING_CASH/(prices['SPY'].iloc[0] * initial_exchange_rate)
-    agg_initial_shares = 0.2*STARTING_CASH/(prices['AGG'].iloc[0] * initial_exchange_rate)
-    xbb_initial_shares = 0.2*STARTING_CASH/prices['XBB.TO'].iloc[0]
+    def daily_downside_variance(self):
+        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+        daily_return = df['pct_change'].dropna()
+        downside_returns = daily_return[daily_return < 0]
+        downside_variance = downside_returns.var()
+        # print(f"Daily Downside Variance: {downside_variance:.4f}")
+        return downside_variance
 
-    xiu_dividends = dividends['XIU.TO'].cumsum() * xiu_initial_shares
-    spy_dividends = dividends['SPY'].cumsum() * spy_initial_shares * exchange_rates['USD']
-    agg_dividends = dividends['AGG'].cumsum() * agg_initial_shares * exchange_rates['USD']
-    xbb_dividends = dividends['XBB.TO'].cumsum() * xbb_initial_shares
+    def annualized_downside_variance(self):
+        annualized_downside_variance = self.daily_downside_variance() * 252
+        # print(f"Annualized Downside Variance: {annualized_downside_variance:.4f}")
+        return annualized_downside_variance
 
-    xiu_value = xiu_initial_shares * prices['XIU.TO'] + xiu_dividends
-    spy_value = (spy_initial_shares * prices['SPY'] * exchange_rates['USD'] + spy_dividends).rename('SPY')
-    agg_value = (agg_initial_shares * prices['AGG'] * exchange_rates['USD'] + agg_dividends).rename('AGG')
-    xbb_value = xbb_initial_shares * prices['XBB.TO'] + xbb_dividends
+    def daily_downside_volatility(self):
+        daily_downside_volatility = self.daily_downside_variance() ** 0.5
+        # print(f"Daily Downside Volatility: {daily_downside_volatility:.4f}")
+        return daily_downside_volatility
 
-    # combine the above four value variables into one dataframe with the date index
-    custom_benchmark = pd.concat([xiu_value, spy_value, agg_value, xbb_value], axis=1)
-    custom_benchmark['Total'] = custom_benchmark.sum(axis=1)
-    custom_benchmark['Date'] = prices['Date']
-    custom_benchmark.set_index('Date', inplace=True)
-    custom_benchmark['pct_change'] = custom_benchmark['Total'].pct_change()
-
-    print("Custom Benchmark:", custom_benchmark.head())
-    
-    #output the custom benchmark to a csv file
-    custom_benchmark.to_csv(os.path.join(output_folder, 'custom_benchmark.csv'), index=True)
-
-
-
+    def annualized_downside_volatility(self):
+        annualized_downside_volatility = self.annualized_downside_variance() ** 0.5
+        # print(f"Annualized Downside Volatility: {annualized_downside_volatility:.4f}")
+        return annualized_downside_volatility
 
 # def daily_compounded_return():
 #     df = pd.read_csv('output/portfolio_total.csv')
@@ -323,56 +309,7 @@ def create_custom_benchmark():
 
 
 
-def daily_variance():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    daily_returns = df['pct_change'].dropna()
-    daily_variance = daily_returns.var()
 
-    return daily_variance
-
-def annualized_variance():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    annualized_variance = daily_variance() * 252
-    # print(f"Annualized Variance: {annualized_variance:.4f}")
-    return annualized_variance
-
-def daily_volatility():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    # daily_return = df['Total_Portfolio_Value'].pct_change()
-    daily_return = df['pct_change'].dropna()
-    daily_volatility = daily_return.std()
-
-    # print(f"Daily Volatility: {daily_volatility:.4f}")
-    return daily_volatility
-
-def annualized_volatility():
-    annualized_volatility = annualized_variance() ** 0.5
-    # print(f"Annualized Volatility: {annualized_volatility:.4f}")
-
-    return annualized_volatility
-
-def daily_downside_variance():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    daily_return = df['pct_change'].dropna()
-    downside_returns = daily_return[daily_return < 0]
-    downside_variance = downside_returns.var()
-    # print(f"Daily Downside Variance: {downside_variance:.4f}")
-    return downside_variance
-
-def annualized_downside_variance():
-    annualized_downside_variance = daily_downside_variance() * 252
-    # print(f"Annualized Downside Variance: {annualized_downside_variance:.4f}")
-    return annualized_downside_variance
-
-def daily_downside_volatility():
-    daily_downside_volatility = daily_downside_variance() ** 0.5
-    # print(f"Daily Downside Volatility: {daily_downside_volatility:.4f}")
-    return daily_downside_volatility
-
-def annualized_downside_volatility():
-    annualized_downside_volatility = annualized_downside_variance() ** 0.5
-    # print(f"Annualized Downside Volatility: {annualized_downside_volatility:.4f}")
-    return annualized_downside_volatility
 
 def sharpe_ratio(risk_free_rate):
     df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
@@ -403,7 +340,8 @@ def benchmark_variance(benchmark='custom'):
     if benchmark == 'custom':
         benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
     else:
-        benchmark_df = get_spy_benchmark()
+        benchmark = Benchmark()
+        benchmark_df = benchmark.get_spy_benchmark()
     
     daily_benchmark_variance = benchmark_df['pct_change'].dropna().var()
     annualized_benchmark_variance = daily_benchmark_variance * 252
@@ -414,7 +352,8 @@ def benchmark_volatility(benchmark='custom'):
     if benchmark == 'custom':
         benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
     else:
-        benchmark_df = get_spy_benchmark()
+        benchmark = Benchmark()
+        benchmark_df = benchmark.get_spy_benchmark()
     
     daily_benchmark_volatility = benchmark_df['pct_change'].dropna().std()
     annualized_benchmark_volatility = daily_benchmark_volatility * (252 ** 0.5)
@@ -425,7 +364,8 @@ def benchmark_average_return(benchmark='custom'):
     if benchmark == 'custom':
         benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
     else:
-        benchmark_df = get_spy_benchmark()
+        benchmark = Benchmark()
+        benchmark_df = benchmark.get_spy_benchmark()
     
     daily_benchmark_return = benchmark_df['pct_change'].dropna().mean()
     annualized_benchmark_return = (1+daily_benchmark_return) ** 252 - 1
@@ -464,8 +404,9 @@ def portfolio_risk_premium(risk_free_return):
     return portfolio_performance.annualized_average_return() - risk_free_return
 
 def risk_adjusted_return(risk_free_return):
+    risk_metrics = RiskMetrics()
     benchmark_vol = benchmark_volatility()[1]
-    portfolio_volatility = annualized_volatility()
+    portfolio_volatility = risk_metrics.annualized_volatility()
     portfolio_risk_prem = portfolio_risk_premium(risk_free_return)
 
     risk_adjusted_return = portfolio_risk_prem * benchmark_vol / portfolio_volatility + risk_free_return
@@ -506,6 +447,7 @@ def main():
     data_processor = DataProcessor()
     benchmark = Benchmark()
     portfolio_performance = PortfolioPerformance()
+    risk_metrics = RiskMetrics()
 
     # run these once only after running portfolio.py once
     data_processor.aggregate_data(market_values_file, cash_file, dividend_file, output_file)
@@ -515,14 +457,14 @@ def main():
     print(f"Total Return including dividends,{portfolio_performance.total_return()*100:.2f}%\n")
     print(f"Daily Average Return,{portfolio_performance.daily_average_return()*100:.4f}%\n")
     print(f"Annualized Average Return,{portfolio_performance.annualized_average_return()*100:.2f}%\n")
-    print(f"Daily Variance,{daily_variance()*100:.4f}%\n")
-    print(f"Annualized Variance,{annualized_variance()*100:.2f}%\n")
-    print(f"Daily Volatility,{daily_volatility()*100:.4f}%\n")
-    print(f"Annualized Volatility,{annualized_volatility()*100:.2f}%\n")
-    print(f"Daily Downside Variance,{daily_downside_variance()*100:.4f}%\n")
-    print(f"Annualized Downside Variance,{annualized_downside_variance()*100:.2f}%\n")
-    print(f"Daily Downside Volatility,{daily_downside_volatility()*100:.4f}%\n")
-    print(f"Annualized Downside Volatility,{annualized_downside_volatility()*100:.2f}%\n")
+    print(f"Daily Variance,{risk_metrics.daily_variance()*100:.4f}%\n")
+    print(f"Annualized Variance,{risk_metrics.annualized_variance()*100:.2f}%\n")
+    print(f"Daily Volatility,{risk_metrics.daily_volatility()*100:.4f}%\n")
+    print(f"Annualized Volatility,{risk_metrics.annualized_volatility()*100:.2f}%\n")
+    print(f"Daily Downside Variance,{risk_metrics.daily_downside_variance()*100:.4f}%\n")
+    print(f"Annualized Downside Variance,{risk_metrics.annualized_downside_variance()*100:.2f}%\n")
+    print(f"Daily Downside Volatility,{risk_metrics.daily_downside_volatility()*100:.4f}%\n")
+    print(f"Annualized Downside Volatility,{risk_metrics.annualized_downside_volatility()*100:.2f}%\n")
     print(f"Sharpe Ratio (Annualized),{sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
     print(f"Sortino Ratio (Annualized),{sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
     print(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
@@ -564,14 +506,14 @@ def main():
         f.write(f"Total Return including dividends,{portfolio_performance.total_return()*100:.2f}%\n")
         f.write(f"Daily Average Return,{portfolio_performance.daily_average_return()*100:.4f}%\n")
         f.write(f"Annualized Average Return,{portfolio_performance.annualized_average_return()*100:.2f}%\n")
-        f.write(f"Daily Variance,{daily_variance()*100:.4f}%\n")
-        f.write(f"Annualized Variance,{annualized_variance()*100:.2f}%\n")
-        f.write(f"Daily Volatility,{daily_volatility()*100:.4f}%\n")
-        f.write(f"Annualized Volatility,{annualized_volatility()*100:.2f}%\n")
-        f.write(f"Daily Downside Variance,{daily_downside_variance()*100:.4f}%\n")
-        f.write(f"Annualized Downside Variance,{annualized_downside_variance()*100:.2f}%\n")
-        f.write(f"Daily Downside Volatility,{daily_downside_volatility()*100:.4f}%\n")
-        f.write(f"Annualized Downside Volatility,{annualized_downside_volatility()*100:.2f}%\n")
+        f.write(f"Daily Variance,{risk_metrics.daily_variance()*100:.4f}%\n")
+        f.write(f"Annualized Variance,{risk_metrics.annualized_variance()*100:.2f}%\n")
+        f.write(f"Daily Volatility,{risk_metrics.daily_volatility()*100:.4f}%\n")
+        f.write(f"Annualized Volatility,{risk_metrics.annualized_volatility()*100:.2f}%\n")
+        f.write(f"Daily Downside Variance,{risk_metrics.daily_downside_variance()*100:.4f}%\n")
+        f.write(f"Annualized Downside Variance,{risk_metrics.annualized_downside_variance()*100:.2f}%\n")
+        f.write(f"Daily Downside Volatility,{risk_metrics.daily_downside_volatility()*100:.4f}%\n")
+        f.write(f"Annualized Downside Volatility,{risk_metrics.annualized_downside_volatility()*100:.2f}%\n")
         f.write(f"Sharpe Ratio (Annualized),{sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
         f.write(f"Sortino Ratio (Annualized),{sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
         f.write(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
