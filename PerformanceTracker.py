@@ -78,7 +78,7 @@ def create_custom_benchmark():
     exchange_rates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
     prices = pd.read_csv(os.path.join(output_folder, 'prices.csv'))
     prices['Date'] = pd.to_datetime(prices['Date'])
-    dividends = pd.read_csv(os.path.join(output_folder, 'dividends.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
+    dividends = pd.read_csv(os.path.join(output_folder, 'dividend_values.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
 
     initial_exchange_rate = exchange_rates['USD'].iloc[0]
 
@@ -89,24 +89,22 @@ def create_custom_benchmark():
     agg_initial_shares = 0.2*STARTING_CASH/(prices['AGG'].iloc[0] * initial_exchange_rate)
     xbb_initial_shares = 0.2*STARTING_CASH/prices['XBB.TO'].iloc[0]
 
-    xiu_dividends = dividends['XIU.TO'].cumsum() * xiu_initial_shares
-    spy_dividends = dividends['SPY'].cumsum() * spy_initial_shares * exchange_rates['USD']
-    agg_dividends = dividends['AGG'].cumsum() * agg_initial_shares * exchange_rates['USD']
-    xbb_dividends = dividends['XBB.TO'].cumsum() * xbb_initial_shares
+    # extract the value of each asset at the start date
+    xiu_value = xiu_initial_shares * prices['XIU.TO']
+    spy_value = (spy_initial_shares * prices['SPY'] * exchange_rates['USD']).rename('SPY')
+    agg_value = (agg_initial_shares * prices['AGG'] * exchange_rates['USD']).rename('AGG')
+    xbb_value = xbb_initial_shares * prices['XBB.TO']
 
-    xiu_value = xiu_initial_shares * prices['XIU.TO'] + xiu_dividends
-    spy_value = (spy_initial_shares * prices['SPY'] * exchange_rates['USD'] + spy_dividends).rename('SPY')
-    agg_value = (agg_initial_shares * prices['AGG'] * exchange_rates['USD'] + agg_dividends).rename('AGG')
-    xbb_value = xbb_initial_shares * prices['XBB.TO'] + xbb_dividends
-
-    # combine the above four value variables into one dataframe with the date index
+    # concatenate the values of each asset into a single dataframe
     custom_benchmark = pd.concat([xiu_value, spy_value, agg_value, xbb_value], axis=1)
-    custom_benchmark['Total'] = custom_benchmark.sum(axis=1)
     custom_benchmark['Date'] = prices['Date']
     custom_benchmark.set_index('Date', inplace=True)
-    custom_benchmark['pct_change'] = custom_benchmark['Total'].pct_change()
-
-    print("Custom Benchmark:", custom_benchmark.head())
+    custom_benchmark['XIU.TO dividends cumsum'] = dividends['XIU.TO'].cumsum().values
+    custom_benchmark['SPY dividends cumsum'] = dividends['SPY'].cumsum().values
+    custom_benchmark['AGG dividends cumsum'] = dividends['AGG'].cumsum().values
+    custom_benchmark['XBB.TO dividends cumsum'] = dividends['XBB.TO'].cumsum().values
+    custom_benchmark['Total Mkt Val'] = custom_benchmark.sum(axis=1)
+    custom_benchmark['pct_change'] = custom_benchmark['Total Mkt Val'].pct_change()
     
     #output the custom benchmark to a csv file
     custom_benchmark.to_csv(os.path.join(output_folder, 'custom_benchmark.csv'), index=True)
@@ -377,6 +375,16 @@ def calculate_period_performance():
         "1y": one_year_return,
         "Inception": inception_return
     }
+
+def benchmark_inception_return():
+    benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
+    inception_value = benchmark_df['Total Mkt Val'].iloc[0]
+    latest_value = benchmark_df['Total Mkt Val'].iloc[-1]
+
+    inception_return = (latest_value - inception_value) / inception_value
+    
+    return inception_return
+
 def main():
     market_values_file = os.path.join(output_folder, "market_values.csv")
     cash_file = os.path.join(output_folder, "cash.csv") 
@@ -435,6 +443,7 @@ def main():
     print(f"Year-to-Date Return,{period_metrics['YTD'] * 100:.2f}%\n")
     print(f"1 Year Return,{period_metrics['1y'] * 100:.2f}%\n")
     print(f"Inception,{period_metrics['Inception'] * 100:.2f}%\n")
+    print(f"Benchmark Inception Return,{benchmark_inception_return() * 100:.2f}%\n")
 
     # output all these calculations to a csv file
     with open(os.path.join(output_folder, 'performance_metrics.csv'), 'w') as f:
