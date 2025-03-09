@@ -45,11 +45,11 @@ def aggregate_data(market_values_file, cash_file, dividends_file, output_file):
 
     output_df.to_csv(output_file, index=False, float_format='%.6f')
 
+# TODO: change this to just use dividend_values and prices
 def get_spy_benchmark():
     prices = pd.read_csv(os.path.join(output_folder, 'prices.csv'))
     dividend_df = pd.read_csv(os.path.join(output_folder, 'dividends.csv'))[['Date', 'SPY']]
 
-    # upon further thought, I guess dividends are baked into the price?
     dividend_df['Date'] = pd.to_datetime(dividend_df['Date'])
     dividend_df = dividend_df.set_index('Date')
     dividend_df['SPY'].fillna(0)
@@ -66,7 +66,7 @@ def get_spy_benchmark():
     exchange_rates.set_index('Date', inplace=True)
 
     benchmark_df.set_index('Date', inplace=True)
-    benchmark_df['SPY'] = (benchmark_df['SPY'] + dividend_df['SPY'].cumsum()) * exchange_rates['USD']
+    benchmark_df['SPY'] = (benchmark_df['SPY'] + dividend_df['SPY'].cumsum().values) * exchange_rates['USD']
     # benchmark_df['SPY'] = (benchmark_df['SPY']) * exchange_rates['USD']
     benchmark_df['pct_change'] = benchmark_df['SPY'].pct_change()
 
@@ -109,6 +109,41 @@ def create_custom_benchmark():
     #output the custom benchmark to a csv file
     custom_benchmark.to_csv(os.path.join(output_folder, 'custom_benchmark.csv'), index=True)
 
+def get_fixed_income_info():
+    df = pd.read_csv(os.path.join(output_folder, 'market_values.csv'))
+    df_xrates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
+
+    ex = df_xrates['USD'].iloc[-1]
+    xbb = df['XBB.TO'].iloc[-1]
+    agg = df['AGG'].iloc[-1]
+    spsb = df['SPSB'].iloc[-1]
+
+    data = {
+        "Metric": [
+            "XBB.TO current market value (CAD)",
+            "AGG current market value (CAD)",
+            "SPSB current market value (CAD)",
+            "Total market value",
+            "USD fixed income mkt share of AGG",
+            "USD fixed income mkt share of SPSB",
+            "Total fixed income mkt share of XBB",
+            "Total fixed income mkt share of AGG",
+            "Total fixed income mkt share of SPSB"
+        ],
+        "Value": [
+            xbb,
+            agg * ex,
+            spsb * ex,
+            sum([xbb, agg * ex, spsb * ex]),
+            agg / sum([agg, spsb]),
+            spsb / sum([agg, spsb]),
+            xbb / sum([xbb, agg * ex, spsb * ex]),
+            agg * ex / sum([xbb, agg * ex, spsb * ex]),
+            spsb * ex / sum([xbb, agg * ex, spsb * ex])
+        ]
+    }
+
+    return pd.DataFrame(data)
 
 def total_return():
     df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
@@ -270,8 +305,6 @@ def beta(benchmark='custom'):
 
 def alpha(risk_free_rate, benchmark='custom'): 
     annual_benchmark_return = benchmark_average_return(benchmark)[1]
-    print("benchmark: ", benchmark)
-    print("annual_benchmark_return ", annual_benchmark_return)
 
     alpha = (annualized_average_return() - risk_free_rate) - beta() * (annual_benchmark_return - risk_free_rate)
 
@@ -385,6 +418,15 @@ def benchmark_inception_return():
     
     return inception_return
 
+def spy_inception_return():
+    benchmark_df = get_spy_benchmark()
+    inception_value = benchmark_df['SPY'].iloc[0]
+    latest_value = benchmark_df['SPY'].iloc[-1]
+
+    inception_return = (latest_value - inception_value) / inception_value
+    
+    return inception_return
+
 def main():
     market_values_file = os.path.join(output_folder, "market_values.csv")
     cash_file = os.path.join(output_folder, "cash.csv") 
@@ -397,6 +439,7 @@ def main():
     aggregate_data(market_values_file, cash_file, dividend_file, output_file)
     create_custom_benchmark()
     period_metrics = calculate_period_performance()
+    fixed_income_data = get_fixed_income_info()
 
     print(f"Total Return including dividends,{total_return()*100:.2f}%\n")
     print(f"Daily Average Return,{daily_average_return()*100:.4f}%\n")
@@ -436,7 +479,21 @@ def main():
     print(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
     print(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
     # print(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
-    print("--- Portfolio Returns ---\n")
+
+    # Fixed Income Data:
+    print(f"\n--- Fixed Income Data ---\n")
+    print(f"XBB.TO current market value (CAD),{fixed_income_data['Value'][0]:.2f}\n")
+    print(f"AGG current market value (CAD),{fixed_income_data['Value'][1]:.2f}\n")
+    print(f"SPSB current market value (CAD),{fixed_income_data['Value'][2]:.2f}\n")
+    print(f"Total market value,{fixed_income_data['Value'][3]:.2f}\n")
+    print(f"USD fixed income mkt share of AGG,{fixed_income_data['Value'][4]:.4f}\n")
+    print(f"USD fixed income mkt share of SPSB,{fixed_income_data['Value'][5]:.4f}\n")
+    print(f"Total fixed income mkt share of XBB,{fixed_income_data['Value'][6]:.4f}\n")
+    print(f"Total fixed income mkt share of AGG,{fixed_income_data['Value'][7]:.4f}\n")
+    print(f"Total fixed income mkt share of SPSB,{fixed_income_data['Value'][8]:.4f}\n")
+
+    # Portfolio Returns
+    print("\n--- Portfolio Returns ---\n")
     print(f"1 Day Return,{period_metrics['1d'] * 100:.2f}%\n")
     print(f"1 Week Return,{period_metrics['1w'] * 100:.2f}%\n")
     print(f"1 Month Return,{period_metrics['1m'] * 100:.2f}%\n")
@@ -474,8 +531,10 @@ def main():
         f.write(f"SPY Benchmark Volatility (Annualized),{benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
 
         f.write(f"Custom Benchmark Average Return (Daily),{benchmark_average_return()[0]*100:.4f}%\n")
-        f.write(f"SPY Benchmark Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
         f.write(f"Custom Benchmark Average Return (Annualized),{benchmark_average_return()[1]*100:.2f}%\n")
+        f.write(f"Custom Benchmark Inception Return,{benchmark_inception_return() * 100:.2f}%\n")
+
+        f.write(f"SPY Benchmark Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
         f.write(f"SPY Benchmark Average Return (Annualized),{benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
     
         f.write(f"Portfolio Beta,{beta():.4f}\n")
@@ -486,7 +545,21 @@ def main():
         f.write(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
         f.write(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
         # f.write(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
-        f.write("--- Portfolio Returns ---\n")
+
+        # Fixed Income Data:
+        f.write("\n--- Fixed Income Data ---\n")
+        f.write(f"XBB.TO current market value (CAD),{fixed_income_data['Value'][0]:.2f}\n")
+        f.write(f"AGG current market value (CAD),{fixed_income_data['Value'][1]:.2f}\n")
+        f.write(f"SPSB current market value (CAD),{fixed_income_data['Value'][2]:.2f}\n")
+        f.write(f"Total market value,{fixed_income_data['Value'][3]:.2f}\n")
+        f.write(f"USD fixed income mkt share of AGG,{fixed_income_data['Value'][4]:.4f}\n")
+        f.write(f"USD fixed income mkt share of SPSB,{fixed_income_data['Value'][5]:.4f}\n")
+        f.write(f"Total fixed income mkt share of XBB,{fixed_income_data['Value'][6]:.4f}\n")
+        f.write(f"Total fixed income mkt share of AGG,{fixed_income_data['Value'][7]:.4f}\n")
+        f.write(f"Total fixed income mkt share of SPSB,{fixed_income_data['Value'][8]:.4f}\n")
+
+        # Portfolio Returns
+        f.write("\n--- Portfolio Returns ---\n")
         f.write(f"1 Day Return,{period_metrics['1d'] * 100:.2f}%\n")
         f.write(f"1 Week Return,{period_metrics['1w'] * 100:.2f}%\n")
         f.write(f"1 Month Return,{period_metrics['1m'] * 100:.2f}%\n")
