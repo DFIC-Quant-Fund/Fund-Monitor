@@ -13,6 +13,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": [
     "https://dfic-fund.netlify.app",
     "https://api.degrootefinance.com",
+    "https://fund.degrootefinance.com",
     "http://localhost:3000", #local dev
     "http://127.0.0.1:3000", #local dev 
 ]}})
