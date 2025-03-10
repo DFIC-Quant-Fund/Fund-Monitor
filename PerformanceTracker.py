@@ -75,28 +75,41 @@ def get_spy_benchmark():
 
 def create_custom_benchmark():
     STARTING_CASH = 101644.99
-    exchange_rates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
-    prices = pd.read_csv(os.path.join(output_folder, 'prices.csv'))
-    prices['Date'] = pd.to_datetime(prices['Date'])
-    dividends = pd.read_csv(os.path.join(output_folder, 'dividend_values.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
 
+    prices = pd.read_csv(os.path.join(output_folder, 'prices.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
+    prices['Date'] = pd.to_datetime(prices['Date'])
+
+    exchange_rates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
+    exchange_rates['Date'] = pd.to_datetime(exchange_rates['Date'])
     initial_exchange_rate = exchange_rates['USD'].iloc[0]
+
+    # dividends.csv is $/share dividend payments
+    dividend_payments = pd.read_csv(os.path.join(output_folder, 'dividends.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
 
     # assuming we can buy fractional shares for now I guess or else use //
     # and leave remainder as cash
-    xiu_initial_shares = 0.3*STARTING_CASH/prices['XIU.TO'].iloc[0]
-    spy_initial_shares = 0.3*STARTING_CASH/(prices['SPY'].iloc[0] * initial_exchange_rate)
-    agg_initial_shares = 0.2*STARTING_CASH/(prices['AGG'].iloc[0] * initial_exchange_rate)
-    xbb_initial_shares = 0.2*STARTING_CASH/prices['XBB.TO'].iloc[0]
+    xiu_shares = 0.3*STARTING_CASH/prices['XIU.TO'].iloc[0]
+    spy_shares = 0.3*STARTING_CASH/(prices['SPY'].iloc[0] * initial_exchange_rate)
+    agg_shares = 0.2*STARTING_CASH/(prices['AGG'].iloc[0] * initial_exchange_rate)
+    xbb_shares = 0.2*STARTING_CASH/prices['XBB.TO'].iloc[0]
 
-    # extract the value of each asset at the start date
-    xiu_value = xiu_initial_shares * prices['XIU.TO']
-    spy_value = (spy_initial_shares * prices['SPY'] * exchange_rates['USD']).rename('SPY')
-    agg_value = (agg_initial_shares * prices['AGG'] * exchange_rates['USD']).rename('AGG')
-    xbb_value = xbb_initial_shares * prices['XBB.TO']
+    # get dividend data
+    dividends = dividend_payments.copy()
+    dividends['Date'] = pd.to_datetime(dividends['Date'])
+
+    dividends['XIU.TO'] = dividends['XIU.TO'] * xiu_shares
+    dividends['SPY'] = dividends['SPY'] * spy_shares * exchange_rates['USD']
+    dividends['AGG'] = dividends['AGG'] * agg_shares * exchange_rates['USD']
+    dividends['XBB.TO'] = dividends['XBB.TO'] * xbb_shares
+
+    # calculate the market value of each asset
+    xiu_values = xiu_shares * prices['XIU.TO']
+    spy_values = (spy_shares * prices['SPY'] * exchange_rates['USD']).rename('SPY')
+    agg_values = (agg_shares * prices['AGG'] * exchange_rates['USD']).rename('AGG')
+    xbb_values = xbb_shares * prices['XBB.TO']
 
     # concatenate the values of each asset into a single dataframe
-    custom_benchmark = pd.concat([xiu_value, spy_value, agg_value, xbb_value], axis=1)
+    custom_benchmark = pd.concat([xiu_values, spy_values, agg_values, xbb_values], axis=1)
     custom_benchmark['Date'] = prices['Date']
     custom_benchmark.set_index('Date', inplace=True)
     custom_benchmark['XIU.TO dividends cumsum'] = dividends['XIU.TO'].cumsum().values
@@ -105,7 +118,7 @@ def create_custom_benchmark():
     custom_benchmark['XBB.TO dividends cumsum'] = dividends['XBB.TO'].cumsum().values
     custom_benchmark['Total Mkt Val'] = custom_benchmark.sum(axis=1)
     custom_benchmark['pct_change'] = custom_benchmark['Total Mkt Val'].pct_change()
-    
+
     #output the custom benchmark to a csv file
     custom_benchmark.to_csv(os.path.join(output_folder, 'custom_benchmark.csv'), index=True)
 

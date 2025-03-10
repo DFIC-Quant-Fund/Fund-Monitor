@@ -13,24 +13,37 @@ Annualized Downside Volatility,9.16%
 Sharpe Ratio (Annualized),0.84
 Sortino Ratio (Annualized),1.17
 Maximum Drawdown,-5.10%
-Custom Benchmark Variance (Daily),0.0036%
+Custom Benchmark Variance (Daily),0.0035%
 SPY Benchmark Variance (Daily),0.0116%
-Custom Benchmark Variance (Annualized),0.91%
+Custom Benchmark Variance (Annualized),0.89%
 SPY Benchmark Variance (Annualized),2.92%
-Custom Benchmark Volatility (Daily),0.6017%
+Custom Benchmark Volatility (Daily),0.5946%
 SPY Benchmark Volatility (Daily),1.0773%
-Custom Benchmark Volatility (Annualized),9.55%
+Custom Benchmark Volatility (Annualized),9.44%
 SPY Benchmark Volatility (Annualized),17.10%
-Custom Benchmark Average Return (Daily),0.0476%
+Custom Benchmark Average Return (Daily),0.0514%
+Custom Benchmark Average Return (Annualized),13.83%
+Custom Benchmark Inception Return,43.05%
 SPY Benchmark Average Return (Daily),0.0803%
-Custom Benchmark Average Return (Annualized),12.74%
 SPY Benchmark Average Return (Annualized),22.43%
-Portfolio Beta,1.2154
-Portfolio Alpha against custom benchmark,1.7316%
-Portfolio Alpha against SPY benchmark,-10.0419%
+Portfolio Beta,1.2298
+Portfolio Alpha against custom benchmark,0.2700%
+Portfolio Alpha against SPY benchmark,-10.3031%
 Portfolio Risk Premium,11.92%
-Risk Adjusted Return (three month treasury rate),13.22%
+Risk Adjusted Return (three month treasury rate),13.12%
 Treynor Ratio (three month treasury rate),0.10
+
+--- Fixed Income Data ---
+XBB.TO current market value (CAD),5260.56
+AGG current market value (CAD),19038.14
+SPSB current market value (CAD),19395.54
+Total market value,43694.24
+USD fixed income mkt share of AGG,0.4954
+USD fixed income mkt share of SPSB,0.5046
+Total fixed income mkt share of XBB,0.1204
+Total fixed income mkt share of AGG,0.4357
+Total fixed income mkt share of SPSB,0.4439
+
 --- Portfolio Returns ---
 1 Day Return,-0.31%
 1 Week Return,-2.22%
