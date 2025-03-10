@@ -1,0 +1,30 @@
+Proxy - port 5555 to default api address: 
+
+    Accesss the nginx config file on ec2:
+
+        sudo nano /etc/nginx/sites-available/api.degrootefinance.com
+
+HTTPS Cert:
+
+    sudo certbot --nginx -d api.degrootefinance.com
+
+systemd for continuous uptime:
+
+    sudo nano /etc/systemd/system/fund-monitor-api.service
+
+    current setting:
+
+        [Unit]
+        Description=Fund Monitor API Service
+        After=network.target
+
+        [Service]
+        User=ubuntu
+        WorkingDirectory=/home/ubuntu/Fund-Monitor
+        ExecStart=/home/ubuntu/Fund-Monitor/venv/bin/python3 api/api_app.py
+        Restart=always
+        RestartSec=5
+        Environment=PATH=/home/ubuntu/Fund-Monitor/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+        [Install]
+        WantedBy=multi-user.target

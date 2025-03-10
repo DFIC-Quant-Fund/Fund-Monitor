@@ -3,7 +3,8 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 # Allow requests from your Netlify frontend
-CORS(app, resources={r"/*": {"origins": "https://dfic-fund.netlify.app"}})
+CORS(app, resources={r"/*": {"origins": ["https://dfic-fund.netlify.app", "https://api.degrootefinance.com/"]}})
+
 
 @app.route('/api/data', methods=['GET'])
 def get_data():
