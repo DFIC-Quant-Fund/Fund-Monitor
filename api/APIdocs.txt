@@ -28,3 +28,12 @@ systemd for continuous uptime:
 
         [Install]
         WantedBy=multi-user.target
+
+Pushing updates to ec2:
+
+    cd Fund-Monitor
+    git pull
+
+    sudo systemctl daemon-reload
+    sudo systemctl restart fund-monitor-api
+    sudo systemctl status fund-monitor-api
