@@ -5,23 +5,6 @@ import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import timedelta
 
-# def aggregate_data_old(input_file, output_file):
-#     df = pd.read_csv(input_file)
-#     df['Date'] = pd.to_datetime(df['Date'])
-#     df = df.replace('', 0)
-#     numeric_columns = df.columns.drop('Date')
-#     df[numeric_columns] = df[numeric_columns].apply(pd.to_numeric, errors='coerce')
-
-#     df['Total_Portfolio_Value'] = df[numeric_columns].sum(axis=1)
-#     df_filtered = df[df['Total_Portfolio_Value'] > 0]
-#     output_df = df_filtered[['Date', 'Total_Portfolio_Value']].copy()
-#     output_df = output_df.sort_values('Date')
-#     output_df['pct_change'] = output_df['Total_Portfolio_Value'].pct_change()
-
-#     output_df.to_csv(output_file, index=False, float_format='%.6f')
-
-#     print(output_df.head())
-
 def aggregate_data(market_values_file, cash_file, dividends_file, output_file):
     market_values = pd.read_csv(market_values_file)
     cash_value = pd.read_csv(cash_file)
@@ -45,31 +28,22 @@ def aggregate_data(market_values_file, cash_file, dividends_file, output_file):
 
     output_df.to_csv(output_file, index=False, float_format='%.6f')
 
-# TODO: change this to just use dividend_values and prices
 def get_spy_benchmark():
     prices = pd.read_csv(os.path.join(output_folder, 'prices.csv'))
     dividend_df = pd.read_csv(os.path.join(output_folder, 'dividends.csv'))[['Date', 'SPY']]
 
     dividend_df['Date'] = pd.to_datetime(dividend_df['Date'])
-    dividend_df = dividend_df.set_index('Date')
     dividend_df['SPY'].fillna(0)
 
     # create a new dataframe with only the date and SPY columns
     benchmark_df = prices[['Date', 'SPY']].copy()
-    benchmark_df['Date'] = pd.to_datetime(benchmark_df['Date'])
-    benchmark_df = benchmark_df.sort_values('Date')
+    benchmark_df.rename(columns={'SPY': 'Price'}, inplace=True)
+    benchmark_df['dividends cumsum'] = dividend_df['SPY'].values.cumsum()
 
-    # use exchange_rates.csv to convert USD to CAD in the SPY column
-    exchange_rates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
-    exchange_rates['Date'] = pd.to_datetime(exchange_rates['Date'])
-    exchange_rates = exchange_rates.sort_values('Date')
-    exchange_rates.set_index('Date', inplace=True)
+    benchmark_df['Total'] = benchmark_df['Price'] + benchmark_df['dividends cumsum']
+    benchmark_df['pct_change'] = benchmark_df['Total'].pct_change().fillna(0)
 
-    benchmark_df.set_index('Date', inplace=True)
-    benchmark_df['SPY'] = (benchmark_df['SPY'] + dividend_df['SPY'].cumsum().values) * exchange_rates['USD']
-    # benchmark_df['SPY'] = (benchmark_df['SPY']) * exchange_rates['USD']
-    benchmark_df['pct_change'] = benchmark_df['SPY'].pct_change()
-
+    # NOTE: this is still all in USD which is fine since we are comparing it by percentages
     # can write this to csv if we want but don't rly need it so I left it for now
     return benchmark_df
 
@@ -433,8 +407,8 @@ def benchmark_inception_return():
 
 def spy_inception_return():
     benchmark_df = get_spy_benchmark()
-    inception_value = benchmark_df['SPY'].iloc[0]
-    latest_value = benchmark_df['SPY'].iloc[-1]
+    inception_value = benchmark_df['Total'].iloc[0]
+    latest_value = benchmark_df['Total'].iloc[-1]
 
     inception_return = (latest_value - inception_value) / inception_value
     
@@ -470,19 +444,21 @@ def main():
     print(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
 
     print(f"Custom Benchmark Variance (Daily),{benchmark_variance()[0]*100:.4f}%\n")
-    print(f"SPY Benchmark Variance (Daily),{benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
+    print(f"SPY Variance (Daily),{benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
     print(f"Custom Benchmark Variance (Annualized),{benchmark_variance()[1]*100:.2f}%\n")
-    print(f"SPY Benchmark Variance (Annualized),{benchmark_variance(benchmark='SPY')[1]*100:.2f}%\n")
+    print(f"SPY Variance (Annualized),{benchmark_variance(benchmark='SPY')[1]*100:.2f}%\n")
 
     print(f"Custom Benchmark Volatility (Daily),{benchmark_volatility()[0]*100:.4f}%\n")
-    print(f"SPY Benchmark Volatility (Daily),{benchmark_volatility(benchmark='SPY')[0]*100:.4f}%\n")
+    print(f"SPY Volatility (Daily),{benchmark_volatility(benchmark='SPY')[0]*100:.4f}%\n")
     print(f"Custom Benchmark Volatility (Annualized),{benchmark_volatility()[1]*100:.2f}%\n")
-    print(f"SPY Benchmark Volatility (Annualized),{benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
+    print(f"SPY Volatility (Annualized),{benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
 
     print(f"Custom Benchmark Average Return (Daily),{benchmark_average_return()[0]*100:.4f}%\n")
-    print(f"SPY Benchmark Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
+    print(f"SPY Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
     print(f"Custom Benchmark Average Return (Annualized),{benchmark_average_return()[1]*100:.2f}%\n")
-    print(f"SPY Benchmark Average Return (Annualized),{benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
+    print(f"SPY Average Return (Annualized),{benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
+    print(f"Custom Benchmark Inception Return,{benchmark_inception_return() * 100:.2f}%\n")
+    print(f"SPY Inception Return,{spy_inception_return() * 100:.2f}%\n")
 
     print(f"Portfolio Beta,{beta():.4f}\n")
     print(f"Portfolio Alpha against custom benchmark,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
@@ -513,7 +489,6 @@ def main():
     print(f"Year-to-Date Return,{period_metrics['YTD'] * 100:.2f}%\n")
     print(f"1 Year Return,{period_metrics['1y'] * 100:.2f}%\n")
     print(f"Inception,{period_metrics['Inception'] * 100:.2f}%\n")
-    print(f"Benchmark Inception Return,{benchmark_inception_return() * 100:.2f}%\n")
 
     # output all these calculations to a csv file
     with open(os.path.join(output_folder, 'performance_metrics.csv'), 'w') as f:
@@ -549,6 +524,7 @@ def main():
 
         f.write(f"SPY Benchmark Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
         f.write(f"SPY Benchmark Average Return (Annualized),{benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
+        f.write(f"SPY Inception Return,{spy_inception_return() * 100:.2f}%\n")
     
         f.write(f"Portfolio Beta,{beta():.4f}\n")
         f.write(f"Portfolio Alpha against custom benchmark,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")

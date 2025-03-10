@@ -14,21 +14,22 @@ Sharpe Ratio (Annualized),0.84
 Sortino Ratio (Annualized),1.17
 Maximum Drawdown,-5.10%
 Custom Benchmark Variance (Daily),0.0035%
-SPY Benchmark Variance (Daily),0.0116%
+SPY Benchmark Variance (Daily),0.0104%
 Custom Benchmark Variance (Annualized),0.89%
-SPY Benchmark Variance (Annualized),2.92%
+SPY Benchmark Variance (Annualized),2.62%
 Custom Benchmark Volatility (Daily),0.5946%
-SPY Benchmark Volatility (Daily),1.0773%
+SPY Benchmark Volatility (Daily),1.0193%
 Custom Benchmark Volatility (Annualized),9.44%
-SPY Benchmark Volatility (Annualized),17.10%
+SPY Benchmark Volatility (Annualized),16.18%
 Custom Benchmark Average Return (Daily),0.0514%
 Custom Benchmark Average Return (Annualized),13.83%
 Custom Benchmark Inception Return,43.05%
-SPY Benchmark Average Return (Daily),0.0803%
-SPY Benchmark Average Return (Annualized),22.43%
+SPY Benchmark Average Return (Daily),0.0657%
+SPY Benchmark Average Return (Annualized),18.00%
+SPY Inception Return,54.78%
 Portfolio Beta,1.2298
 Portfolio Alpha against custom benchmark,0.2700%
-Portfolio Alpha against SPY benchmark,-10.3031%
+Portfolio Alpha against SPY benchmark,-4.8566%
 Portfolio Risk Premium,11.92%
 Risk Adjusted Return (three month treasury rate),13.12%
 Treynor Ratio (three month treasury rate),0.10
