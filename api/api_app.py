@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, make_response
+from flask import Flask, jsonify, make_response, request
 from flask_cors import CORS
 import mysql.connector
 import os
@@ -36,11 +36,13 @@ def get_data():
 @app.route('/api/performance', methods=['GET'])
 def get_performance_data():
     try:
+        end_date = request.args.get('date', None)
+        
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Fetch all performance returns data
-        cursor.execute("""
+        # Base query
+        query = """
             SELECT 
                 DATE_FORMAT(date, '%Y-%m-%d') as date,
                 one_day_return,
@@ -50,8 +52,16 @@ def get_performance_data():
                 one_year_return,
                 inception_return
             FROM performance_returns
-            ORDER BY date DESC
-        """)
+        """
+        
+        # Add date filter if date parameter is provided
+        if end_date:
+            query += " WHERE date <= %s"
+            query += " ORDER BY date DESC"
+            cursor.execute(query, (end_date,))
+        else:
+            query += " ORDER BY date DESC"
+            cursor.execute(query)
         
         results = cursor.fetchall()
         cursor.close()
