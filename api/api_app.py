@@ -16,7 +16,7 @@ CORS(app, resources={r"/*": {"origins": [
     "https://fund.degrootefinance.com",
     "http://localhost:3000", #local dev
     "http://127.0.0.1:3000", #local dev 
-    "https://app.netlify.com/sites/dfic-fund/deploys/*" #check if this works
+    r"^https://deploy-preview-\d+--dfic-fund\.netlify\.app$"
 ]}})
 
 def get_db_connection():
