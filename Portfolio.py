@@ -2,33 +2,24 @@ import os
 import sys
 import pandas as pd
 import yfinance as yf
+from db_helper import query_data, store_dataframe
 
 starting_cash = 101644.99
 start_date = '2022-05-01'
 # end_date = '2025-02-02'
 end_date = pd.Timestamp.now().strftime('%Y-%m-%d')
 
-trades_file = 'trades.csv'
-prices_file = 'prices.csv'
-dividends_file = 'dividends.csv'
-holdings_file = 'holdings.csv'
-cash_file = 'cash.csv'
-
-market_values_file = 'market_values.csv'
-dividend_values_file = 'dividend_values.csv'
-exchange_rates_file = 'exchange_rates.csv'
-exchange_rate_table_file = 'exchange_rate_table.csv'
-
 class Portfolio:
-    def __init__(self, start_date, end_date, starting_cash, folder_prefix):
+    def __init__(self, start_date, end_date, starting_cash):
         self.start_date = start_date
         self.end_date = end_date
         self.starting_cash = starting_cash
         self.current_cash_balance = starting_cash
 
-        self.input_folder = os.path.join("data", folder_prefix, "input")
-        self.output_folder = os.path.join("data", folder_prefix, "output")
-        os.makedirs(self.output_folder, exist_ok=True)
+        # we don't really need this anymore but not sure if we're getting rid of it
+        #self.input_folder = os.path.join("data", folder_prefix, "input")
+        #self.output_folder = os.path.join("data", folder_prefix, "output")
+        #os.makedirs(self.output_folder, exist_ok=True)
 
         self.tickers = None
         self.valid_dates = None
@@ -60,10 +51,11 @@ class Portfolio:
             exchange_rates[key].index = pd.to_datetime(value.index).tz_localize(None)
             self.exchange_rates[key] = exchange_rates[key]
 
-        pd.DataFrame(self.exchange_rates).to_csv(os.path.join(self.output_folder, exchange_rates_file), index_label='Date')
+        store_dataframe("fund_output", self.exchange_rates.reset_index(), "exchange_rates", if_exists="replace")
 
     def load_trades_data(self):
-        self.trades = pd.read_csv(os.path.join(self.input_folder, trades_file))
+        query = "SELECT * FROM trades"  
+        self.trades = query_data("fund_input", query)
         self.trades['Date'] = pd.to_datetime(self.trades['Date'])
         self.trades.set_index('Date', inplace=True)
         self.tickers = sorted(self.trades['Ticker'].unique())
@@ -79,7 +71,7 @@ class Portfolio:
         # Forward fill missing prices (i.e. CAD stock on holiday but US market open and vice versa)
         self.prices = self.prices.ffill()
 
-        pd.DataFrame(self.prices).to_csv(os.path.join(self.output_folder, prices_file), index_label='Date')
+        store_dataframe("fund_output", self.prices.reset_index(), "prices", if_exists="replace")
 
     def load_dividends_data(self):
         self.dividends = pd.DataFrame(index=self.valid_dates)
@@ -89,7 +81,7 @@ class Portfolio:
             divs.index = pd.to_datetime(divs.index).tz_localize(None)
             self.dividends[ticker] = self.dividends.index.map(lambda x: divs.get(x, 0.0))
 
-        pd.DataFrame(self.dividends).to_csv(os.path.join(self.output_folder, dividends_file), index_label='Date')
+        store_dataframe("fund_output", self.dividends.reset_index(), "dividends", if_exists="replace")
 
     def load_holdings_data(self):
         self.holdings = pd.DataFrame(index=self.valid_dates)
@@ -119,8 +111,8 @@ class Portfolio:
             else:
                 print(f"No trades on {date}")
 
-        pd.DataFrame(self.cash).to_csv(os.path.join(self.output_folder, cash_file), index_label='Date')
-        pd.DataFrame(self.holdings).to_csv(os.path.join(self.output_folder, holdings_file), index_label='Date')
+        store_dataframe("fund_output", self.holdings.reset_index(), "holdings", if_exists="replace")
+        store_dataframe("fund_output", self.cash.reset_index(), "cash", if_exists="replace")
 
     def load_exchange_rate_table(self):
         self.exchange_rate_table = pd.DataFrame(index=self.valid_dates)
@@ -133,7 +125,7 @@ class Portfolio:
             print(f"Currency for {ticker}: {currency}")
             self.exchange_rate_table[ticker] = self.exchange_rates[currency] 
 
-        pd.DataFrame(self.exchange_rate_table).to_csv(os.path.join(self.output_folder, exchange_rate_table_file), index_label='Date')
+        store_dataframe("fund_output", self.exchange_rate_table.reset_index(), "exchange_rate_table", if_exists="replace")
 
     def calculate_market_values(self):
         holdings_data = self.holdings[self.tickers]
@@ -142,7 +134,7 @@ class Portfolio:
 
         self.market_values = price_data * holdings_data * exchange_rate_table_data
 
-        pd.DataFrame(self.market_values).to_csv(os.path.join(self.output_folder, market_values_file), index_label='Date')
+        store_dataframe("fund_output", self.market_values.reset_index(), "market_values", if_exists="replace")
 
     def calculate_dividend_values(self):
         holdings_data = self.holdings[self.tickers]
@@ -151,7 +143,7 @@ class Portfolio:
 
         self.dividend_values = dividend_data * holdings_data * exchange_rate_table_data
 
-        pd.DataFrame(self.dividend_values).to_csv(os.path.join(self.output_folder, dividend_values_file), index_label='Date')
+        store_dataframe("fund_output", self.dividend_values.reset_index(), "dividend_values", if_exists="replace")
 
     def calculate_final_values(self):
         market_values_total = self.market_values.loc[self.valid_dates[-1]].sum()
@@ -184,11 +176,8 @@ class Portfolio:
         self.valid_dates = sp500.index.union(tsx.index)
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        sys.exit("Usage: python3 Portfolio.py <folder_prefix>")
-    folder_prefix = sys.argv[1]
-    portfolio = Portfolio(start_date, end_date, starting_cash, folder_prefix)
-
+    portfolio = Portfolio(start_date, end_date, starting_cash)
+    
     portfolio.load_exchange_rates()
     portfolio.load_trades_data()
     portfolio.load_exchange_rate_table()

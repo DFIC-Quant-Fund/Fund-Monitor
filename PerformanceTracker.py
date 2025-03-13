@@ -4,6 +4,7 @@ import sys
 import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import timedelta
+from db_helper import query_data, store_dataframe
 
 # def aggregate_data_old(input_file, output_file):
 #     df = pd.read_csv(input_file)
@@ -22,18 +23,21 @@ from datetime import timedelta
 
 #     print(output_df.head())
 
-def aggregate_data(market_values_file, cash_file, dividends_file, output_file):
-    market_values = pd.read_csv(market_values_file)
-    cash_value = pd.read_csv(cash_file)
+def aggregate_data():
+
+    market_values = query_data("fund_output", "SELECT * FROM market_values")
+    cash_value = query_data("fund_output", "SELECT * FROM cash")
+    dividends = query_data("fund_output", "SELECT * FROM dividends")
+
     market_values['Date'] = pd.to_datetime(market_values['Date'])
     cash_value['Date'] = pd.to_datetime(cash_value['Date'])
+    dividends['Date'] = pd.to_datetime(dividends['Date'])
+
     numeric_columns = market_values.columns.drop('Date')
     market_values[numeric_columns] = market_values[numeric_columns].apply(pd.to_numeric, errors='coerce')
     cash_value['Cash'] = cash_value['Cash'].apply(pd.to_numeric, errors='coerce')
 
-    dividends = pd.read_csv(dividends_file)
     # get the sum of all dividends for each day and all previous days
-    dividends['Date'] = pd.to_datetime(dividends['Date'])
     dividends['Daily Total'] = dividends[numeric_columns].sum(axis=1)
     dividends['Cum Sum'] = dividends['Daily Total'].cumsum()
     # print(dividends.head())
@@ -43,11 +47,14 @@ def aggregate_data(market_values_file, cash_file, dividends_file, output_file):
     output_df = output_df.sort_values('Date')
     output_df['pct_change'] = output_df['Total_Portfolio_Value'].pct_change()
 
-    output_df.to_csv(output_file, index=False, float_format='%.6f')
+    store_dataframe("fund_output", output_df, "portfolio_total", if_exists="replace")
+    return output_df
 
 def get_spy_benchmark():
-    prices = pd.read_csv(os.path.join(output_folder, 'prices.csv'))
-    dividend_df = pd.read_csv(os.path.join(output_folder, 'dividends.csv'))[['Date', 'SPY']]
+
+    prices = query_data("fund_output", "SELECT * FROM prices")
+    dividend_df = query_data("fund_output", "SELECT * FROM dividends")[['Date', 'SPY']]
+    exchange_rates = query_data("fund_output", "SELECT * FROM exchange_rates")
 
     # upon further thought, I guess dividends are baked into the price?
     dividend_df['Date'] = pd.to_datetime(dividend_df['Date'])
@@ -60,7 +67,6 @@ def get_spy_benchmark():
     benchmark_df = benchmark_df.sort_values('Date')
 
     # use exchange_rates.csv to convert USD to CAD in the SPY column
-    exchange_rates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
     exchange_rates['Date'] = pd.to_datetime(exchange_rates['Date'])
     exchange_rates = exchange_rates.sort_values('Date')
     exchange_rates.set_index('Date', inplace=True)
@@ -75,10 +81,16 @@ def get_spy_benchmark():
 
 def create_custom_benchmark():
     STARTING_CASH = 101644.99
-    exchange_rates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
-    prices = pd.read_csv(os.path.join(output_folder, 'prices.csv'))
+
+    exchange_rates = query_data("fund_output", "SELECT * FROM exchange_rates")
+    prices = query_data("fund_output", "SELECT * FROM prices")
+    dividends = query_data("fund_output", "SELECT * FROM dividends")[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
+
+    
+    exchange_rates['Date'] = pd.to_datetime(exchange_rates['Date'])
     prices['Date'] = pd.to_datetime(prices['Date'])
-    dividends = pd.read_csv(os.path.join(output_folder, 'dividends.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
+    dividends['Date'] = pd.to_datetime(dividends['Date'])
+    
 
     initial_exchange_rate = exchange_rates['USD'].iloc[0]
 
@@ -109,11 +121,11 @@ def create_custom_benchmark():
     print("Custom Benchmark:", custom_benchmark.head())
     
     #output the custom benchmark to a csv file
-    custom_benchmark.to_csv(os.path.join(output_folder, 'custom_benchmark.csv'), index=True)
+    store_dataframe("fund_output", custom_benchmark.reset_index(), "custom_benchmark", if_exists="replace")
 
 
 def total_return():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+    df = query_data("fund_output", "SELECT * FROM portfolio_total")
     total_return = (df['Total_Portfolio_Value'].iloc[-1] - df['Total_Portfolio_Value'].iloc[0]) / df['Total_Portfolio_Value'].iloc[0]
 
     return total_return
@@ -131,41 +143,35 @@ def total_return():
 #     return annualized_return
 
 def daily_average_return():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    daily_returns = df['pct_change'].dropna()
-    average_return = daily_returns.mean()
+    df = query_data("fund_output", "SELECT * FROM portfolio_total")
+    df['Date'] = pd.to_datetime(df['Date'])
 
-    return average_return
+    return df['pct_change'].dropna().mean()
 
 def annualized_average_return():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    daily_returns = df['pct_change'].dropna()
-    average_daily_return = daily_returns.mean()
-    annualized_avg_return = (1+average_daily_return) ** 252 - 1
+    df = query_data("fund_output", "SELECT * FROM portfolio_total")
+    df['Date'] = pd.to_datetime(df['Date'])
+    average_daily_return = df['pct_change'].dropna().mean()
 
-    return annualized_avg_return
+    return (1 + average_daily_return) ** 252 - 1
 
 def daily_variance():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    daily_returns = df['pct_change'].dropna()
-    daily_variance = daily_returns.var()
+    df = query_data("fund_output", "SELECT * FROM portfolio_total")
+    df['Date'] = pd.to_datetime(df['Date'])
 
-    return daily_variance
+    return df['pct_change'].dropna().var()
 
 def annualized_variance():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    annualized_variance = daily_variance() * 252
     # print(f"Annualized Variance: {annualized_variance:.4f}")
-    return annualized_variance
+    return daily_variance() * 252
 
 def daily_volatility():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
     # daily_return = df['Total_Portfolio_Value'].pct_change()
-    daily_return = df['pct_change'].dropna()
-    daily_volatility = daily_return.std()
-
     # print(f"Daily Volatility: {daily_volatility:.4f}")
-    return daily_volatility
+    df = query_data("fund_output", "SELECT * FROM portfolio_total")
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    return df['pct_change'].dropna().std()
 
 def annualized_volatility():
     annualized_volatility = annualized_variance() ** 0.5
@@ -174,12 +180,12 @@ def annualized_volatility():
     return annualized_volatility
 
 def daily_downside_variance():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    daily_return = df['pct_change'].dropna()
-    downside_returns = daily_return[daily_return < 0]
-    downside_variance = downside_returns.var()
+    df = query_data("fund_output", "SELECT * FROM portfolio_total")
+    df['Date'] = pd.to_datetime(df['Date'])
     # print(f"Daily Downside Variance: {downside_variance:.4f}")
-    return downside_variance
+    return df['pct_change'].dropna().std()
+    
+    
 
 def annualized_downside_variance():
     annualized_downside_variance = daily_downside_variance() * 252
@@ -197,33 +203,33 @@ def annualized_downside_volatility():
     return annualized_downside_volatility
 
 def sharpe_ratio(risk_free_rate):
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+    df = query_data("fund_output", "SELECT * FROM portfolio_total")
+    df['Date'] = pd.to_datetime(df['Date'])
     daily_return = df['pct_change'].dropna()
-    daily_sharpe_ratio = (daily_return.mean() - risk_free_rate/252) / daily_return.std()
-    annualized_sharpe_ratio = daily_sharpe_ratio * (252 ** 0.5)
+    daily_sharpe = (daily_return.mean() - risk_free_rate/252) / daily_return.std()
 
-    return daily_sharpe_ratio, annualized_sharpe_ratio
+    return daily_sharpe, daily_sharpe * (252 ** 0.5)
 
 def sortino_ratio(risk_free_rate):
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+    df = query_data("fund_output", "SELECT * FROM portfolio_total")
+    df['Date'] = pd.to_datetime(df['Date'])
     daily_return = df['pct_change'].dropna()
-    downside_returns = daily_return[daily_return < 0]
-    daily_sortino_ratio = (daily_return.mean() - risk_free_rate/252) / downside_returns.std()
-    annualized_sortino_ratio = daily_sortino_ratio * (252 ** 0.5)
+    downside = daily_return[daily_return < 0]
+    daily_sortino = (daily_return.mean() - risk_free_rate/252) / downside.std()
 
-    return daily_sortino_ratio, annualized_sortino_ratio
+    return daily_sortino, daily_sortino * (252 ** 0.5)
 
 def maximum_drawdown():
     # calculate the maximum drawdown
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-    daily_return = df['pct_change'].dropna()
-    
-    return daily_return.min()
+    df = query_data("fund_output", "SELECT * FROM portfolio_total")
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    return df['pct_change'].dropna().min()
 
     
 def benchmark_variance(benchmark='custom'):
     if benchmark == 'custom':
-        benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
+        benchmark_df = query_data("fund_output", "SELECT * FROM custom_benchmark")
     else:
         benchmark_df = get_spy_benchmark()
     
@@ -234,7 +240,7 @@ def benchmark_variance(benchmark='custom'):
 
 def benchmark_volatility(benchmark='custom'):
     if benchmark == 'custom':
-        benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
+        benchmark_df = query_data("fund_output", "SELECT * FROM custom_benchmark")
     else:
         benchmark_df = get_spy_benchmark()
     
@@ -245,7 +251,7 @@ def benchmark_volatility(benchmark='custom'):
 
 def benchmark_average_return(benchmark='custom'):
     if benchmark == 'custom':
-        benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
+        benchmark_df = query_data("fund_output", "SELECT * FROM custom_benchmark")
     else:
         benchmark_df = get_spy_benchmark()
     
@@ -256,11 +262,11 @@ def benchmark_average_return(benchmark='custom'):
 
 def beta(benchmark='custom'):
     if benchmark == 'custom':
-        benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
+        benchmark_df = query_data("fund_output", "SELECT * FROM custom_benchmark")
     else:
         benchmark_df = get_spy_benchmark()
     
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+    df = query_data("fund_output", "SELECT * FROM portfolio_total")
     daily_portfolio_return = df['pct_change'].dropna()
 
     daily_benchmark_var, _ = benchmark_variance(benchmark)
@@ -312,7 +318,7 @@ def information_ratio(benchmark='custom'):
     return information_ratio
 
 def plot_portfolio_value():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+    df = query_data("fund_output", "SELECT * FROM portfolio_total")
     df['Date'] = pd.to_datetime(df['Date'])
     fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -323,11 +329,11 @@ def plot_portfolio_value():
     ax.legend(loc='lower right')
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.savefig(os.path.join(output_folder, 'portfolio_plot.png'))
+    plt.savefig('portfolio_plot.png')
 
 
 def calculate_period_performance():
-    df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
+    df = query_data("fund_output", "SELECT * FROM portfolio_total")
     df['Date'] = pd.to_datetime(df['Date'])
 
     latest_date = df['Date'].max()
@@ -337,6 +343,7 @@ def calculate_period_performance():
     ytd = pd.Timestamp(year=latest_date.year, month=1, day=1)
     one_year = latest_date - timedelta(days=365)
     inception = df['Date'].min()
+
     def closest_date(target_date, side='left'):
         target_date = pd.to_datetime(target_date)
         if side == 'left':
@@ -378,15 +385,11 @@ def calculate_period_performance():
         "Inception": inception_return
     }
 def main():
-    market_values_file = os.path.join(output_folder, "market_values.csv")
-    cash_file = os.path.join(output_folder, "cash.csv") 
-    dividend_file = os.path.join(output_folder, "dividend_values.csv") 
-    output_file = os.path.join(output_folder, "portfolio_total.csv") 
-    THREE_MTH_TREASURY_RATE = 0.0436 # 3-month treasury rate
-    FIVE_PERCENT = 0.05
-
-    # run these once only after running portfolio.py once
-    aggregate_data(market_values_file, cash_file, dividend_file, output_file)
+    
+    
+    THREE_MTH_TREASURY_RATE = 0.0436  # 3-month treasury rate
+    
+    portfolio_total_df = aggregate_data()
     create_custom_benchmark()
     period_metrics = calculate_period_performance()
 
@@ -435,63 +438,41 @@ def main():
     print(f"Year-to-Date Return,{period_metrics['YTD'] * 100:.2f}%\n")
     print(f"1 Year Return,{period_metrics['1y'] * 100:.2f}%\n")
     print(f"Inception,{period_metrics['Inception'] * 100:.2f}%\n")
-
-    # output all these calculations to a csv file
-    with open(os.path.join(output_folder, 'performance_metrics.csv'), 'w') as f:
-        f.write("Metric,Value\n")
-        f.write(f"Total Return including dividends,{total_return()*100:.2f}%\n")
-        f.write(f"Daily Average Return,{daily_average_return()*100:.4f}%\n")
-        f.write(f"Annualized Average Return,{annualized_average_return()*100:.2f}%\n")
-        f.write(f"Daily Variance,{daily_variance()*100:.4f}%\n")
-        f.write(f"Annualized Variance,{annualized_variance()*100:.2f}%\n")
-        f.write(f"Daily Volatility,{daily_volatility()*100:.4f}%\n")
-        f.write(f"Annualized Volatility,{annualized_volatility()*100:.2f}%\n")
-        f.write(f"Daily Downside Variance,{daily_downside_variance()*100:.4f}%\n")
-        f.write(f"Annualized Downside Variance,{annualized_downside_variance()*100:.2f}%\n")
-        f.write(f"Daily Downside Volatility,{daily_downside_volatility()*100:.4f}%\n")
-        f.write(f"Annualized Downside Volatility,{annualized_downside_volatility()*100:.2f}%\n")
-        f.write(f"Sharpe Ratio (Annualized),{sharpe_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
-        f.write(f"Sortino Ratio (Annualized),{sortino_ratio(THREE_MTH_TREASURY_RATE)[1]:.2f}\n")
-        f.write(f"Maximum Drawdown,{maximum_drawdown()*100:.2f}%\n")
-
-        f.write(f"Custom Benchmark Variance (Daily),{benchmark_variance()[0]*100:.4f}%\n")
-        f.write(f"SPY Benchmark Variance (Daily),{benchmark_variance(benchmark='SPY')[0]*100:.4f}%\n")
-        f.write(f"Custom Benchmark Variance (Annualized),{benchmark_variance()[1]*100:.2f}%\n")
-        f.write(f"SPY Benchmark Variance (Annualized),{benchmark_variance(benchmark='SPY')[1]*100:.2f}%\n")
-
-        f.write(f"Custom Benchmark Volatility (Daily),{benchmark_volatility()[0]*100:.4f}%\n")
-        f.write(f"SPY Benchmark Volatility (Daily),{benchmark_volatility(benchmark='SPY')[0]*100:.4f}%\n")
-        f.write(f"Custom Benchmark Volatility (Annualized),{benchmark_volatility()[1]*100:.2f}%\n")
-        f.write(f"SPY Benchmark Volatility (Annualized),{benchmark_volatility(benchmark='SPY')[1]*100:.2f}%\n")
-
-        f.write(f"Custom Benchmark Average Return (Daily),{benchmark_average_return()[0]*100:.4f}%\n")
-        f.write(f"SPY Benchmark Average Return (Daily),{benchmark_average_return(benchmark='SPY')[0]*100:.4f}%\n")
-        f.write(f"Custom Benchmark Average Return (Annualized),{benchmark_average_return()[1]*100:.2f}%\n")
-        f.write(f"SPY Benchmark Average Return (Annualized),{benchmark_average_return(benchmark='SPY')[1]*100:.2f}%\n")
     
-        f.write(f"Portfolio Beta,{beta():.4f}\n")
-        f.write(f"Portfolio Alpha against custom benchmark,{100*alpha(THREE_MTH_TREASURY_RATE):.4f}%\n")
-        f.write(f"Portfolio Alpha against SPY benchmark,{100*alpha(THREE_MTH_TREASURY_RATE, benchmark='SPY'):.4f}%\n")
-
-        f.write(f"Portfolio Risk Premium,{portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
-        f.write(f"Risk Adjusted Return (three month treasury rate),{risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
-        f.write(f"Treynor Ratio (three month treasury rate),{treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
-        # f.write(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
-        f.write("--- Portfolio Returns ---\n")
-        f.write(f"1 Day Return,{period_metrics['1d'] * 100:.2f}%\n")
-        f.write(f"1 Week Return,{period_metrics['1w'] * 100:.2f}%\n")
-        f.write(f"1 Month Return,{period_metrics['1m'] * 100:.2f}%\n")
-        f.write(f"Year-to-Date Return,{period_metrics['YTD'] * 100:.2f}%\n")
-        f.write(f"1 Year Return,{period_metrics['1y'] * 100:.2f}%\n")
-        f.write(f"Inception,{period_metrics['Inception'] * 100:.2f}%\n")
+    # probably would be beneficial to store performance metrics in the DB table "performance_metrics"
+    metrics = {
+        "Total Return": total_return()*100,
+        "Daily Average Return": daily_average_return()*100,
+        "Annualized Average Return": annualized_average_return()*100,
+        "Daily Variance": daily_variance()*100,
+        "Annualized Variance": annualized_variance()*100,
+        "Daily Volatility": daily_volatility()*100,
+        "Annualized Volatility": annualized_volatility()*100,
+        "Daily Downside Variance": daily_downside_variance()*100,
+        "Annualized Downside Variance": annualized_downside_variance()*100,
+        "Daily Downside Volatility": daily_downside_volatility()*100,
+        "Annualized Downside Volatility": annualized_downside_volatility()*100,
+        "Sharpe Ratio (Annualized)": sharpe_ratio(THREE_MTH_TREASURY_RATE)[1],
+        "Sortino Ratio (Annualized)": sortino_ratio(THREE_MTH_TREASURY_RATE)[1],
+        "Maximum Drawdown": maximum_drawdown()*100,
+        "Portfolio Beta": beta(),
+        "Portfolio Alpha (Custom Benchmark)": alpha(THREE_MTH_TREASURY_RATE)*100,
+        "Portfolio Alpha (SPY Benchmark)": alpha(THREE_MTH_TREASURY_RATE, benchmark='SPY')*100,
+        "Portfolio Risk Premium": portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100,
+        "Risk Adjusted Return": risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100,
+        "Treynor Ratio": treynor_ratio(THREE_MTH_TREASURY_RATE),
+        "1d": period_metrics["1d"] * 100,
+        "1w": period_metrics["1w"] * 100,
+        "1m": period_metrics["1m"] * 100,
+        "YTD": period_metrics["YTD"] * 100,
+        "1y": period_metrics["1y"] * 100,
+        "Inception": period_metrics["Inception"] * 100
+    }
+    metrics_df = pd.DataFrame(list(metrics.items()), columns=["Metric", "Value"])
+    store_dataframe("fund_output", metrics_df, "performance_metrics", if_exists="replace")
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        sys.exit("Usage: python3 PerformanceTracker.py <folder_prefix>")
-    folder_prefix = sys.argv[1]
-    output_folder = os.path.join("data", folder_prefix, "output")
-    os.makedirs(output_folder, exist_ok=True)
     main()
     plot_portfolio_value()
 
