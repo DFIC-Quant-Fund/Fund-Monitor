@@ -1,40 +1,40 @@
 Metric,Value
-Total Return including dividends,45.06%
-Daily Average Return,0.0542%
-Annualized Average Return,14.62%
+Total Return including dividends,45.77%
+Daily Average Return,0.0548%
+Annualized Average Return,14.79%
 Daily Variance,0.0067%
 Annualized Variance,1.68%
-Daily Volatility,0.8163%
-Annualized Volatility,12.96%
+Daily Volatility,0.8159%
+Annualized Volatility,12.95%
 Daily Downside Variance,0.0034%
 Annualized Downside Variance,0.87%
 Daily Downside Volatility,0.5862%
 Annualized Downside Volatility,9.31%
-Sharpe Ratio (Annualized),0.72
-Sortino Ratio (Annualized),1.00
+Sharpe Ratio (Annualized),0.73
+Sortino Ratio (Annualized),1.01
 Maximum Drawdown,-5.18%
 Custom Benchmark Variance (Daily),0.0036%
 SPY Benchmark Variance (Daily),0.0117%
 Custom Benchmark Variance (Annualized),0.90%
 SPY Benchmark Variance (Annualized),2.95%
-Custom Benchmark Volatility (Daily),0.5992%
-SPY Benchmark Volatility (Daily),1.0821%
+Custom Benchmark Volatility (Daily),0.5989%
+SPY Benchmark Volatility (Daily),1.0815%
 Custom Benchmark Volatility (Annualized),9.51%
-SPY Benchmark Volatility (Annualized),17.18%
-Custom Benchmark Average Return (Daily),0.0480%
-SPY Benchmark Average Return (Daily),0.0719%
-Custom Benchmark Average Return (Annualized),12.85%
-SPY Benchmark Average Return (Annualized),19.84%
-Portfolio Beta,1.2307
-Portfolio Alpha against custom benchmark,-0.1897%
-Portfolio Alpha against SPY benchmark,-8.7996%
-Portfolio Risk Premium,10.26%
-Risk Adjusted Return (three month treasury rate),11.89%
+SPY Benchmark Volatility (Annualized),17.17%
+Custom Benchmark Average Return (Daily),0.0483%
+SPY Benchmark Average Return (Daily),0.0725%
+Custom Benchmark Average Return (Annualized),12.93%
+SPY Benchmark Average Return (Annualized),20.04%
+Portfolio Beta,1.2308
+Portfolio Alpha against custom benchmark,-0.1152%
+Portfolio Alpha against SPY benchmark,-8.8651%
+Portfolio Risk Premium,10.43%
+Risk Adjusted Return (three month treasury rate),12.02%
 Treynor Ratio (three month treasury rate),0.08
 --- Portfolio Returns ---
-1 Day Return,0.36%
-1 Week Return,-1.76%
-1 Month Return,-5.87%
-Year-to-Date Return,-1.49%
-1 Year Return,18.40%
-Inception,45.06%
+1 Day Return,0.49%
+1 Week Return,-2.41%
+1 Month Return,-6.48%
+Year-to-Date Return,-1.00%
+1 Year Return,18.71%
+Inception,45.77%
