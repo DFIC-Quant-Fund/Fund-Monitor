@@ -101,7 +101,6 @@ class Benchmark:
         prices = pd.read_csv(os.path.join(output_folder, 'prices.csv'))
         prices['Date'] = pd.to_datetime(prices['Date'])
         dividends = pd.read_csv(os.path.join(output_folder, 'dividends.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
-
         initial_exchange_rate = exchange_rates['USD'].iloc[0]
 
         # assuming we can buy fractional shares for now I guess or else use //
@@ -127,7 +126,6 @@ class Benchmark:
         custom_benchmark['Date'] = prices['Date']
         custom_benchmark.set_index('Date', inplace=True)
         custom_benchmark['pct_change'] = custom_benchmark['Total'].pct_change()
-
         print("Custom Benchmark:", custom_benchmark.head())
         
         #output the custom benchmark to a csv file
@@ -159,7 +157,6 @@ class Benchmark:
             benchmark_df = pd.read_csv(os.path.join(output_folder, 'custom_benchmark.csv'))
         else:
             benchmark_df = self.get_spy_benchmark()
-        
         daily_benchmark_return = benchmark_df['pct_change'].dropna().mean()
         annualized_benchmark_return = (1+daily_benchmark_return) ** 252 - 1
 
@@ -207,7 +204,6 @@ class PortfolioPerformance:
             elif side == 'right':
                 valid_dates = df[df['Date'] >= target_date]['Date']
                 return valid_dates.min()
-
 
         closest_1d = closest_date(one_day)
         closest_1w = closest_date(one_week)
@@ -260,7 +256,6 @@ class RiskMetrics:
     def annualized_volatility(self):
         annualized_volatility = self.annualized_variance() ** 0.5
         # print(f"Annualized Volatility: {annualized_volatility:.4f}")
-
         return annualized_volatility
 
     def daily_volatility(self):
@@ -346,10 +341,8 @@ class Ratios:
         benchmark_class = Benchmark()
         _, annual_benchmark_return = benchmark_class.benchmark_average_return(benchmark)
         portfolio_performance = PortfolioPerformance()
-
         # excess_returns = daily_portfolio_return - daily_benchmark_return
         excess_returns = portfolio_performance.annualized_average_return() - annual_benchmark_return
-
         # print("annualized_average_return of portfolio: ", annualized_average_return())
         # print("annual_benchmark_return: ", annual_benchmark_return)
 
@@ -371,7 +364,6 @@ class MarketComparison:
         
         df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
         daily_portfolio_return = df['pct_change'].dropna()
-
         daily_benchmark_var, _ = benchmark_class.benchmark_variance(benchmark)
         covariance = daily_portfolio_return.cov(benchmark_df['pct_change'])
         beta = covariance / daily_benchmark_var
@@ -385,7 +377,6 @@ class MarketComparison:
         portfolio_performance = PortfolioPerformance()
         print("benchmark: ", benchmark)
         print("annual_benchmark_return ", annual_benchmark_return)
-
         alpha = (portfolio_performance.annualized_average_return() - risk_free_rate) - self.beta() * (annual_benchmark_return - risk_free_rate)
 
         return alpha
@@ -400,7 +391,6 @@ class MarketComparison:
         benchmark_vol = benchmark.benchmark_volatility()[1]
         portfolio_volatility = risk_metrics.annualized_volatility()
         portfolio_risk_prem = self.portfolio_risk_premium(risk_free_return)
-
         risk_adjusted_return = portfolio_risk_prem * benchmark_vol / portfolio_volatility + risk_free_return
         
         return risk_adjusted_return
