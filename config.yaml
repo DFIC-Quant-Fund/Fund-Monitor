@@ -1,0 +1,15 @@
+starting_cash: 1000000
+risk_free_rate: 0.02
+lookback_period: 60
+
+asset_allocation:
+  equities: [AAPL, GOOG, MSFT]
+  bonds: [T, LQD, AGG.TO]
+
+portfolios:
+  - name: "Growth Portfolio"
+    target_allocation: {equities: 0.8, bonds: 0.2}
+    rebalancing_frequency: "monthly"
+  - name: "Income Portfolio"
+    target_allocation: {equities: 0.5, bonds: 0.5}
+    rebalancing_frequency: "quarterly" # etc.
