@@ -7,83 +7,9 @@ from performance import (
     Benchmark, 
     PortfolioPerformance, 
     RiskMetrics, 
-    MarketComparison
+    MarketComparison,
+    Ratios
 )
-
-
-# def aggregate_data_old(input_file, output_file):
-#     df = pd.read_csv(input_file)
-#     df['Date'] = pd.to_datetime(df['Date'])
-#     df = df.replace('', 0)
-#     numeric_columns = df.columns.drop('Date')
-#     df[numeric_columns] = df[numeric_columns].apply(pd.to_numeric, errors='coerce')
-
-#     df['Total_Portfolio_Value'] = df[numeric_columns].sum(axis=1)
-#     df_filtered = df[df['Total_Portfolio_Value'] > 0]
-#     output_df = df_filtered[['Date', 'Total_Portfolio_Value']].copy()
-#     output_df = output_df.sort_values('Date')
-#     output_df['pct_change'] = output_df['Total_Portfolio_Value'].pct_change()
-
-#     output_df.to_csv(output_file, index=False, float_format='%.6f')
-
-#     print(output_df.head())
-
-
-# def daily_compounded_return():
-#     df = pd.read_csv('output/portfolio_total.csv')
-#     daily_changes = df['pct_change']
-#     daily_compounded_return = (1 + daily_changes).prod() - 1
-
-#     return daily_compounded_return
-
-# def annualized_compounded_return():
-#     annualized_return = (1 + daily_compounded_return())**252 - 1
-
-#     return annualized_return
-
-class Ratios:
-    def __init__(self):
-        pass
-
-    def sharpe_ratio(self, risk_free_rate):
-        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-        daily_return = df['pct_change'].dropna()
-        daily_sharpe_ratio = (daily_return.mean() - risk_free_rate/252) / daily_return.std()
-        annualized_sharpe_ratio = daily_sharpe_ratio * (252 ** 0.5)
-
-        return daily_sharpe_ratio, annualized_sharpe_ratio
-
-    def sortino_ratio(self, risk_free_rate):
-        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-        daily_return = df['pct_change'].dropna()
-        downside_returns = daily_return[daily_return < 0]
-        daily_sortino_ratio = (daily_return.mean() - risk_free_rate/252) / downside_returns.std()
-        annualized_sortino_ratio = daily_sortino_ratio * (252 ** 0.5)
-
-        return daily_sortino_ratio, annualized_sortino_ratio
-    
-    def treynor_ratio(self, risk_free_return):
-        market_comparison = MarketComparison(output_folder)
-        return market_comparison.portfolio_risk_premium(risk_free_return) / market_comparison.beta()
-
-    def information_ratio(self, benchmark='custom'):
-        # df = pd.read_csv('output/portfolio_total.csv')
-        # daily_portfolio_return = df['pct_change'].dropna()
-        # daily_benchmark_return = benchmark_df['pct_change'].dropna()
-        benchmark_class = Benchmark(output_folder)
-        _, annual_benchmark_return = benchmark_class.benchmark_average_return(benchmark)
-        portfolio_performance = PortfolioPerformance(output_folder)
-        # excess_returns = daily_portfolio_return - daily_benchmark_return
-        excess_returns = portfolio_performance.annualized_average_return() - annual_benchmark_return
-        # print("annualized_average_return of portfolio: ", annualized_average_return())
-        # print("annual_benchmark_return: ", annual_benchmark_return)
-
-        tracking_error = excess_returns.std() # this doesn't make sense rn since they're just scalars
-        information_ratio = excess_returns.mean() / tracking_error
-
-        return information_ratio
-
-
 
 def main():
     market_values_file = os.path.join(output_folder, "market_values.csv")
@@ -98,7 +24,7 @@ def main():
     portfolio_performance = PortfolioPerformance(output_folder)
     risk_metrics = RiskMetrics(output_folder)
     market_comparison = MarketComparison(output_folder)
-    ratios = Ratios()
+    ratios = Ratios(output_folder)
 
     # run these once only after running portfolio.py once
     data_processor.aggregate_data(market_values_file, cash_file, dividend_file, output_file)
