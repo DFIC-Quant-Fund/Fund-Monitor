@@ -6,4 +6,4 @@ from .MarketComparison import MarketComparison
 from .Ratios import Ratios
 
 # this is what gets imported when you just import all of performance
-__all__ = ["DataProcessor", "Benchmark", "PortfolioPerformance", "RiskMetrics", "MarketComparison", "PortfolioPerformance"]
+__all__ = ["DataProcessor", "Benchmark", "PortfolioPerformance", "RiskMetrics", "MarketComparison", "PortfolioPerformance", "Ratios"]
