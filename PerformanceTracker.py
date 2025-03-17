@@ -1,10 +1,8 @@
 import os
 import pandas as pd
 import sys
-import matplotlib.pyplot as plt
 import yfinance as yf
-from datetime import timedelta
-from performance import DataProcessor, Benchmark, PortfolioPerformance
+from performance import DataProcessor, Benchmark, PortfolioPerformance, RiskMetrics
 
 
 # def aggregate_data_old(input_file, output_file):
@@ -24,67 +22,6 @@ from performance import DataProcessor, Benchmark, PortfolioPerformance
 
 #     print(output_df.head())
 
-
-class RiskMetrics:
-    def __init__(self):
-        pass
-
-    def daily_variance(self):
-        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-        daily_returns = df['pct_change'].dropna()
-        daily_variance = daily_returns.var()
-
-        return daily_variance
-
-    def annualized_variance(self):
-        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-        annualized_variance = self.daily_variance() * 252
-        # print(f"Annualized Variance: {annualized_variance:.4f}")
-        return annualized_variance
-
-    def annualized_volatility(self):
-        annualized_volatility = self.annualized_variance() ** 0.5
-        # print(f"Annualized Volatility: {annualized_volatility:.4f}")
-        return annualized_volatility
-
-    def daily_volatility(self):
-        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-        # daily_return = df['Total_Portfolio_Value'].pct_change()
-        daily_return = df['pct_change'].dropna()
-        daily_volatility = daily_return.std()
-
-        # print(f"Daily Volatility: {daily_volatility:.4f}")
-        return daily_volatility
-
-    def daily_downside_variance(self):
-        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-        daily_return = df['pct_change'].dropna()
-        downside_returns = daily_return[daily_return < 0]
-        downside_variance = downside_returns.var()
-        # print(f"Daily Downside Variance: {downside_variance:.4f}")
-        return downside_variance
-
-    def annualized_downside_variance(self):
-        annualized_downside_variance = self.daily_downside_variance() * 252
-        # print(f"Annualized Downside Variance: {annualized_downside_variance:.4f}")
-        return annualized_downside_variance
-
-    def daily_downside_volatility(self):
-        daily_downside_volatility = self.daily_downside_variance() ** 0.5
-        # print(f"Daily Downside Volatility: {daily_downside_volatility:.4f}")
-        return daily_downside_volatility
-
-    def annualized_downside_volatility(self):
-        annualized_downside_volatility = self.annualized_downside_variance() ** 0.5
-        # print(f"Annualized Downside Volatility: {annualized_downside_volatility:.4f}")
-        return annualized_downside_volatility
-
-    def maximum_drawdown(self):
-        # calculate the maximum drawdown
-        df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-        daily_return = df['pct_change'].dropna()
-        
-        return daily_return.min()
 
 # def daily_compounded_return():
 #     df = pd.read_csv('output/portfolio_total.csv')
@@ -175,7 +112,7 @@ class MarketComparison:
         return portfolio_performance.annualized_average_return() - risk_free_return
 
     def risk_adjusted_return(self, risk_free_return):
-        risk_metrics = RiskMetrics()
+        risk_metrics = RiskMetrics(output_folder)
         benchmark = Benchmark(output_folder)
         benchmark_vol = benchmark.benchmark_volatility()[1]
         portfolio_volatility = risk_metrics.annualized_volatility()
@@ -197,7 +134,7 @@ def main():
     data_processor = DataProcessor(output_folder)
     benchmark = Benchmark(output_folder)
     portfolio_performance = PortfolioPerformance(output_folder)
-    risk_metrics = RiskMetrics()
+    risk_metrics = RiskMetrics(output_folder)
     ratios = Ratios()
     market_comparison = MarketComparison()
 
