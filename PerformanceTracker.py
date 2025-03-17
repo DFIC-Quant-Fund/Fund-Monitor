@@ -1,7 +1,5 @@
 import os
-import pandas as pd
 import sys
-import yfinance as yf
 from performance import (
     DataProcessor, 
     Benchmark, 
