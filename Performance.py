@@ -142,9 +142,26 @@ class Performance:
         cursor = conn.cursor(dictionary=True)
 
         # Insert or update data
-        cursor.execute("INSERT INTO performance_returns (date, one_day_return, one_week_return, one_month_return, ytd_return, one_year_return, inception_return) VALUES (%s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE one_day_return=VALUES(one_day_return), one_week_return=VALUES(one_week_return), one_month_return=VALUES(one_month_return), ytd_return=VALUES(ytd_return), one_year_return=VALUES(one_year_return), inception_return=VALUES(inception_return)",
-                          (results['date'], results['one_day'], results['one_week'], results['one_month'], results['ytd'], results['one_year'], results['inception']))
-        
+        cursor.execute("""
+        INSERT INTO performance_returns (
+            date, 
+            one_day_return, 
+            one_week_return, 
+            one_month_return, 
+            ytd_return, 
+            one_year_return, 
+            inception_return
+        ) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s) 
+        ON DUPLICATE KEY UPDATE 
+            one_day_return = VALUES(one_day_return), 
+            one_week_return = VALUES(one_week_return), 
+            one_month_return = VALUES(one_month_return), 
+            ytd_return = VALUES(ytd_return), 
+            one_year_return = VALUES(one_year_return), 
+            inception_return = VALUES(inception_return)
+        """, (results['date'], results['one_day'], results['one_week'], results['one_month'], results['ytd'], results['one_year'], results['inception']))
+
         conn.commit()
         conn.close()
 
