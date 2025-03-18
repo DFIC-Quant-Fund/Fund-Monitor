@@ -1,3 +1,9 @@
+"""
+Usage:
+python Performance.py fund                  # Run historical using all dates from portfolio_total.csv
+python Performance.py fund yyyy-mm-dd       # Run for specific date (must be in portfolio_total.csv)
+"""
+
 import pandas as pd
 import os
 import sys
@@ -11,7 +17,7 @@ class Performance:
         Initializes the Performance class with portfolio data for a specific fund.
 
         :param fund: The name of the fund (used to locate the data).
-        :param date: The end date for performance calculation.
+        :param date: The date for performance calculation.
         :param portfolio_column: The column name representing portfolio value.
         """
         load_dotenv()
@@ -38,7 +44,7 @@ class Performance:
 
     def valid_date(self):
         """
-        Validate the end date provided by the user. It must be an available date in the dataset.
+        Validate the date provided by the user. It must be an available date in the dataset.
 
         :return: True if the date is valid, False otherwise.
         """
@@ -82,14 +88,14 @@ class Performance:
         }
 
         performance = {}
-        latest_value = self._get_value_by_date(self.date)
+        current_value = self._get_value_by_date(self.date)
 
         for key, period_date in periods.items():
             closest_date = self._closest_date(period_date, side='right' if key == 'ytd' else 'left')
             previous_value = self._get_value_by_date(closest_date)
 
             # Calculate return only if both values exist
-            performance[key] = (latest_value / previous_value - 1) * 100 if latest_value and previous_value else None
+            performance[key] = (current_value / previous_value - 1) * 100 if current_value and previous_value else None
 
         return performance
 
