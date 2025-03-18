@@ -181,7 +181,7 @@ if __name__ == '__main__':
     for date in dates:
         performance = Performance(fund, date)
         if not performance.valid_date():
-            print(f"Skipping {fund} on {date}, portfolio_total.csv data not available.")
+            print(f"Skipping performance calculation for {fund} on {date}, portfolio_total.csv data not available.")
         else:
             print(f"Calculating performance for {fund} on {date}")
             results = performance.calculate_performance()
