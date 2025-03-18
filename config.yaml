@@ -15,39 +15,8 @@ portfolios:
     target_allocation: {equities: 0.5, bonds: 0.5}
     rebalancing_frequency: "quarterly" # etc.
 
-# AAPL
-# ACO-X.TO
-# AER
-# AGG
-# AMAT
-# AMSF
-# APO
-# BLBD
-# CEG
-# CG
-# CSH-UN.TO
-# DOLE
-# EA
-# GSL
-# HBM.TO
-# ISRG
-# L.TO
-# MA
-# MP
-# RSP
-# SPSB
-# SPY
-# TEX
-# TMUS
-# VEEV
-# WFG
-# WSC
-# XBB.TO
-# XIU.TO
-
-
 securities:
-  # NSR removed from this list (null in yfinance)
+  # NSR removed since null in yfinance
   [AAPL, ACO-X.TO, AER, AGG, AMAT, AMSF, APO, BLBD, CEG, CG, CSH-UN.TO, DOLE, EA, GSL, HBM.TO, ISRG, L.TO, MA, MP, RSP, SPSB, SPY, TEX, TMUS, VEEV, WFG, WSC, XBB.TO, XIU.TO]
 
 currencies:
