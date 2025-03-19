@@ -51,7 +51,7 @@ def get_performance_data():
                 ytd_return,
                 one_year_return,
                 inception_return
-            FROM Performance_returns
+            FROM PerformanceReturns
         """
         
         # Add date filter if date parameter is provided

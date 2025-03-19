@@ -37,7 +37,7 @@ class DBConnection:
 
     def create_performance_metrics_table(self):
         create_table_query = """
-        CREATE TABLE IF NOT EXISTS Performance_returns (
+        CREATE TABLE IF NOT EXISTS PerformanceReturns (
             date DATE PRIMARY KEY,
             one_day_return DECIMAL(10, 4),
             one_week_return DECIMAL(10, 4),
@@ -57,7 +57,7 @@ class DBConnection:
 
     def insert_performance_metrics(self, metrics_df):
         insert_query = """
-        INSERT INTO Performance_returns (
+        INSERT INTO PerformanceReturns (
             date,
             one_day_return,
             one_week_return,
