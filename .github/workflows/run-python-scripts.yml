@@ -23,15 +23,23 @@ jobs:
             run: |
                 python3 -m pip install --upgrade pip
                 pip install -r requirements.txt
+          - name: Get Previous Date
+            id: get_previous_date
+            run: echo "date=$(date --date="yesterday" +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           - name: Run Portfolio.py Script
             run: python Portfolio.py fund
           - name: Run PerformanceTracker.py Script
             run: python PerformanceTracker.py fund
           - name: Run Frontier Analysis.py Script
             run: python FrontierAnalysis.py fund
-          - name: Get Previous Date
-            id: get_previous_date
-            run: echo "date=$(date --date="yesterday" +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          - name: Run Performance.py Script
+            if: ${{ github.ref == 'refs/heads/main' }}
+            env:
+              DB_HOSTNAME: ${{ secrets.DB_HOSTNAME }}
+              DB_USER: ${{ secrets.DB_USER }}
+              DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+              DB_PORT: ${{ secrets.DB_PORT }}
+            run: python Performance.py fund ${{ steps.get_previous_date.outputs.date }}
           - name: Upload Output Files to Main Branch
             if: ${{ github.ref == 'refs/heads/main' }}
             uses: stefanzweifel/git-auto-commit-action@v5
