@@ -149,7 +149,7 @@ class Performance:
 
         # Insert or update data
         cursor.execute("""
-        INSERT INTO performance_returns (
+        INSERT INTO PerformanceReturns (
             date, 
             one_day_return, 
             one_week_return, 
