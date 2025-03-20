@@ -4,11 +4,20 @@ import pandas as pd
 import yfinance as yf
 from datetime import timedelta
 
+
+'''
+FILE PURPOSE: GOAL IS TO SET UP METRICS AND FILL PRIMARY OUTPUT TABLES 
+Done for all days from start of fund till current 
+Rakes into account active trades made (e.g. for holdings file)
+Run every day (first thing run in github actions) 
+'''
+
 starting_cash = 101644.99
 start_date = '2022-05-01'
 # end_date = '2025-02-02'
 end_date = (pd.Timestamp.now() + timedelta(days=1)).strftime('%Y-%m-%d') # yfinance end_dates are exclusive for download and history functions
 
+# file names as variables 
 trades_file = 'trades.csv'
 prices_file = 'prices.csv'
 dividends_file = 'dividends.csv'
@@ -22,6 +31,7 @@ exchange_rate_table_file = 'exchange_rate_table.csv'
 
 class Portfolio:
     def __init__(self, start_date, end_date, starting_cash, folder_prefix):
+        # initlaize basic information 
         self.start_date = start_date
         self.end_date = end_date
         self.starting_cash = starting_cash
@@ -45,10 +55,13 @@ class Portfolio:
         self.exchange_rates = None
         self.exchange_rate_table = None
 
+        # call valid dates function to get dates that both TSX and American exchanges open 
         self.get_valid_dates()
+        # all tickers invested in from trades csv 
         self.load_trades_data()
 
     def load_exchange_rates(self):
+        # exchange rates from web and shave them for all start and end dates 
         self.exchange_rates = pd.DataFrame(index=self.valid_dates)
 
         exchange_rates = {
@@ -93,6 +106,8 @@ class Portfolio:
         pd.DataFrame(self.dividends).to_csv(os.path.join(self.output_folder, dividends_file), index_label='Date')
 
     def load_holdings_data(self):
+        # function: amount of stocks we are holding on a certain date 
+
         self.holdings = pd.DataFrame(index=self.valid_dates)
         self.cash = pd.DataFrame(index=self.valid_dates)
 
@@ -185,11 +200,14 @@ class Portfolio:
         self.valid_dates = sp500.index.union(tsx.index)
 
 if __name__ == '__main__':
+    # only runs if arguments are at least 2 - need to know where to put input and output data 
     if len(sys.argv) < 2:
         sys.exit("Usage: python3 Portfolio.py <folder_prefix>")
     folder_prefix = sys.argv[1]
+    # initlialze instance of portfolio main function  - all parameters are global variables 
     portfolio = Portfolio(start_date, end_date, starting_cash, folder_prefix)
 
+    # load functions after intial set up - fills all output CSVs 
     portfolio.load_exchange_rates()
     portfolio.load_trades_data()
     portfolio.load_exchange_rate_table()
