@@ -1,28 +1,167 @@
+# [GENERAL CONFIG]
 starting_cash: 1000000
 risk_free_rate: 0.02
 lookback_period: 60
 start_date: 2022-05-01
 
-asset_allocation:
-  equities: [AAPL, GOOG, MSFT]
-  bonds: [T, LQD, AGG.TO]
-
-portfolios:
-  - name: "Growth Portfolio"
+# [EXAMPLE STUFF]
+portfolio: #example - probably different yamls for each portfolio ????
+  - name: "Main Portfolio"
     target_allocation: {equities: 0.8, bonds: 0.2}
     rebalancing_frequency: "monthly"
-  - name: "Income Portfolio"
+  - name: "Test Portfolio"
     target_allocation: {equities: 0.5, bonds: 0.5}
     rebalancing_frequency: "quarterly" # etc.
 
+
+# [SECURITIES]
 securities:
   # NSR removed since null in yfinance
-  [AAPL, ACO-X.TO, AER, AGG, AMAT, AMSF, APO, BLBD, CEG, CG, CSH-UN.TO, DOLE, EA, GSL, HBM.TO, ISRG, L.TO, MA, MP, RSP, SPSB, SPY, TEX, TMUS, VEEV, WFG, WSC, XBB.TO, XIU.TO]
+  
+  # Macro fund
+- ticker: XBB.TO
+  fund: Macro Fund
+  sector: Fixed Income
+  geography: CAN
+- ticker: AGG
+  fund: Macro Fund
+  sector: Fixed Income
+  geography: US
+- ticker: SPY
+  fund: Macro Fund
+  sector: Equity
+  geography: US
+- ticker: SPSB
+  fund: Macro Fund
+  sector: Fixed Income
+  geography: US
 
+# Industrials Fund
+- ticker: ACO-X.TO
+  fund: Industrials Fund
+  sector: Industrials
+  geography: CAN
+- ticker: GSL
+  fund: Industrials Fund
+  sector: Industrials
+  geography: US
+- ticker: TEX
+  fund: Industrials Fund
+  sector: Industrials
+  geography: US
+- ticker: CEG
+  fund: Industrials Fund
+  sector: Utilities
+  geography: US
+- ticker: WSC
+  fund: Industrials Fund
+  sector: Industrials
+  geography: US
+
+# Resources Fund
+- ticker: WFG
+  fund: Resources Fund
+  sector: Materials
+  geography: US
+- ticker: HBM.TO
+  fund: Resources Fund
+  sector: Materials
+  geography: CAN
+- ticker: MP
+  fund: Resources Fund
+  sector: Materials
+  geography: US
+- ticker: DOLE
+  fund: Resources Fund
+  sector: Consumer Staples
+  geography: US
+
+# C&H Fund
+- ticker: CSH-UN.TO
+  fund: C&H Fund
+  sector: Real Estate
+  geography: CAN
+- ticker: L.TO
+  fund: C&H Fund
+  sector: Consumer Discretionary
+  geography: CAN
+- ticker: ISRG
+  fund: C&H Fund
+  sector: Healthcare
+  geography: US
+- ticker: MA
+  fund: C&H Fund
+  sector: Financials
+  geography: US
+- ticker: BLBD
+  fund: C&H Fund
+  sector: Consumer Discretionary
+  geography: US
+
+# Financials Fund
+- ticker: CG
+  fund: Financials Fund
+  sector: Financials
+  geography: US
+- ticker: APO
+  fund: Financials Fund
+  sector: Financials
+  geography: US
+- ticker: AER
+  fund: Financials Fund
+  sector: Financials
+  geography: US
+- ticker: MA
+  fund: Financials Fund
+  sector: Financials
+  geography: US
+- ticker: AMSF
+  fund: Financials Fund
+  sector: Financials
+  geography: US
+
+# TMT Fund
+- ticker: AAPL
+  fund: TMT Fund
+  sector: Technology
+  geography: US
+- ticker: EA
+  fund: TMT Fund
+  sector: Technology
+  geography: US
+- ticker: AMAT
+  fund: TMT Fund
+  sector: Technology
+  geography: US
+- ticker: VEEV
+  fund: TMT Fund
+  sector: Healthcare
+  geography: US
+- ticker: TMUS
+  fund: TMT Fund
+  sector: Communication Services
+  geography: US
+
+  # No longer in portfolio
+- ticker: RSP
+  fund: Macro Fund
+  sector: Equity
+  geography: US
+- ticker: XIU.TO
+  fund: Macro Fund
+  sector: Equity
+  geography: CAN
+
+  # [AAPL, ACO-X.TO, AER, AGG, AMAT, AMSF, APO, BLBD, CEG, CG, CSH-UN.TO, DOLE, EA, GSL, HBM.TO, ISRG, L.TO, MA, MP, RSP, SPSB, SPY, TEX, TMUS, VEEV, WFG, WSC, XBB.TO, XIU.TO]
+
+# [CURRENCIES]
 currencies:
   - currency: USD
     ticker: CAD=X
+  - currency: EUR
+    ticker: EURCAD=X
 
+# [TRANSACTIONS]
 transactions:
   # - type: Buy
   #   date: 2022-05-05
