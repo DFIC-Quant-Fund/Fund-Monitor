@@ -2,11 +2,12 @@ import os
 import sys
 import pandas as pd
 import yfinance as yf
+from datetime import timedelta
 
 starting_cash = 101644.99
 start_date = '2022-05-01'
 # end_date = '2025-02-02'
-end_date = pd.Timestamp.now().strftime('%Y-%m-%d')
+end_date = (pd.Timestamp.now() + timedelta(days=1)).strftime('%Y-%m-%d') # yfinance end_dates are exclusive for download and history functions
 
 trades_file = 'trades.csv'
 prices_file = 'prices.csv'
@@ -160,7 +161,7 @@ class Portfolio:
 
         print()
         print(f"Start Date: {self.start_date}")
-        print(f"End Date: {self.end_date}")
+        print(f"End Date: {(pd.to_datetime(self.end_date) - timedelta(days=1)).strftime('%Y-%m-%d')}")
         print()
         print(f"Starting Cash: {starting_cash:.2f}")
         print()
