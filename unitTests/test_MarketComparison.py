@@ -14,7 +14,6 @@ from performance import PortfolioPerformance
 from performance import RiskMetrics
 
 class TestMarketComparison(unittest.TestCase):
-
     def setUp(self):
         # Set up output as fake (don't need to store anything)
         self.output_folder = "tests/mock_data"  # Assume mock data folder
