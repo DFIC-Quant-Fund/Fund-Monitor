@@ -1,40 +1,40 @@
 Metric,Value
-Total Return including dividends,47.87%
+Total Return including dividends,47.91%
 Daily Average Return,0.0564%
-Annualized Average Return,15.26%
+Annualized Average Return,15.27%
 Daily Variance,0.0067%
 Annualized Variance,1.69%
-Daily Volatility,0.8186%
-Annualized Volatility,13.00%
+Daily Volatility,0.8197%
+Annualized Volatility,13.01%
 Daily Downside Variance,0.0034%
 Annualized Downside Variance,0.86%
-Daily Downside Volatility,0.5836%
-Annualized Downside Volatility,9.26%
+Daily Downside Volatility,0.5855%
+Annualized Downside Volatility,9.29%
 Sharpe Ratio (Annualized),0.76
 Sortino Ratio (Annualized),1.06
-Maximum Drawdown,-5.10%
+Maximum Drawdown,-5.18%
 Custom Benchmark Variance (Daily),0.0036%
 SPY Benchmark Variance (Daily),0.0118%
 Custom Benchmark Variance (Annualized),0.91%
 SPY Benchmark Variance (Annualized),2.97%
-Custom Benchmark Volatility (Daily),0.6015%
+Custom Benchmark Volatility (Daily),0.6012%
 SPY Benchmark Volatility (Daily),1.0859%
-Custom Benchmark Volatility (Annualized),9.55%
+Custom Benchmark Volatility (Annualized),9.54%
 SPY Benchmark Volatility (Annualized),17.24%
-Custom Benchmark Average Return (Daily),0.0490%
+Custom Benchmark Average Return (Daily),0.0492%
 SPY Benchmark Average Return (Daily),0.0728%
-Custom Benchmark Average Return (Annualized),13.15%
+Custom Benchmark Average Return (Annualized),13.19%
 SPY Benchmark Average Return (Annualized),20.12%
-Portfolio Beta,1.2325
-Portfolio Alpha against custom benchmark,0.0624%
-Portfolio Alpha against SPY benchmark,-8.5223%
-Portfolio Risk Premium,10.90%
-Risk Adjusted Return (three month treasury rate),12.37%
+Portfolio Beta,1.2334
+Portfolio Alpha against custom benchmark,0.0149%
+Portfolio Alpha against SPY benchmark,-8.5245%
+Portfolio Risk Premium,10.91%
+Risk Adjusted Return (three month treasury rate),12.36%
 Treynor Ratio (three month treasury rate),0.09
 --- Portfolio Returns ---
 1 Day Return,1.00%
 1 Week Return,1.48%
 1 Month Return,-3.67%
 Year-to-Date Return,0.46%
-1 Year Return,19.91%
-Inception,47.87%
+1 Year Return,19.98%
+Inception,47.91%
