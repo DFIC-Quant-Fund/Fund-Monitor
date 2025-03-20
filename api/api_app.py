@@ -90,7 +90,8 @@ def get_holdings_data():
         cursor.execute("""
         SELECT * 
         FROM Holdings
-        WHERE trading_date = %s;
+        WHERE trading_date = %s
+            and portfolio = 'core';
         """, (end_date,))
 
         results = cursor.fetchall()
@@ -129,6 +130,36 @@ def get_currency_data():
         return jsonify({
             "success": True,
             "data": result
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+    
+@app.route('/api/benchmark', methods=['GET'])
+def get_benchmark_data():
+    try:
+        end_date = request.args.get('date', None) or pd.Timestamp.now().strftime('%Y-%m-%d')
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+        SELECT * 
+        FROM Holdings
+        WHERE trading_date = %s
+            and portfolio = 'benchmark';
+        """, (end_date,))
+
+        results = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "data": results
         })
 
     except Exception as e:
