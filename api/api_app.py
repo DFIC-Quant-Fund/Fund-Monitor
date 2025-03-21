@@ -136,5 +136,18 @@ def get_currency_data():
             "error": str(e)
         }), 500
 
+@app.route('/api/trade', methods=['GET'])
+def get_trade_explain():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM fund_input.trades")
+    result = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify({
+        "success": True,
+        "data": result
+    })
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5555, debug=True)
