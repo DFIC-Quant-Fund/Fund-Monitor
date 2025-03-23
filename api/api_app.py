@@ -82,6 +82,7 @@ def get_performance_data():
 def get_holdings_data():
     try:
         end_date = request.args.get('date', None) or pd.Timestamp.now().strftime('%Y-%m-%d')
+        portfolio = request.args.get('portfolio', None) or 'core'
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -89,8 +90,9 @@ def get_holdings_data():
         cursor.execute("""
         SELECT * 
         FROM Holdings
-        WHERE trading_date = %s;
-        """, (end_date,))
+        WHERE trading_date = %s
+            and portfolio = %s;
+        """, (end_date, portfolio))
 
         results = cursor.fetchall()
         cursor.close()
