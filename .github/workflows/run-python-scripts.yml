@@ -45,4 +45,6 @@ jobs:
             uses: stefanzweifel/git-auto-commit-action@v5
             with:
               file_pattern: 'data/fund/output/**'
-              commit_message: "Actions daily upload data for ${{ steps.get_current_date.outputs.date }}"
+              commit_message: "Actions daily upload data for ${{ steps.get_previous_date.outputs.date }}"
+          - name: Run tests
+            run: python -m unittest discover tests
