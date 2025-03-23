@@ -2,7 +2,7 @@ name: Run Python Scripts
 
 on:
   schedule:
-    - cron: '0 11 * * *'
+    - cron: '0 22 * * 1-5'  # Runs at 10:00 PM UTC Monday to Friday (5:00 PM EST or 6:00 PM EDT)
   pull_request:
   workflow_dispatch:
 
@@ -25,9 +25,9 @@ jobs:
                 pip install -r requirements.txt
           - name: Run tests
             run: python -m unittest discover tests
-          - name: Get Previous Date
-            id: get_previous_date
-            run: echo "date=$(date --date="yesterday" +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          - name: Get Current Date
+            id: get_current_date
+            run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           - name: Run Portfolio.py Script
             run: python Portfolio.py fund
           - name: Run PerformanceTracker.py Script
@@ -41,7 +41,7 @@ jobs:
               DB_USER: ${{ secrets.DB_USER }}
               DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
               DB_PORT: ${{ secrets.DB_PORT }}
-            run: python Performance.py fund ${{ steps.get_previous_date.outputs.date }}
+            run: python Performance.py fund ${{ steps.get_current_date.outputs.date }}
           - name: Upload Output Files to Main Branch
             if: ${{ github.ref == 'refs/heads/main' }}
             uses: stefanzweifel/git-auto-commit-action@v5
