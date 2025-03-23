@@ -26,8 +26,6 @@ jobs:
           - name: Get Previous Date
             id: get_previous_date
             run: echo "date=$(date --date="yesterday" +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-          - name: Run tests
-            run: python -m unittest discover tests
           - name: Run Portfolio.py Script
             run: python Portfolio.py fund
           - name: Run PerformanceTracker.py Script
@@ -48,3 +46,5 @@ jobs:
             with:
               file_pattern: 'data/fund/output/**'
               commit_message: "Actions daily upload data for ${{ steps.get_previous_date.outputs.date }}"
+          - name: Run tests
+            run: python -m unittest discover tests
