@@ -149,6 +149,7 @@ def main():
 
     end_date = datetime.now() - timedelta(days=1)
     start_date = end_date - timedelta(days=lookback_period_days)
+    # instance of frontieranalysis class - this intializes all data so other functions called work 
     analyzer = FrontierAnalysis(financial_fund, start_date, end_date, risk_free_rate, num_simulations)
     analyzer.get_data()
     #analyzer.normalized_return_graph()
@@ -157,6 +158,7 @@ def main():
     analyzer.printing_results()
     analyzer.efficient_frontier_graph()
 
+# ensures command line verficiation before calling main function 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         sys.exit("Usage: python3 PerformanceTracker.py <folder_prefix>")
