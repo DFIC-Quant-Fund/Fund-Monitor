@@ -23,7 +23,7 @@ jobs:
             run: |
                 python3 -m pip install --upgrade pip
                 pip install -r requirements.txt
-          - name: Run tests
+          - name: Run Unit Tests
             run: python -m unittest discover tests
           - name: Get Current Date
             id: get_current_date
