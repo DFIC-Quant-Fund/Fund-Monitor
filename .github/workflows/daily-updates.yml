@@ -22,9 +22,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Drop, Create, and Backfill Database Tables
+        working-directory: notebooks
         env:
           DB_HOSTNAME: ${{ secrets.DB_HOSTNAME }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_PORT: ${{ secrets.DB_PORT }}
-        run: python ./notebooks/CreateDBs.py
+        run: python CreateDBs.py
