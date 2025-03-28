@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask import Flask, jsonify, make_response, request
 from flask_cors import CORS
 import mysql.connector
@@ -5,7 +6,7 @@ import os
 from dotenv import load_dotenv
 import pandas as pd
 from io import StringIO
-
+import yaml
 
 load_dotenv()
 
@@ -136,18 +137,60 @@ def get_currency_data():
             "error": str(e)
         }), 500
 
-@app.route('/api/trade', methods=['GET'])
-def get_trade_explain():
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM fund_input.trades")
-    result = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return jsonify({
-        "success": True,
-        "data": result
-    })
+@app.route('/api/get-trades', methods=['GET', 'POST'])
+def get_trade():
+    if request.method == 'GET':
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM fund_input.trades")
+            result = cursor.fetchall()
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+        return jsonify({
+            "success": True,
+            "data": result}), 200
+
+    elif request.method == 'POST':
+
+        try:
+            data = request.get_json()
+            if not request.is_json:
+                raise Exception("Missing JSON in POST request")
+            required_fields = ['ticker', 'type', 'date', 'quantity', 'price', 'currency']
+            missing_fields = [field for field in required_fields if field not in data]
+            if missing_fields:
+                raise Exception("Missing fields: {}".format(missing_fields))
+
+            formatted_date = datetime.strptime(data['date'], "%Y-%m-%d").date()
+            new_transaction = {
+                "ticker": data['ticker'],
+                "type": data['type'],
+                "date": formatted_date,
+                "quantity": float(data['quantity']),
+                "price": float(data['price']),
+                "currency": data['currency']
+            }
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+        try:
+            with open('config_testing.yaml', 'r') as file:
+                yaml_data = yaml.safe_load(file) or {}
+                yaml_data['transactions'].append(new_transaction)
+        except Exception as e:
+            return jsonify({"success": False, "error": f"Error reading YAML file: {str(e)}"}), 500
+
+        try:
+            with open('config_testing.yaml', 'w') as file:
+                yaml.dump(yaml_data, file, sort_keys=False)
+        except Exception as e:
+            return jsonify({"success": False, "error": f"Error writing YAML file: {str(e)}"}), 500
+
+        return jsonify({"success": True}), 201
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5555, debug=True)
