@@ -2,7 +2,7 @@ name: Run Python Scripts
 
 on:
   schedule:
-    - cron: '0 22 * * 1-5'  # Runs at 10:00 PM UTC Monday to Friday
+    - cron: '0 22 * * 1-5'  # Runs at 10:00 PM UTC Monday to Friday (5:00 PM EST or 6:00 PM EDT)
   pull_request:
   workflow_dispatch:
     inputs:
