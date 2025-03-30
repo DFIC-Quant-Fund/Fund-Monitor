@@ -1,6 +1,21 @@
 portfolio:
   name: "core"
 
+# [FUNDS]
+funds:
+  - name: Macro Fund
+    thesis: We are a very good fund, make lots of money, and are very good at it.
+  - name: Industrials Fund
+    thesis: We are a very good fund, make lots of money, and are very good at it.
+  - name: Resources Fund
+    thesis: We are a very good fund, make lots of money, and are very good at it.
+  - name: C&H Fund
+    thesis: We are a very good fund, make lots of money, and are very good at it.
+  - name: TMT Fund
+    thesis: We are a very good fund, make lots of money, and are very good at it.
+  - name: Financials Fund
+    thesis: We are a very good fund, make lots of money, and are very good at it.
+
 # [SECURITIES]
 securities:
   # NSR removed since null in yfinance
