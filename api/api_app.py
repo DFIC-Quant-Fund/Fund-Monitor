@@ -138,5 +138,17 @@ def get_currency_data():
             "error": str(e)
         }), 500
 
+
+# Pulling fund thesis
+
+# with open("../portfolios/dfic_core.yaml", "r") as f:
+#     config = yaml.safe_load(f)
+
+#     funds = config['funds']
+#     for fund in funds:
+#         print(fund['thesis'])
+
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5555, debug=True)
