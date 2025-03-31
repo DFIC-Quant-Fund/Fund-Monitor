@@ -153,7 +153,7 @@ def get_trade():
                     SELECT transaction_id, s.name, t.date, t.ticker, s.type, t.action, t.shares, t.price, t.currency, t.portfolio, s.fund
                     FROM Fund.Transactions t
                     LEFT JOIN Fund.Securities s ON t.ticker = s.ticker
-                    WHERE t.portfolio = %s
+                    WHERE t.portfolio = %s AND s.fund != 'Benchmark'
                     ORDER BY t.transaction_id desc
                     """, (portfolio,))
             else:
@@ -161,6 +161,7 @@ def get_trade():
                     SELECT transaction_id, s.name, t.date, t.ticker, s.type, t.action, t.shares, t.price, t.currency, t.portfolio, s.fund
                     FROM Fund.Transactions t
                     LEFT JOIN Fund.Securities s ON t.ticker = s.ticker
+                    WHERE s.fund != 'Benchmark'
                     ORDER BY t.transaction_id desc
                     """)
             result = cursor.fetchall()
