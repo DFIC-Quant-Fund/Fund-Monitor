@@ -150,7 +150,7 @@ def get_trade():
                 portfolio = None
             if portfolio is not None:
                 cursor.execute("""
-                    SELECT transaction_id, s.name, t.ticker, s.type, t.action, t.shares, t.price, t.currency, t.portfolio, s.fund
+                    SELECT transaction_id, s.name, t.date, t.ticker, s.type, t.action, t.shares, t.price, t.currency, t.portfolio, s.fund
                     FROM Fund.Transactions t
                     LEFT JOIN Fund.Securities s ON t.ticker = s.ticker
                     WHERE t.portfolio = %s
@@ -158,7 +158,7 @@ def get_trade():
                     """, (portfolio,))
             else:
                 cursor.execute("""
-                    SELECT transaction_id, s.name, t.ticker, s.type, t.action, t.shares, t.price, t.currency, t.portfolio, s.fund
+                    SELECT transaction_id, s.name, t.date, t.ticker, s.type, t.action, t.shares, t.price, t.currency, t.portfolio, s.fund
                     FROM Fund.Transactions t
                     LEFT JOIN Fund.Securities s ON t.ticker = s.ticker
                     ORDER BY t.transaction_id desc
