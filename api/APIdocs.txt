@@ -36,3 +36,4 @@ Pushing updates to ec2:
     sudo systemctl restart fund-monitor-api
 
     sudo systemctl status fund-monitor-api
+
