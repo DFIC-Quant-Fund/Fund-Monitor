@@ -262,5 +262,42 @@ def get_fund_highlights():
             "error": str(e)
         }), 500
 
+# Pulling fund transactions - table
+@app.route('/api/transactions', methods=['GET'])
+def get_trade():
+    if request.method == 'GET':
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            # Get param arguments from request and filter result according to portfolio
+            portfolio = request.args.get('portfolio')
+            if portfolio not in ('core', 'benchmark'):
+                portfolio = None
+            if portfolio is not None:
+                cursor.execute("""
+                    SELECT transaction_id, s.name, t.date, t.ticker, s.type, t.action, t.shares, t.price, t.currency, t.portfolio, s.fund
+                    FROM Fund.Transactions t
+                    LEFT JOIN Fund.Securities s ON t.ticker = s.ticker
+                    WHERE t.portfolio = %s AND s.fund != 'Benchmark'
+                    ORDER BY t.transaction_id desc
+                    """, (portfolio,))
+            else:
+                cursor.execute("""
+                    SELECT transaction_id, s.name, t.date, t.ticker, s.type, t.action, t.shares, t.price, t.currency, t.portfolio, s.fund
+                    FROM Fund.Transactions t
+                    LEFT JOIN Fund.Securities s ON t.ticker = s.ticker
+                    WHERE s.fund != 'Benchmark'
+                    ORDER BY t.transaction_id desc
+                    """)
+            result = cursor.fetchall()
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+        return jsonify({
+            "success": True,
+            "data": result}), 200
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5555, debug=True)
