@@ -484,6 +484,67 @@ def drop_prices_table():
     print("Prices table dropped")
 
 # %% [markdown]
+# # Dividends (WIP)
+
+# %%
+def create_dividends_table():
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS Dividends (
+        ticker VARCHAR(10) NOT NULL,
+        date DATE NOT NULL,
+        portfolio VARCHAR(50) NOT NULL,
+        amount DECIMAL(20,10) NOT NULL CHECK (amount > 0),
+        currency CHAR(3) NOT NULL,
+        PRIMARY KEY (ticker, date, portfolio),
+        FOREIGN KEY (ticker, portfolio) REFERENCES Securities(ticker, portfolio)
+    );
+    """)
+    connection.commit()
+    print("Dividends table created")
+
+# %%
+# TODO: Only backfill dividends for dates where the security is in the portfolio (currently backfills entire history)
+
+def backfill_dividends_table():
+    cursor.execute("""
+        SELECT DISTINCT ticker, portfolio
+        FROM Securities
+    """)
+    security_portfolios = cursor.fetchall()
+
+    print("Backfilling dividends for:", end=' ')
+    for ticker, portfolio in security_portfolios:
+        print(f"{ticker} ({portfolio})", end=' ', flush=True)
+        
+        # Get dividend data
+        data = yf.Ticker(ticker)
+        currency = yf.Ticker(ticker).info['currency']
+        dividends = data.dividends
+        
+        # Prepare dividend data
+        dividend_data = [
+            (ticker, date.date(), portfolio, amount, currency)
+            for date, amount in dividends.items()
+            if amount > 0
+        ]
+        
+        # Insert with NULL handling
+        cursor.executemany("""
+            INSERT INTO Dividends (ticker, date, portfolio, amount, currency)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                amount = VALUES(amount)
+        """, dividend_data)
+        
+        connection.commit()
+
+# %%
+def drop_dividends_table():
+    cursor.execute("DROP TABLE IF EXISTS Dividends")
+    connection.commit()
+    print("Dividends table dropped")
+
+# %% [markdown]
 # # Generate Holdings Table
 
 # %%
@@ -500,6 +561,8 @@ def create_holdings_view():
         s.sector,
         s.fund,
         s.currency AS security_currency,
+
+        -- Shares held calculation
         (
             SELECT SUM(
                 CASE 
@@ -512,7 +575,10 @@ def create_holdings_view():
                 AND t.portfolio = p.portfolio
                 AND t.date <= p.trading_date
         ) AS shares_held,
+
         p.price,
+
+        -- Market value calculation
         (
             (
                 SELECT SUM(
@@ -526,12 +592,82 @@ def create_holdings_view():
                     AND t.portfolio = p.portfolio
                     AND t.date <= p.trading_date
             ) * p.price
-        ) AS market_value
+        ) AS market_value,
+
+        -- Dividend market value calculation (only when shares were held)
+        (
+            SELECT COALESCE(SUM(sub.amount * sub.shares), 0)
+            FROM (
+                SELECT
+                    d1.amount,
+                    (
+                        SELECT SUM(
+                            CASE 
+                                WHEN t.action = 'BUY' THEN t.shares 
+                                ELSE -t.shares 
+                            END
+                        )
+                        FROM Transactions t
+                        WHERE t.ticker = d1.ticker
+                            AND t.portfolio = d1.portfolio
+                            AND t.date <= d1.date
+                    ) AS shares
+                FROM Dividends d1
+                WHERE d1.ticker = p.ticker
+                    AND d1.portfolio = p.portfolio
+                    AND d1.date <= p.trading_date
+            ) AS sub
+            WHERE sub.shares > 0
+        ) AS dividend_market_value,
+
+        -- Total market value = market + dividend
+        (
+            (
+                (
+                    SELECT SUM(
+                        CASE 
+                            WHEN t.action = 'BUY' THEN t.shares 
+                            ELSE -t.shares 
+                        END
+                    )
+                    FROM Transactions t
+                    WHERE t.ticker = p.ticker 
+                        AND t.portfolio = p.portfolio
+                        AND t.date <= p.trading_date
+                ) * p.price
+            ) +
+            (
+                SELECT COALESCE(SUM(sub.amount * sub.shares), 0)
+                FROM (
+                    SELECT
+                        d1.amount,
+                        (
+                            SELECT SUM(
+                                CASE 
+                                    WHEN t.action = 'BUY' THEN t.shares 
+                                    ELSE -t.shares 
+                                END
+                            )
+                            FROM Transactions t
+                            WHERE t.ticker = d1.ticker
+                                AND t.portfolio = d1.portfolio
+                                AND t.date <= d1.date
+                        ) AS shares
+                    FROM Dividends d1
+                    WHERE d1.ticker = p.ticker
+                        AND d1.portfolio = p.portfolio
+                        AND d1.date <= p.trading_date
+                ) AS sub
+                WHERE sub.shares > 0
+            )
+        ) AS total_market_value
+
     FROM Prices p
     JOIN Securities s ON s.ticker = p.ticker AND s.portfolio = p.portfolio;
     """)
     connection.commit()
     print("Holdings view created")
+
 
 # %%
 def drop_holdings_view():
@@ -546,6 +682,7 @@ def drop_holdings_view():
 # %%
 drop_prices_table()
 drop_transactions_table()
+drop_dividends_table()
 drop_securities_table()
 drop_currencies_table()
 drop_trading_calendar_table()
@@ -557,6 +694,7 @@ create_transactions_table()
 create_currencies_table()
 create_trading_calendar_table()
 create_prices_table()
+create_dividends_table()
 
 # Import config
 with open("../config.yaml", "r") as f:
@@ -593,6 +731,8 @@ backfill_trading_calendar_table()
 
 backfill_prices_table()
 frontfill_prices_table()
+
+backfill_dividends_table()
 
 create_holdings_view()
 
