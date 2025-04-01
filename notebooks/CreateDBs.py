@@ -484,7 +484,7 @@ def drop_prices_table():
     print("Prices table dropped")
 
 # %% [markdown]
-# # Dividends (WIP)
+# # Dividends
 
 # %%
 def create_dividends_table():
