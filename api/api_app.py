@@ -8,7 +8,6 @@ from io import StringIO
 
 import yaml
 
-
 load_dotenv()
 
 app = Flask(__name__)
