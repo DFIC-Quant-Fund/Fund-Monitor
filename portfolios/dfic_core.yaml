@@ -203,9 +203,10 @@ transactions:
   - type: Buy
     date: 2022-05-09
     ticker: AGG
-    price: 132.41
+    # price: 132.41  #price in CAD
+    price: 102.50
     quantity: 226
-    currency: CAD
+    currency: USD
 
   - type: Buy
     date: 2022-05-09
@@ -224,9 +225,10 @@ transactions:
   - type: Sell
     date: 2023-04-27
     ticker: AGG
-    price: 134.34
+    # price: 134.34 # CAD
+    price: 98.57
     quantity: 226
-    currency: CAD
+    currency: USD
 
   - type: Buy
     date: 2023-04-27
