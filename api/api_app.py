@@ -174,5 +174,287 @@ def get_trade():
             "success": True,
             "data": result}), 200
 
+@app.route('/api/transactions/purchase-prices', methods=['GET'])
+def get_purchase_prices():
+    try:
+        portfolio = request.args.get('portfolio')
+        print(f"\n[DEBUG] /api/transactions/purchase-prices called with portfolio: {portfolio}")
+        
+        if portfolio not in ('core', 'benchmark'):
+            portfolio = None
+            print("[DEBUG] No valid portfolio specified, will fetch all portfolios")
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # First, let's check what transactions we have
+        cursor.execute("""
+            SELECT ticker, date, shares, price, currency, portfolio
+            FROM Transactions
+            WHERE action = 'BUY'
+            ORDER BY ticker, date
+        """)
+        transactions = cursor.fetchall()
+        print(f"\n[DEBUG] All BUY transactions found: {len(transactions)}")
+        for t in transactions:
+            print(f"[DEBUG] Transaction: {t['ticker']} - {t['shares']} shares @ {t['price']} {t['currency']} on {t['date']}")
+
+        # Let's also check the Securities table
+        cursor.execute("""
+            SELECT ticker, name, portfolio, currency
+            FROM Securities
+            WHERE fund != 'Benchmark'
+            ORDER BY ticker
+        """)
+        securities = cursor.fetchall()
+        print(f"\n[DEBUG] Securities found: {len(securities)}")
+        for s in securities:
+            print(f"[DEBUG] Security: {s['ticker']} ({s['name']}) - {s['portfolio']} - {s['currency']}")
+
+        query = """
+            SELECT 
+                s.ticker,
+                s.name,
+                s.type,
+                s.geography,
+                s.sector,
+                s.fund,
+                s.currency,
+                SUM(t.shares * t.price) / SUM(t.shares) as avg_purchase_price,
+                SUM(t.shares) as total_shares,
+                COUNT(DISTINCT t.date) as number_of_purchases
+            FROM Securities s
+            INNER JOIN Transactions t ON s.ticker = t.ticker 
+                AND s.portfolio = t.portfolio
+                AND t.action = 'BUY'
+            WHERE s.fund != 'Benchmark'
+        """
+        
+        if portfolio is not None:
+            query += " AND s.portfolio = %s"
+            print(f"\n[DEBUG] Executing query with portfolio filter: {portfolio}")
+            cursor.execute(query, (portfolio,))
+        else:
+            print("\n[DEBUG] Executing query without portfolio filter")
+            cursor.execute(query)
+
+        results = cursor.fetchall()
+        print(f"\n[DEBUG] Found {len(results)} securities with purchase prices")
+        if len(results) > 0:
+            print("\n[DEBUG] Purchase Price Results:")
+            for r in results:
+                print(f"[DEBUG] {r['ticker']}: {r['total_shares']} shares @ {r['avg_purchase_price']:.2f} {r['currency']} ({r['number_of_purchases']} purchases)")
+        
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "data": results
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Error in get_purchase_prices: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# @app.route('/api/holdings/pnl', methods=['GET'])
+# def get_holdings_pnl():
+#     try:
+#         end_date = request.args.get('date', None) or pd.Timestamp.now().strftime('%Y-%m-%d')
+#         portfolio = request.args.get('portfolio', None) or 'core'
+#         print(f"\n[DEBUG] /api/holdings/pnl called with date: {end_date}, portfolio: {portfolio}")
+
+#         conn = get_db_connection()
+#         cursor = conn.cursor(dictionary=True)
+
+#         # First check if we have data for the requested date
+#         cursor.execute("""
+#             SELECT COUNT(*) as count 
+#             FROM Holdings 
+#             WHERE trading_date = %s
+#         """, (end_date,))
+#         date_check = cursor.fetchone()
+#         print(f"[DEBUG] Found {date_check['count']} holdings records for date {end_date}")
+
+#         # Check if we have transactions data
+#         cursor.execute("""
+#             SELECT COUNT(*) as count 
+#             FROM Transactions 
+#             WHERE action = 'BUY'
+#         """)
+#         transactions_check = cursor.fetchone()
+#         print(f"[DEBUG] Found {transactions_check['count']} BUY transactions")
+
+#         cursor.execute("""
+#             WITH PurchaseCosts AS (
+#                 SELECT 
+#                     t.ticker,
+#                     t.portfolio,
+#                     SUM(t.shares * t.price) as total_purchase_cost,
+#                     SUM(t.shares) as total_shares
+#                 FROM Transactions t
+#                 WHERE t.action = 'BUY'
+#                 GROUP BY t.ticker, t.portfolio
+#             ),
+#             CurrentHoldings AS (
+#                 SELECT 
+#                     h.ticker,
+#                     h.portfolio,
+#                     h.shares_held,
+#                     h.market_value,
+#                     h.security_currency as currency
+#                 FROM Holdings h
+#                 WHERE h.trading_date = %s
+#             )
+#             SELECT 
+#                 ch.ticker,
+#                 s.name,
+#                 s.type,
+#                 s.geography,
+#                 s.sector,
+#                 s.fund,
+#                 ch.currency,
+#                 ch.shares_held,
+#                 ch.market_value,
+#                 pc.total_purchase_cost,
+#                 (ch.market_value - pc.total_purchase_cost) as pnl,
+#                 ((ch.market_value - pc.total_purchase_cost) / pc.total_purchase_cost * 100) as pnl_percentage
+#             FROM CurrentHoldings ch
+#             JOIN Securities s ON ch.ticker = s.ticker AND ch.portfolio = s.portfolio
+#             JOIN PurchaseCosts pc ON ch.ticker = pc.ticker AND ch.portfolio = pc.portfolio
+#             WHERE ch.portfolio = %s
+#                 AND s.fund != 'Benchmark'
+#                 AND ch.shares_held > 0
+#             ORDER BY ch.ticker
+#         """, (end_date, portfolio))
+
+#         results = cursor.fetchall()
+#         print(f"[DEBUG] Found {len(results)} securities with PnL data")
+#         if len(results) > 0:
+#             print(f"[DEBUG] Sample result: {results[0]}")
+#             print(f"[DEBUG] Total PnL: {sum(r['pnl'] for r in results):.2f}")
+#             print(f"[DEBUG] Average PnL %: {sum(r['pnl_percentage'] for r in results) / len(results):.2f}%")
+        
+#         cursor.close()
+#         conn.close()
+
+#         return jsonify({
+#             "success": True,
+#             "data": results
+#         })
+
+#     except Exception as e:
+#         print(f"[ERROR] Error in get_holdings_pnl: {str(e)}")
+#         return jsonify({
+#             "success": False,
+#             "error": str(e)
+#         }), 500
+
+@app.route('/api/holdings/pnl', methods=['GET'])
+def get_position_details():
+    try:
+        end_date = request.args.get('date', None) or pd.Timestamp.now().strftime('%Y-%m-%d')
+        portfolio = request.args.get('portfolio', None) or 'core'
+        print(f"\n[DEBUG] /api/holdings/pnl called with date: {end_date}, portfolio: {portfolio}")
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            WITH PurchaseCosts AS (
+                SELECT 
+                    t.ticker,
+                    t.portfolio,
+                    SUM(t.shares * t.price) as total_purchase_cost,
+                    SUM(t.shares) as total_shares,
+                    COUNT(DISTINCT t.date) as number_of_purchases
+                FROM Transactions t
+                WHERE t.action = 'BUY'
+                GROUP BY t.ticker, t.portfolio
+            ),
+            CurrentHoldings AS (
+                SELECT 
+                    h.ticker,
+                    h.portfolio,
+                    h.shares_held,
+                    h.market_value,
+                    h.security_currency as currency
+                FROM Holdings h
+                WHERE h.trading_date = %s
+            )
+            SELECT 
+                ch.ticker,
+                s.name,
+                s.type,
+                s.geography,
+                s.sector,
+                s.fund,
+                ch.currency,
+                ch.shares_held,
+                ch.market_value,
+                pc.total_purchase_cost,
+                pc.total_shares as total_shares_purchased,
+                pc.number_of_purchases,
+                (pc.total_purchase_cost / pc.total_shares) as average_purchase_price,
+                (pc.total_purchase_cost / pc.total_shares * ch.shares_held) as book_value,
+                (ch.market_value - pc.total_purchase_cost) as pnl,
+                ((ch.market_value - pc.total_purchase_cost) / pc.total_purchase_cost * 100) as pnl_percentage
+            FROM CurrentHoldings ch
+            JOIN Securities s ON ch.ticker = s.ticker AND ch.portfolio = s.portfolio
+            JOIN PurchaseCosts pc ON ch.ticker = pc.ticker AND ch.portfolio = pc.portfolio
+            WHERE ch.portfolio = %s
+                AND s.fund != 'Benchmark'
+                AND ch.shares_held > 0
+            ORDER BY ch.ticker
+        """, (end_date, portfolio))
+
+        results = cursor.fetchall()
+        print(f"\n[DEBUG] Found {len(results)} positions")
+        if len(results) > 0:
+            print("\n[DEBUG] Example Response Format:")
+            example = results[0]
+            print("""
+{
+    "success": true,
+    "data": [
+        {
+            "ticker": "AAPL",
+            "name": "Apple Inc",
+            "type": "Stock",
+            "geography": "US",
+            "sector": "Technology",
+            "fund": "Core",
+            "currency": "USD",
+            "shares_held": 4,
+            "market_value": 661.56,
+            "total_purchase_cost": 661.56,
+            "total_shares_purchased": 4,
+            "number_of_purchases": 1,
+            "average_purchase_price": 165.39,
+            "book_value": 661.56,
+            "pnl": 0.00,
+            "pnl_percentage": 0.00
+        }
+    ]
+}""")
+        
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "data": results
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Error in get_position_details: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5555, debug=True)
