@@ -1,6 +1,21 @@
 portfolio:
   name: "core"
 
+# [FUNDS]
+funds:
+  - name: Macro Fund
+    thesis: We generate alpha primarily through strategic duration positioning, while also capitalizing on short-term macro opportunities in commodities.
+  - name: Industrials Fund
+    thesis: We invest in high-quality industrial companies with strong competitive advantages, stable cash flows, and attractive valuations. Our strategy focuses on businesses benefiting from strong economic MOATS and long-term trends aiming to drive value creation for the fund.
+  - name: Resources Fund
+    thesis: We seek to invest in high-quality resource companies with strong fundamentals that are trading at a discount to intrinsic value. Our focus is on long-term value creation through disciplined capital allocation in undervalued sectors of the natural resources sector.
+  - name: C&H Fund
+    thesis: We primarily invest in high-quality Consumer and Healthcare companies with durable growth and strong fundamentals, aiming to generate consistent alpha through diversified, research-driven stock selection.
+  - name: TMT Fund
+    thesis: We aim to invest in businesses with strong competitive advantages in their niche and established market leadership. Companies we select display high growth potential and benefit from long-term industry trends that will continue to drive value.
+  - name: Financials Fund
+    thesis: We are a very good fund, make lots of money, and are very good at it.
+
 # [SECURITIES]
 securities:
   # NSR removed since null in yfinance
