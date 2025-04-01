@@ -677,6 +677,172 @@ def drop_holdings_view():
 
 
 # %% [markdown]
+# # Materialized Holdings (not view)
+
+# %%
+def create_materialized_holdings():
+    # First, create the table with the same structure as our view
+    cursor.execute("""
+    CREATE TABLE MaterializedHoldings (
+        trading_date DATE,
+        ticker VARCHAR(10),
+        portfolio VARCHAR(50),
+        name VARCHAR(100),
+        type VARCHAR(20),
+        geography VARCHAR(50),
+        sector VARCHAR(50),
+        fund VARCHAR(50),
+        security_currency CHAR(3),
+        shares_held INTEGER,
+        price DECIMAL(20,10),
+        market_value DECIMAL(20,10),
+        dividend_market_value DECIMAL(20,10),
+        total_market_value DECIMAL(20,10),
+        PRIMARY KEY (trading_date, ticker, portfolio)
+    )
+    """)
+    connection.commit()
+    print("Materialized Holdings table created")
+
+# %%
+def refresh_materialized_holdings():
+    try:
+        # Start transaction
+        cursor.execute("START TRANSACTION")
+        
+        # Truncate the existing data
+        cursor.execute("TRUNCATE TABLE MaterializedHoldings")
+        
+        # Insert fresh data
+        cursor.execute("""
+        INSERT INTO MaterializedHoldings
+        SELECT
+            p.trading_date,
+            p.ticker,
+            p.portfolio,
+            s.name,
+            s.type,
+            s.geography,
+            s.sector,
+            s.fund,
+            s.currency AS security_currency,
+            (
+                SELECT SUM(
+                    CASE 
+                        WHEN t.action = 'BUY' THEN t.shares 
+                        ELSE -t.shares 
+                    END
+                )
+                FROM Transactions t
+                WHERE t.ticker = p.ticker 
+                    AND t.portfolio = p.portfolio
+                    AND t.date <= p.trading_date
+            ) AS shares_held,
+            p.price,
+            (
+                (
+                    SELECT SUM(
+                        CASE 
+                            WHEN t.action = 'BUY' THEN t.shares 
+                            ELSE -t.shares 
+                        END
+                    )
+                    FROM Transactions t
+                    WHERE t.ticker = p.ticker 
+                        AND t.portfolio = p.portfolio
+                        AND t.date <= p.trading_date
+                ) * p.price
+            ) AS market_value,
+            (
+                SELECT COALESCE(SUM(sub.amount * sub.shares), 0)
+                FROM (
+                    SELECT
+                        d1.amount,
+                        (
+                            SELECT SUM(
+                                CASE 
+                                    WHEN t.action = 'BUY' THEN t.shares 
+                                    ELSE -t.shares 
+                                END
+                            )
+                            FROM Transactions t
+                            WHERE t.ticker = d1.ticker
+                                AND t.portfolio = d1.portfolio
+                                AND t.date <= d1.date
+                        ) AS shares
+                    FROM Dividends d1
+                    WHERE d1.ticker = p.ticker
+                        AND d1.portfolio = p.portfolio
+                        AND d1.date <= p.trading_date
+                ) AS sub
+                WHERE sub.shares > 0
+            ) AS dividend_market_value,
+            (
+                (
+                    (
+                        SELECT SUM(
+                            CASE 
+                                WHEN t.action = 'BUY' THEN t.shares 
+                                ELSE -t.shares 
+                            END
+                        )
+                        FROM Transactions t
+                        WHERE t.ticker = p.ticker 
+                            AND t.portfolio = p.portfolio
+                            AND t.date <= p.trading_date
+                    ) * p.price
+                ) +
+                (
+                    SELECT COALESCE(SUM(sub.amount * sub.shares), 0)
+                    FROM (
+                        SELECT
+                            d1.amount,
+                            (
+                                SELECT SUM(
+                                    CASE 
+                                        WHEN t.action = 'BUY' THEN t.shares 
+                                        ELSE -t.shares 
+                                    END
+                                )
+                                FROM Transactions t
+                                WHERE t.ticker = d1.ticker
+                                    AND t.portfolio = d1.portfolio
+                                    AND t.date <= d1.date
+                            ) AS shares
+                        FROM Dividends d1
+                        WHERE d1.ticker = p.ticker
+                            AND d1.portfolio = p.portfolio
+                            AND d1.date <= p.trading_date
+                    ) AS sub
+                    WHERE sub.shares > 0
+                )
+            ) AS total_market_value
+        FROM Prices p
+        JOIN Securities s ON s.ticker = p.ticker AND s.portfolio = p.portfolio
+        """)
+        
+        # Create indexes for better query performance
+        # cursor.execute("""
+        # CREATE INDEX idx_materialized_holdings_date ON MaterializedHoldings(trading_date);
+        # CREATE INDEX idx_materialized_holdings_ticker ON MaterializedHoldings(ticker);
+        # CREATE INDEX idx_materialized_holdings_portfolio ON MaterializedHoldings(portfolio);
+        # """)
+        
+        # Commit the transaction
+        connection.commit()
+        print("Materialized Holdings refreshed successfully")
+        
+    except Exception as e:
+        connection.rollback()
+        print(f"Error refreshing materialized view: {str(e)}")
+
+# %%
+def drop_materialized_holdings():
+    cursor.execute("DROP TABLE IF EXISTS MaterializedHoldings")
+    connection.commit()
+    print("Materialized Holdings table dropped")
+
+# %% [markdown]
 # # Runner
 
 # %%
@@ -688,6 +854,8 @@ drop_currencies_table()
 drop_trading_calendar_table()
 drop_holdings_view()
 
+drop_materialized_holdings() #--------------------------------
+
 # %%
 create_securities_table()
 create_transactions_table()
@@ -695,6 +863,8 @@ create_currencies_table()
 create_trading_calendar_table()
 create_prices_table()
 create_dividends_table()
+
+create_materialized_holdings() #--------------------------------
 
 # Import config
 with open("../config.yaml", "r") as f:
@@ -735,6 +905,7 @@ frontfill_prices_table()
 backfill_dividends_table()
 
 create_holdings_view()
+refresh_materialized_holdings()#--------------------------------
 
 # %%
 if 'cursor' in locals():
