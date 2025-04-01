@@ -61,10 +61,10 @@ securities:
   geography: US
 
 # Resources Fund
-- ticker: WFG
+- ticker: WFG.TO
   fund: Resources Fund
   sector: Materials
-  geography: US
+  geography: CAN
 - ticker: HBM.TO
   fund: Resources Fund
   sector: Materials
@@ -342,7 +342,7 @@ transactions:
 
   - type: Buy
     date: 2023-12-28
-    ticker: WFG
+    ticker: WFG.TO
     price: 112.40
     quantity: 23
     currency: CAD
