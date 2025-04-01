@@ -145,7 +145,7 @@ def get_currency_data():
 @app.route('/api/fund-thesis', methods=['GET'])
 def get_fund_thesis():
     try:
-        with open("../portfolios/dfic_core.yaml", "r") as f:
+        with open("./portfolios/dfic_core.yaml", "r") as f:
             config = yaml.safe_load(f)
 
         result = config['funds']
