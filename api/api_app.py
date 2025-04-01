@@ -399,9 +399,7 @@ def get_position_details():
                 pc.total_shares as total_shares_purchased,
                 pc.number_of_purchases,
                 (pc.total_purchase_cost / pc.total_shares) as average_purchase_price,
-                (pc.total_purchase_cost / pc.total_shares * ch.shares_held) as book_value,
-                (ch.market_value - pc.total_purchase_cost) as pnl,
-                ((ch.market_value - pc.total_purchase_cost) / pc.total_purchase_cost * 100) as pnl_percentage
+                (pc.total_purchase_cost / pc.total_shares * ch.shares_held) as book_value
             FROM CurrentHoldings ch
             JOIN Securities s ON ch.ticker = s.ticker AND ch.portfolio = s.portfolio
             JOIN PurchaseCosts pc ON ch.ticker = pc.ticker AND ch.portfolio = pc.portfolio
