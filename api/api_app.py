@@ -299,5 +299,33 @@ def get_trade():
             "success": True,
             "data": result}), 200
 
+@app.route('/api/latest-date', methods=['GET'])
+def get_latest_date():
+    try:
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute(f"""
+            SELECT trading_date 
+            FROM Fund.MaterializedHoldings
+            order by trading_date desc
+            limit 1
+        """)
+
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5555, debug=True)
