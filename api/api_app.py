@@ -210,7 +210,7 @@ def get_fund_holdings():
         cursor.execute(f"""
         SELECT ticker, sum(market_value) as ticker_holdings
         FROM Holdings
-        WHERE trading_date >= %s AND fund LIKE %s
+        WHERE trading_date = %s AND fund LIKE %s
         GROUP BY ticker;
         """, (start_date, fund))
 
