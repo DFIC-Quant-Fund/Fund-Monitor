@@ -37,6 +37,14 @@ securities:
   fund: Macro Fund
   sector: Fixed Income
   geography: US
+- ticker: SCHP
+  fund: Macro Fund
+  sector: Fixed Income
+  geography: US
+- ticker: TLT
+  fund: Macro Fund
+  sector: Fixed Income
+  geography: US
 
 # Industrials Fund
 - ticker: ACO-X.TO
@@ -438,4 +446,39 @@ transactions:
     ticker: AMAT
     price: 164.05
     quantity: 19
+    currency: USD
+
+  - type: Sell
+    date: 2025-03-25
+    ticker: AGG
+    price: 98.46
+    quantity: 96
+    currency: USD
+
+  - type: Sell
+    date: 2025-03-25
+    ticker: SPY
+    price: 574.1601
+    quantity: 25
+    currency: USD
+
+  - type: Sell
+    date: 2025-03-25
+    ticker: SPSB
+    price: 30.0402
+    quantity: 320
+    currency: USD
+
+  - type: Buy
+    date: 2025-03-25
+    ticker: TLT
+    price: 89.8399
+    quantity: 225
+    currency: USD
+
+  - type: Buy
+    date: 2025-03-25
+    ticker: SCHP
+    price: 26.6199
+    quantity: 256
     currency: USD
