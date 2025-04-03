@@ -59,7 +59,8 @@ jobs:
         run: python Performance.py ${{ matrix.fund }} ${{ steps.determine_date.outputs.date }}
       - name: Upload Output Files to Main Branch
         if: ${{ github.ref == 'refs/heads/main' }}
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: EndBug/add-and-commit@v9
         with:
-          file_pattern: 'data/${{ matrix.fund }}/**'
-          commit_message: "Actions daily upload data for ${{ matrix.fund }} on ${{ steps.determine_date.outputs.date }}"
+          add: 'data/${{ matrix.fund }}/**'
+          message: "Actions daily upload data for ${{ matrix.fund }} on ${{ steps.determine_date.outputs.date }}"
+          pull: '--rebase --autostash'
