@@ -13,7 +13,8 @@ Calculates the efficient frontier (weightings) for a given portfolio of assets
 4. Plots each portfolio on efficient frontier graph and returns the maximum sharpe and minimum volatility portfolio weightings
 '''
 class FrontierAnalysis:
-    def __init__(self, tickers, start_date, end_date, risk_free_rate, num_simulations):
+    def __init__(self, portfolio, tickers, start_date, end_date, risk_free_rate, num_simulations):
+        self.portfolio = portfolio
         self.tickers = tickers
         self.start_date = start_date
         self.end_date = end_date
@@ -40,7 +41,7 @@ class FrontierAnalysis:
             plt.plot(df[ticker], label=ticker)
         plt.legend(loc='upper left', fontsize=12)
         plt.ylabel('Price')
-        plt.savefig('data/fund/output/returns.png')
+        plt.savefig(f'data/{self.portfolio}/output/returns.png')
 
     def calculate_metrics(self):
         # Calculate daily returns
@@ -131,9 +132,17 @@ class FrontierAnalysis:
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig('data/fund/output/efficient_frontier.png')
+        plt.savefig(f'data/{self.portfolio}/output/efficient_frontier.png')
 
-def main():
+# ensures command line verficiation before calling main function 
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        sys.exit("Usage: python3 PerformanceTracker.py <fund>")
+
+    portfolio = sys.argv[1]
+    output_folder = os.path.join("data", portfolio, "output")
+    os.makedirs(output_folder, exist_ok=True)
+
     # Constants
     risk_free_rate = 0.0275
     num_simulations = 50_000
@@ -150,21 +159,10 @@ def main():
     end_date = datetime.now() - timedelta(days=1)
     start_date = end_date - timedelta(days=lookback_period_days)
     # instance of frontieranalysis class - this intializes all data so other functions called work 
-    analyzer = FrontierAnalysis(financial_fund, start_date, end_date, risk_free_rate, num_simulations)
+    analyzer = FrontierAnalysis(portfolio, financial_fund, start_date, end_date, risk_free_rate, num_simulations)
     analyzer.get_data()
     #analyzer.normalized_return_graph()
     analyzer.calculate_metrics()
     analyzer.monte_carlo_simulation()
     analyzer.printing_results()
     analyzer.efficient_frontier_graph()
-
-# ensures command line verficiation before calling main function 
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        sys.exit("Usage: python3 PerformanceTracker.py <folder_prefix>")
-    folder_prefix = sys.argv[1]
-    output_folder = os.path.join("data", folder_prefix, "output")
-    os.makedirs(output_folder, exist_ok=True)
-    main()
-
-

@@ -38,14 +38,16 @@ def get_data():
 def get_performance_data():
     try:
         end_date = request.args.get('date', None) or pd.Timestamp.now().strftime('%Y-%m-%d')
+        portfolio = request.args.get('portfolio', None) or 'core'
         
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
         # Base query
-        query = """
+        cursor.execute("""
             SELECT 
                 DATE_FORMAT(date, '%Y-%m-%d') as date,
+                portfolio,
                 one_day_return,
                 one_week_return,
                 one_month_return,
@@ -53,21 +55,26 @@ def get_performance_data():
                 one_year_return,
                 inception_return
             FROM PerformanceReturns
-        """
+            WHERE portfolio = %s
+            AND date <= %s
+            ORDER BY date DESC
+        """, (portfolio, end_date))
         
         # Add date filter if date parameter is provided
-        if end_date:
-            query += " WHERE date <= %s"
-            query += " ORDER BY date DESC"
-            cursor.execute(query, (end_date,))
-        else:
-            query += " ORDER BY date DESC"
-            cursor.execute(query)
-        
+        # if end_date:
+        #     query += " WHERE date <= %s"
+        #     query += " ORDER BY date DESC"
+        #     cursor.execute(query, (end_date,))
+        # else:
+        #     query += " ORDER BY date DESC"
+        #     cursor.execute(query)
+
         results = cursor.fetchall()
         cursor.close()
         conn.close()
         
+        print(results[0])
+
         return jsonify({
             "success": True,
             "data": results
@@ -330,7 +337,6 @@ def get_position_details():
     try:
         end_date = request.args.get('date', None) or pd.Timestamp.now().strftime('%Y-%m-%d')
         portfolio = request.args.get('portfolio', None) or 'core'
-        print(f"\n[DEBUG] /api/holdings/pnl called with date: {end_date}, portfolio: {portfolio}")
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -382,35 +388,6 @@ def get_position_details():
         """, (end_date, portfolio))
 
         results = cursor.fetchall()
-        print(f"\n[DEBUG] Found {len(results)} positions")
-        if len(results) > 0:
-            print("\n[DEBUG] Example Response Format:")
-            example = results[0]
-            print("""
-{
-    "success": true,
-    "data": [
-        {
-            "ticker": "AAPL",
-            "name": "Apple Inc",
-            "type": "Stock",
-            "geography": "US",
-            "sector": "Technology",
-            "fund": "Core",
-            "currency": "USD",
-            "shares_held": 4,
-            "market_value": 661.56,
-            "total_purchase_cost": 661.56,
-            "total_shares_purchased": 4,
-            "number_of_purchases": 1,
-            "average_purchase_price": 165.39,
-            "book_value": 661.56,
-            "pnl": 0.00,
-            "pnl_percentage": 0.00
-        }
-    ]
-}""")
-        
         cursor.close()
         conn.close()
 
@@ -420,7 +397,6 @@ def get_position_details():
         })
 
     except Exception as e:
-        print(f"[ERROR] Error in get_position_details: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e)
