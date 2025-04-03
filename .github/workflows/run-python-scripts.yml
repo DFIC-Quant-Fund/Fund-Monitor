@@ -47,8 +47,9 @@ jobs:
         run: python Portfolio.py ${{ matrix.fund }}
       - name: Run PerformanceTracker.py Script
         run: python PerformanceTracker.py ${{ matrix.fund }}
-      - name: Run Frontier Analysis.py Script
-        run: python FrontierAnalysis.py ${{ matrix.fund }}
+      # Disabled Frontier Analysis due to yfinance rate limiting
+      # - name: Run Frontier Analysis.py Script
+      #   run: python FrontierAnalysis.py ${{ matrix.fund }}
       - name: Run Performance.py Script
         if: ${{ github.ref == 'refs/heads/main' }}
         env:
