@@ -1,0 +1,20 @@
+name: Deploy API on EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'api/**'
+  workflow_dispatch:
+
+jobs:
+  deploy-api-on-ec2:
+    runs-on: self-hosted
+    steps:
+      - name: Pull Latest Code and Restart API
+        run: |
+          cd ~/Fund-Monitor
+          git pull
+          sudo systemctl restart fund-monitor-api
+          sudo systemctl status fund-monitor-api
