@@ -17,6 +17,7 @@ class TestFrontierAnalysis(unittest.TestCase):
     # setup special method in unittest.TestCase
     def setUp(self):
         print("setting up")
+        self.portfolio = 'TestPortfolio'
         self.tickers = ['AAPL', 'GOOG', 'MSFT']
         self.start_date = datetime(2023, 1, 1)  
         self.end_date = datetime(2024, 1, 1)
@@ -24,7 +25,7 @@ class TestFrontierAnalysis(unittest.TestCase):
         self.num_simulations = 50_000
 
         # Initialize the FrontierAnalysis instance
-        self.analyzer = FrontierAnalysis(self.tickers, self.start_date, self.end_date, self.risk_free_rate, self.num_simulations)
+        self.analyzer = FrontierAnalysis(self.portfolio, self.tickers, self.start_date, self.end_date, self.risk_free_rate, self.num_simulations)
 
         # Mock data for testing
         self.mock_data = pd.DataFrame({
