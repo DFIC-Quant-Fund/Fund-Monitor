@@ -54,7 +54,7 @@ def get_performance_data():
                 ytd_return,
                 one_year_return,
                 inception_return
-            FROM PerformanceReturnsNew
+            FROM PerformanceReturns
             WHERE portfolio = %s
             AND date <= %s
             ORDER BY date DESC
