@@ -38,36 +38,43 @@ def get_data():
 def get_performance_data():
     try:
         end_date = request.args.get('date', None) or pd.Timestamp.now().strftime('%Y-%m-%d')
+        portfolio = request.args.get('portfolio', None) or 'core'
         
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
         # Base query
-        query = """
+        cursor.execute("""
             SELECT 
                 DATE_FORMAT(date, '%Y-%m-%d') as date,
+                portfolio,
                 one_day_return,
                 one_week_return,
                 one_month_return,
                 ytd_return,
                 one_year_return,
                 inception_return
-            FROM PerformanceReturns
-        """
+            FROM PerformanceReturnsNew
+            WHERE portfolio = %s
+            AND date <= %s
+            ORDER BY date DESC
+        """, (portfolio, end_date))
         
         # Add date filter if date parameter is provided
-        if end_date:
-            query += " WHERE date <= %s"
-            query += " ORDER BY date DESC"
-            cursor.execute(query, (end_date,))
-        else:
-            query += " ORDER BY date DESC"
-            cursor.execute(query)
-        
+        # if end_date:
+        #     query += " WHERE date <= %s"
+        #     query += " ORDER BY date DESC"
+        #     cursor.execute(query, (end_date,))
+        # else:
+        #     query += " ORDER BY date DESC"
+        #     cursor.execute(query)
+
         results = cursor.fetchall()
         cursor.close()
         conn.close()
         
+        print(results[0])
+
         return jsonify({
             "success": True,
             "data": results

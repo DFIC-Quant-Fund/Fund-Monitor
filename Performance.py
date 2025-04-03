@@ -11,6 +11,8 @@ from datetime import timedelta
 import mysql.connector
 from dotenv import load_dotenv
 
+load_dotenv()
+
 class Performance:
     def __init__(self, fund, date, portfolio_column="Total_Portfolio_Value"):
         """
@@ -20,8 +22,6 @@ class Performance:
         :param date: The date for performance calculation.
         :param portfolio_column: The column name representing portfolio value.
         """
-        load_dotenv()
-
         self.fund = fund
         self.date = pd.to_datetime(date)
         self.portfolio_column = portfolio_column
@@ -151,6 +151,7 @@ class Performance:
         cursor.execute("""
         INSERT INTO PerformanceReturns (
             date, 
+            portfolio,
             one_day_return, 
             one_week_return, 
             one_month_return, 
@@ -158,7 +159,7 @@ class Performance:
             one_year_return, 
             inception_return
         ) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s) 
         ON DUPLICATE KEY UPDATE 
             one_day_return = VALUES(one_day_return), 
             one_week_return = VALUES(one_week_return), 
@@ -166,10 +167,63 @@ class Performance:
             ytd_return = VALUES(ytd_return), 
             one_year_return = VALUES(one_year_return), 
             inception_return = VALUES(inception_return)
-        """, (results['date'], results['one_day'], results['one_week'], results['one_month'], results['ytd'], results['one_year'], results['inception']))
+        """, (results['date'], self.fund, results['one_day'], results['one_week'], results['one_month'], results['ytd'], results['one_year'], results['inception']))
 
         conn.commit()
         conn.close()
+
+def create_performance_returns_table():
+    """
+    Creates the database table for performance returns if it doesn't exist.
+    """
+
+    # Connect to database        
+    conn = mysql.connector.connect(
+        host=os.getenv('DB_HOSTNAME'),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'),
+        port=os.getenv('DB_PORT'),
+        database="Fund"
+    )
+
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS PerformanceReturns (
+        date DATE NOT NULL,
+        portfolio VARCHAR(50) NOT NULL,
+        one_day_return FLOAT,
+        one_week_return FLOAT,
+        one_month_return FLOAT,
+        ytd_return FLOAT,
+        one_year_return FLOAT,
+        inception_return FLOAT,
+        PRIMARY KEY (date, portfolio)
+    );
+    """)
+
+    conn.commit()
+    conn.close()
+
+def drop_performance_returns_table():
+    """
+    Drops the performance returns table if it exists.
+    """
+    # Connect to database        
+    conn = mysql.connector.connect(
+        host=os.getenv('DB_HOSTNAME'),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'),
+        port=os.getenv('DB_PORT'),
+        database="Fund"
+    )
+
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("DROP TABLE IF EXISTS PerformanceReturns;")
+
+    conn.commit()
+    conn.close()
 
 if __name__ == '__main__':
 
@@ -184,6 +238,10 @@ if __name__ == '__main__':
     else:
         dates = pd.read_csv(os.path.join('data', fund, 'output', 'portfolio_total.csv'))['Date']
     
+    # Uncomment and run manualy when needed
+    # drop_performance_returns_table()
+    # create_performance_returns_table()
+
     for date in dates:
         performance = Performance(fund, date)
         if not performance.valid_date():
