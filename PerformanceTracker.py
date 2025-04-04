@@ -122,7 +122,7 @@ def main():
         f.write(f"Risk Adjusted Return (three month treasury rate),{market_comparison.risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
         f.write(f"Treynor Ratio (three month treasury rate),{ratios.treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
         # f.write(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
-        f.write("--- Portfolio Returns ---\n")
+        # f.write("--- Portfolio Returns ---\n")
         f.write(f"1 Day Return,{period_metrics['1d'] * 100:.2f}%\n")
         f.write(f"1 Week Return,{period_metrics['1w'] * 100:.2f}%\n")
         f.write(f"1 Month Return,{period_metrics['1m'] * 100:.2f}%\n")
