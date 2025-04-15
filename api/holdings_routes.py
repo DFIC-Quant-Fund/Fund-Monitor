@@ -3,11 +3,16 @@ import pandas as pd
 
 import os
 import sys
+import yaml
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.db_utils import get_db_connection
 
 holdings_bp = Blueprint('holdings', __name__)
+
+with open("../config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+    default_start_date = config['start_date']
 
 @holdings_bp.route('/holdings/test', methods=['GET'])
 def test_holdings():
@@ -41,7 +46,7 @@ def sector_weights_geography():
     try:
         end_date = request.args.get('end_date', None) or pd.Timestamp.now().strftime('%Y-%m-%d')
         portfolio = request.args.get('portfolio', None) or 'core'
-        start_date = request.args.get('start_date', None) or '2022-05-05'
+        start_date = request.args.get('start_date', None) or default_start_date
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -93,7 +98,7 @@ def sector_weights_fund():
     try:
         end_date = request.args.get('end_date', None) or pd.Timestamp.now().strftime('%Y-%m-%d')
         portfolio = request.args.get('portfolio', None) or 'core'
-        start_date = request.args.get('start_date', None) or '2022-05-05'
+        start_date = request.args.get('start_date', None) or default_start_date
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -143,7 +148,7 @@ def sector_weights_sector():
     try:
         end_date = request.args.get('end_date', None) or pd.Timestamp.now().strftime('%Y-%m-%d')
         portfolio = request.args.get('portfolio', None) or 'core'
-        start_date = request.args.get('start_date', None) or '2022-05-05'
+        start_date = request.args.get('start_date', None) or default_start_date
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
