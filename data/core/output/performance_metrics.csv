@@ -1,39 +1,39 @@
 Metric,Value
-Total Return including dividends,40.43%
-Daily Average Return,0.0487%
-Annualized Average Return,13.05%
+Total Return including dividends,40.45%
+Daily Average Return,0.0486%
+Annualized Average Return,13.04%
 Daily Variance,0.0075%
 Annualized Variance,1.90%
-Daily Volatility,0.8681%
+Daily Volatility,0.8684%
 Annualized Volatility,13.78%
 Daily Downside Variance,0.0042%
-Annualized Downside Variance,1.05%
-Daily Downside Volatility,0.6457%
-Annualized Downside Volatility,10.25%
+Annualized Downside Variance,1.06%
+Daily Downside Volatility,0.6475%
+Annualized Downside Volatility,10.28%
 Sharpe Ratio (Annualized),0.57
 Sortino Ratio (Annualized),0.77
-Maximum Drawdown,-5.35%
+Maximum Drawdown,-5.43%
 Custom Benchmark Variance (Daily),0.0043%
 SPY Benchmark Variance (Daily),0.0144%
-Custom Benchmark Variance (Annualized),1.09%
+Custom Benchmark Variance (Annualized),1.08%
 SPY Benchmark Variance (Annualized),3.62%
-Custom Benchmark Volatility (Daily),0.6564%
-SPY Benchmark Volatility (Daily),1.1993%
-Custom Benchmark Volatility (Annualized),10.42%
-SPY Benchmark Volatility (Annualized),19.04%
-Custom Benchmark Average Return (Daily),0.0422%
-SPY Benchmark Average Return (Daily),0.0629%
-Custom Benchmark Average Return (Annualized),11.21%
-SPY Benchmark Average Return (Annualized),17.17%
+Custom Benchmark Volatility (Daily),0.6558%
+SPY Benchmark Volatility (Daily),1.1986%
+Custom Benchmark Volatility (Annualized),10.41%
+SPY Benchmark Volatility (Annualized),19.03%
+Custom Benchmark Average Return (Daily),0.0429%
+SPY Benchmark Average Return (Daily),0.0631%
+Custom Benchmark Average Return (Annualized),11.41%
+SPY Benchmark Average Return (Annualized),17.23%
 Portfolio Beta,1.2056
-Portfolio Alpha against custom benchmark,0.4301%
-Portfolio Alpha against SPY benchmark,-6.7545%
-Portfolio Risk Premium,8.69%
-Risk Adjusted Return (three month treasury rate),10.93%
+Portfolio Alpha against custom benchmark,0.1812%
+Portfolio Alpha against SPY benchmark,-6.8379%
+Portfolio Risk Premium,8.68%
+Risk Adjusted Return (three month treasury rate),10.91%
 Treynor Ratio (three month treasury rate),0.07
-1 Day Return,1.50%
-1 Week Return,1.49%
-1 Month Return,-4.46%
-Year-to-Date Return,-4.44%
-1 Year Return,12.87%
-Inception,40.43%
+1 Day Return,0.05%
+1 Week Return,3.08%
+1 Month Return,-4.48%
+Year-to-Date Return,-4.45%
+1 Year Return,13.48%
+Inception,40.45%
