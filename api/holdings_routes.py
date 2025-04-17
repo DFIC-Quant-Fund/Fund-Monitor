@@ -10,7 +10,7 @@ from utils.db_utils import get_db_connection
 
 holdings_bp = Blueprint('holdings', __name__)
 
-with open("../config.yaml", "r") as f:
+with open("./config.yaml", "r") as f:
     config = yaml.safe_load(f)
     default_start_date = config['start_date']
 
