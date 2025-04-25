@@ -9,6 +9,12 @@ from performance import (
     Ratios
 )
 
+'''
+FILE PURPOSE: RUNS TO FILL SECONDARY OUtPUT TABLES (ones that require calcuation - getting calc from performance files)
+Uses all files in performance folder 
+run every day (second thing run in github actions - after portfolio (which updates output most tables)) 
+'''
+
 def main():
     market_values_file = os.path.join(output_folder, "market_values.csv")
     cash_file = os.path.join(output_folder, "cash.csv") 

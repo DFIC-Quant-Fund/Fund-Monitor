@@ -13,7 +13,8 @@ Calculates the efficient frontier (weightings) for a given portfolio of assets
 4. Plots each portfolio on efficient frontier graph and returns the maximum sharpe and minimum volatility portfolio weightings
 '''
 class FrontierAnalysis:
-    def __init__(self, tickers, start_date, end_date, risk_free_rate, num_simulations):
+    def __init__(self, portfolio, tickers, start_date, end_date, risk_free_rate, num_simulations):
+        self.portfolio = portfolio
         self.tickers = tickers
         self.start_date = start_date
         self.end_date = end_date
@@ -40,7 +41,7 @@ class FrontierAnalysis:
             plt.plot(df[ticker], label=ticker)
         plt.legend(loc='upper left', fontsize=12)
         plt.ylabel('Price')
-        plt.savefig('data/fund/output/returns.png')
+        plt.savefig(f'data/{self.portfolio}/output/returns.png')
 
     def calculate_metrics(self):
         # Calculate daily returns
@@ -131,7 +132,7 @@ class FrontierAnalysis:
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig('data/fund/output/efficient_frontier.png')
+        plt.savefig(f'data/{self.portfolio}/output/efficient_frontier.png')
 
 def main():
     # Constants
@@ -164,5 +165,3 @@ if __name__ == '__main__':
     output_folder = os.path.join("data", folder_prefix, "output")
     os.makedirs(output_folder, exist_ok=True)
     main()
-
-

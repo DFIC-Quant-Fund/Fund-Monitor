@@ -1,0 +1,31 @@
+name: Daily Databases Backfills
+
+on:
+  schedule:
+    - cron: '0 22 * * 1-5'  # Runs at 10:00 PM UTC Monday to Friday (5:00 PM EST or 6:00 PM EDT)
+  workflow_dispatch:
+
+jobs:
+  daily-database-backfills:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '>=3.10'
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Drop, Create, and Backfill Database Tables
+        working-directory: notebooks
+        env:
+          DB_HOSTNAME: ${{ secrets.DB_HOSTNAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+        run: python CreateDBs.py

@@ -1,0 +1,14 @@
+# [GENERAL CONFIG]
+starting_cash: 101644.99
+risk_free_rate: 0.02
+lookback_period: 60
+start_date: 2022-05-01
+
+# [EXAMPLE STUFF]
+portfolio: #example - probably different yamls for each portfolio ????
+  - name: "Main Portfolio"
+    target_allocation: {equities: 0.8, bonds: 0.2}
+    rebalancing_frequency: "monthly"
+  - name: "Test Portfolio"
+    target_allocation: {equities: 0.5, bonds: 0.5}
+    rebalancing_frequency: "quarterly" # etc.

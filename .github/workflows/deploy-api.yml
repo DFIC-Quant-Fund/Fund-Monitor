@@ -1,0 +1,34 @@
+name: Deploy API on EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'api/**'
+  workflow_dispatch:
+
+jobs:
+  deploy-api-on-ec2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull Latest Code and Restart API
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ec2-34-239-168-160.compute-1.amazonaws.com
+          username: ubuntu
+          key: ${{ secrets.DFIC_PEM }}
+          script: |
+            cd ~/Fund-Monitor
+            git pull
+            sudo systemctl restart fund-monitor-api
+            sudo systemctl status fund-monitor-api
+#   deploy-api-on-ec2:
+#     runs-on: self-hosted
+#     steps:
+#       - name: Pull Latest Code and Restart API
+#         run: |
+#           cd ~/Fund-Monitor
+#           git pull
+#           sudo systemctl restart fund-monitor-api
+#           sudo systemctl status fund-monitor-api

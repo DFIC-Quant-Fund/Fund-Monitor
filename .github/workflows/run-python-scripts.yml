@@ -2,39 +2,69 @@ name: Run Python Scripts
 
 on:
   schedule:
-    - cron: '0 11 * * *'
+    - cron: '0 22 * * 1-5'  # Runs at 10:00 PM UTC Monday to Friday (5:00 PM EST or 6:00 PM EDT)
   pull_request:
   workflow_dispatch:
+    inputs:
+      date:
+        description: 'Optional date in YYYY-MM-DD format'
+        required: false
 
 jobs:
-    Run-Python-Scripts:
-        runs-on: ubuntu-latest
-        permissions:
-          contents: write
-        steps:
-          - name: Checkout Repository
-            uses: actions/checkout@v4
-          - name: Set up Python
-            uses: actions/setup-python@v5
-            with:
-                python-version: '>=3.10'
-                cache: pip
-          - name: Install dependencies
-            run: |
-                python3 -m pip install --upgrade pip
-                pip install -r requirements.txt
-          - name: Run Portfolio.py Script
-            run: python Portfolio.py fund
-          - name: Run PerformanceTracker.py Script
-            run: python PerformanceTracker.py fund
-          - name: Run Frontier Analysis.py Script
-            run: python FrontierAnalysis.py fund
-          - name: Get Previous Date
-            id: get_previous_date
-            run: echo "date=$(date --date="yesterday" +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-          - name: Upload Output Files to Main Branch
-            if: ${{ github.ref == 'refs/heads/main' }}
-            uses: stefanzweifel/git-auto-commit-action@v5
-            with:
-              file_pattern: 'data/fund/output/**'
-              commit_message: "Actions daily upload data for ${{ steps.get_previous_date.outputs.date }}"
+  Run-Python-Scripts:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        fund: [core, benchmark]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '>=3.10'
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run Unit Tests
+        run: python -m unittest discover tests
+      - name: Determine Date to Use
+        id: determine_date
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            echo "Using provided date: ${{ github.event.inputs.date }}"
+            echo "date=${{ github.event.inputs.date }}" >> $GITHUB_OUTPUT
+          else
+            CURRENT_DATE=$(date +'%Y-%m-%d')
+            echo "Using current date: $CURRENT_DATE"
+            echo "date=$CURRENT_DATE" >> $GITHUB_OUTPUT
+          fi
+      - name: Run Portfolio.py Script
+        run: python Portfolio.py ${{ matrix.fund }}
+      - name: Run PerformanceTracker.py Script
+        run: python PerformanceTracker.py ${{ matrix.fund }}
+      # Disabled Frontier Analysis due to yfinance rate limiting
+      # - name: Run Frontier Analysis.py Script
+      #   run: python FrontierAnalysis.py ${{ matrix.fund }}
+      - name: Run Performance.py Script
+        if: ${{ github.ref == 'refs/heads/main' }}
+        env:
+          DB_HOSTNAME: ${{ secrets.DB_HOSTNAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+        run: python Performance.py ${{ matrix.fund }} ${{ steps.determine_date.outputs.date }}
+      - name: Upload Output Files to Main Branch
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: EndBug/add-and-commit@v9
+        with:
+          pull: '--rebase --autostash' # Pull latest changes before committing (since matrix is used)
+          add: 'data/${{ matrix.fund }}/**'
+          message: "Actions daily upload data for ${{ matrix.fund }} on ${{ steps.determine_date.outputs.date }}"
+          default_author: github_actor
+          committer_name: GitHub Actions
+          committer_email: 41898282+github-actions[bot]@users.noreply.github.com
