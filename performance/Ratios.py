@@ -33,10 +33,15 @@ class Ratios:
         # Read portfolio returns
         df = pd.read_csv(os.path.join(self.output_folder, 'portfolio_total.csv'))
         daily_portfolio_returns = df['pct_change'].dropna()
+
+        benchmark_class = Benchmark(self.output_folder)
+        if benchmark == 'custom':
+            benchmark_df = pd.read_csv(os.path.join(self.output_folder, 'custom_benchmark.csv'))
+        else:
+            benchmark_df = benchmark_class.get_spy_benchmark()
         
         # Get benchmark returns
         benchmark_class = Benchmark(self.output_folder)
-        benchmark_df = benchmark_class.get_benchmark_data(benchmark)
         daily_benchmark_returns = benchmark_df['pct_change'].dropna()
         
         # Calculate excess returns (difference between portfolio and benchmark daily returns)
