@@ -25,7 +25,7 @@ def main():
     FIVE_PERCENT = 0.05
 
     # Load config file
-    config_path = os.path.join('portfolios', f'dfic_{output_folder}.yaml')
+    config_path = os.path.join('portfolios', f'dfic_{output_folder.split('/')[1]}.yaml')
     try:
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
