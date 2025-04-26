@@ -6,19 +6,19 @@ securities:
   # Benchmark
 - ticker: XIU.TO
   fund: Benchmark
-  sector: Fixed Income
+  type: Fixed Income
   geography: CAN
 - ticker: SPY
   fund: Benchmark
-  sector: Fixed Income
+  type: Equity
   geography: US
 - ticker: AGG
   fund: Benchmark
-  sector: Fixed Income
+  type: Fixed Income
   geography: US
 - ticker: XBB.TO
   fund: Benchmark
-  sector: Fixed Income
+  type: Fixed Income
   geography: CAN
 
 # [CURRENCIES]

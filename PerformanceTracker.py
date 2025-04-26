@@ -1,5 +1,6 @@
 import os
 import sys
+import yaml
 from performance import (
     DataProcessor, 
     Benchmark, 
@@ -23,6 +24,18 @@ def main():
     THREE_MTH_TREASURY_RATE = 0.0436 # 3-month treasury rate
     FIVE_PERCENT = 0.05
 
+    # Load config file
+    config_path = os.path.join('portfolios', 'dfic_core.yaml')
+    try:
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"Error: Config file not found at {config_path}")
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML file: {e}")
+        sys.exit(1)
+
     data_processor = DataProcessor(output_folder)
     benchmark = Benchmark(output_folder)
     portfolio_performance = PortfolioPerformance(output_folder)
@@ -35,8 +48,8 @@ def main():
     benchmark.create_custom_benchmark()
     period_metrics = portfolio_performance.calculate_period_performance()
 
-    # Fixed income tickers
-    fi_tickers = ['XBB.TO', 'AGG', 'SPSB']
+    # Fixed income tickers from config
+    fi_tickers = [security['ticker'] for security in config['securities'] if security['type'] == 'Fixed Income']
 
     print(f"Total Return including dividends,{portfolio_performance.total_return()*100:.2f}%\n")
     print(f"Daily Average Return,{portfolio_performance.daily_average_return()*100:.4f}%\n")
