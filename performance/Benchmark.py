@@ -9,65 +9,84 @@ class Benchmark:
         prices = pd.read_csv(os.path.join(self.output_folder, 'prices.csv'))
         dividend_df = pd.read_csv(os.path.join(self.output_folder, 'dividends.csv'))[['Date', 'SPY']]
 
-        # upon further thought, I guess dividends are baked into the price?
         dividend_df['Date'] = pd.to_datetime(dividend_df['Date'])
-        dividend_df = dividend_df.set_index('Date')
         dividend_df['SPY'].fillna(0)
 
         # create a new dataframe with only the date and SPY columns
         benchmark_df = prices[['Date', 'SPY']].copy()
-        benchmark_df['Date'] = pd.to_datetime(benchmark_df['Date'])
-        benchmark_df = benchmark_df.sort_values('Date')
+        benchmark_df.rename(columns={'SPY': 'Price'}, inplace=True)
+        benchmark_df['dividends cumsum'] = dividend_df['SPY'].values.cumsum()
 
-        # use exchange_rates.csv to convert USD to CAD in the SPY column
-        exchange_rates = pd.read_csv(os.path.join(self.output_folder, 'exchange_rates.csv'))
-        exchange_rates['Date'] = pd.to_datetime(exchange_rates['Date'])
-        exchange_rates = exchange_rates.sort_values('Date')
-        exchange_rates.set_index('Date', inplace=True)
+        benchmark_df['Total'] = benchmark_df['Price'] + benchmark_df['dividends cumsum']
+        benchmark_df['pct_change'] = benchmark_df['Total'].pct_change().fillna(0)
 
-        benchmark_df.set_index('Date', inplace=True)
-        benchmark_df['SPY'] = (benchmark_df['SPY'] + dividend_df['SPY'].cumsum()) * exchange_rates['USD']
-        # benchmark_df['SPY'] = (benchmark_df['SPY']) * exchange_rates['USD']
-        benchmark_df['pct_change'] = benchmark_df['SPY'].pct_change()
-
+        # NOTE: this is still all in USD which is fine since we are comparing it by percentages
         # can write this to csv if we want but don't rly need it so I left it for now
         return benchmark_df
     
     def create_custom_benchmark(self):
         STARTING_CASH = 101644.99
-        exchange_rates = pd.read_csv(os.path.join(self.output_folder, 'exchange_rates.csv'))
-        prices = pd.read_csv(os.path.join(self.output_folder, 'prices.csv'))
+        prices = pd.read_csv(os.path.join(self.output_folder, 'prices.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
         prices['Date'] = pd.to_datetime(prices['Date'])
-        dividends = pd.read_csv(os.path.join(self.output_folder, 'dividends.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
+
+        exchange_rates = pd.read_csv(os.path.join(self.output_folder, 'exchange_rates.csv'))
+        exchange_rates['Date'] = pd.to_datetime(exchange_rates['Date'])
         initial_exchange_rate = exchange_rates['USD'].iloc[0]
 
-        # assuming we can buy fractional shares for now I guess or else use //
-        # and leave remainder as cash
-        xiu_initial_shares = 0.3*STARTING_CASH/prices['XIU.TO'].iloc[0]
-        spy_initial_shares = 0.3*STARTING_CASH/(prices['SPY'].iloc[0] * initial_exchange_rate)
-        agg_initial_shares = 0.2*STARTING_CASH/(prices['AGG'].iloc[0] * initial_exchange_rate)
-        xbb_initial_shares = 0.2*STARTING_CASH/prices['XBB.TO'].iloc[0]
+        # dividends.csv is $/share dividend payments
+        dividend_payments = pd.read_csv(os.path.join(self.output_folder, 'dividends.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
 
-        xiu_dividends = dividends['XIU.TO'].cumsum() * xiu_initial_shares
-        spy_dividends = dividends['SPY'].cumsum() * spy_initial_shares * exchange_rates['USD']
-        agg_dividends = dividends['AGG'].cumsum() * agg_initial_shares * exchange_rates['USD']
-        xbb_dividends = dividends['XBB.TO'].cumsum() * xbb_initial_shares
+        xiu_shares = 0.3*STARTING_CASH/prices['XIU.TO'].iloc[0]
+        spy_shares = 0.3*STARTING_CASH/(prices['SPY'].iloc[0] * initial_exchange_rate)
+        agg_shares = 0.2*STARTING_CASH/(prices['AGG'].iloc[0] * initial_exchange_rate)
+        xbb_shares = 0.2*STARTING_CASH/prices['XBB.TO'].iloc[0]
 
-        xiu_value = xiu_initial_shares * prices['XIU.TO'] + xiu_dividends
-        spy_value = (spy_initial_shares * prices['SPY'] * exchange_rates['USD'] + spy_dividends).rename('SPY')
-        agg_value = (agg_initial_shares * prices['AGG'] * exchange_rates['USD'] + agg_dividends).rename('AGG')
-        xbb_value = xbb_initial_shares * prices['XBB.TO'] + xbb_dividends
+        # get dividend data
+        dividends = dividend_payments.copy()
+        dividends['Date'] = pd.to_datetime(dividends['Date'])
 
-        # combine the above four value variables into one dataframe with the date index
-        custom_benchmark = pd.concat([xiu_value, spy_value, agg_value, xbb_value], axis=1)
-        custom_benchmark['Total'] = custom_benchmark.sum(axis=1)
+        dividends['XIU.TO'] = dividends['XIU.TO'] * xiu_shares
+        dividends['SPY'] = dividends['SPY'] * spy_shares * exchange_rates['USD']
+        dividends['AGG'] = dividends['AGG'] * agg_shares * exchange_rates['USD']
+        dividends['XBB.TO'] = dividends['XBB.TO'] * xbb_shares
+
+        # calculate the market value of each asset
+        xiu_values = xiu_shares * prices['XIU.TO']
+        spy_values = (spy_shares * prices['SPY'] * exchange_rates['USD']).rename('SPY')
+        agg_values = (agg_shares * prices['AGG'] * exchange_rates['USD']).rename('AGG')
+        xbb_values = xbb_shares * prices['XBB.TO']
+
+        # concatenate the values of each asset into a single dataframe
+        custom_benchmark = pd.concat([xiu_values, spy_values, agg_values, xbb_values], axis=1)
         custom_benchmark['Date'] = prices['Date']
         custom_benchmark.set_index('Date', inplace=True)
-        custom_benchmark['pct_change'] = custom_benchmark['Total'].pct_change()
-        print("Custom Benchmark:", custom_benchmark.head())
-        
+        custom_benchmark['XIU.TO dividends cumsum'] = dividends['XIU.TO'].cumsum().values
+        custom_benchmark['SPY dividends cumsum'] = dividends['SPY'].cumsum().values
+        custom_benchmark['AGG dividends cumsum'] = dividends['AGG'].cumsum().values
+        custom_benchmark['XBB.TO dividends cumsum'] = dividends['XBB.TO'].cumsum().values
+        custom_benchmark['Total Mkt Val'] = custom_benchmark.sum(axis=1)
+        custom_benchmark['pct_change'] = custom_benchmark['Total Mkt Val'].pct_change()
+
         #output the custom benchmark to a csv file
         custom_benchmark.to_csv(os.path.join(self.output_folder, 'custom_benchmark.csv'), index=True)
+
+    def benchmark_inception_return(self):
+        benchmark_df = pd.read_csv(os.path.join(self.output_folder, 'custom_benchmark.csv'))
+        inception_value = benchmark_df['Total Mkt Val'].iloc[0]
+        latest_value = benchmark_df['Total Mkt Val'].iloc[-1]
+
+        inception_return = (latest_value - inception_value) / inception_value
+
+        return inception_return
+
+    def spy_inception_return(self):
+        benchmark_df = self.get_spy_benchmark()
+        inception_value = benchmark_df['Total'].iloc[0]
+        latest_value = benchmark_df['Total'].iloc[-1]
+
+        inception_return = (latest_value - inception_value) / inception_value
+
+        return inception_return
 
     def benchmark_variance(self, benchmark='custom'):
         if benchmark == 'custom':

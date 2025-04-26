@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from datetime import timedelta
+import yfinance as yf
 
 
 class PortfolioPerformance:
@@ -76,3 +77,39 @@ class PortfolioPerformance:
             "1y": one_year_return,
             "Inception": inception_return
         }
+    
+    def get_fixed_income_info(self, tickers: list):
+        df = pd.read_csv(os.path.join(self.output_folder, 'market_values.csv'))
+        df_xrates = pd.read_csv(os.path.join(self.output_folder, 'exchange_rates.csv'))
+
+        usd_tickers = []
+
+        for t in tickers:
+            try:
+                currency = yf.Ticker(t).info['currency']
+            except:
+                currency = 'CAD'
+
+            if currency == 'USD':
+                df[t] = df[t] * df_xrates['USD'].iloc[-1]
+                usd_tickers.append(t)
+
+        current_mkt_vals = {ticker: df[ticker].iloc[-1] for ticker in tickers}
+        total_mkt_vals = sum(current_mkt_vals.values())
+        fi_mkt_shares = {ticker: current_mkt_vals[ticker] / total_mkt_vals for ticker in tickers}
+
+        usd_total_mkt_val = sum([current_mkt_vals[ticker] for ticker in usd_tickers])
+        usd_fi_mkt_shares = {ticker: current_mkt_vals[ticker] / usd_total_mkt_val for ticker in usd_tickers}
+
+        # combine all these dictionaries into a dataframe
+        data = {
+            'Ticker': tickers,
+            'Market Value': [current_mkt_vals[ticker] for ticker in tickers],
+            'Total Market Share': [fi_mkt_shares[ticker] for ticker in tickers],
+            'USD Market Share': [usd_fi_mkt_shares[ticker] if ticker in usd_tickers else 0 for ticker in tickers]
+        }
+
+        data = pd.DataFrame(data)
+        data.set_index('Ticker', inplace=True)
+
+        return data

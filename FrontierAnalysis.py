@@ -134,15 +134,7 @@ class FrontierAnalysis:
         plt.tight_layout()
         plt.savefig(f'data/{self.portfolio}/output/efficient_frontier.png')
 
-# ensures command line verficiation before calling main function 
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        sys.exit("Usage: python3 PerformanceTracker.py <fund>")
-
-    portfolio = sys.argv[1]
-    output_folder = os.path.join("data", portfolio, "output")
-    os.makedirs(output_folder, exist_ok=True)
-
+def main():
     # Constants
     risk_free_rate = 0.0275
     num_simulations = 50_000
@@ -158,11 +150,18 @@ if __name__ == '__main__':
 
     end_date = datetime.now() - timedelta(days=1)
     start_date = end_date - timedelta(days=lookback_period_days)
-    # instance of frontieranalysis class - this intializes all data so other functions called work 
-    analyzer = FrontierAnalysis(portfolio, financial_fund, start_date, end_date, risk_free_rate, num_simulations)
+    analyzer = FrontierAnalysis(financial_fund, start_date, end_date, risk_free_rate, num_simulations)
     analyzer.get_data()
     #analyzer.normalized_return_graph()
     analyzer.calculate_metrics()
     analyzer.monte_carlo_simulation()
     analyzer.printing_results()
     analyzer.efficient_frontier_graph()
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        sys.exit("Usage: python3 PerformanceTracker.py <folder_prefix>")
+    folder_prefix = sys.argv[1]
+    output_folder = os.path.join("data", folder_prefix, "output")
+    os.makedirs(output_folder, exist_ok=True)
+    main()
