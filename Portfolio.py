@@ -74,6 +74,9 @@ class Portfolio:
             exchange_rates[key].index = pd.to_datetime(value.index).tz_localize(None)
             self.exchange_rates[key] = exchange_rates[key]
 
+        # Fill missing values with forward fill
+        self.exchange_rates = self.exchange_rates.ffill()
+
         pd.DataFrame(self.exchange_rates).to_csv(os.path.join(self.output_folder, exchange_rates_file), index_label='Date')
 
     def load_trades_data(self):
