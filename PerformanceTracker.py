@@ -90,7 +90,9 @@ def main():
     print(f"Portfolio Risk Premium,{market_comparison.portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
     print(f"Risk Adjusted Return (three month treasury rate),{market_comparison.risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
     print(f"Treynor Ratio (three month treasury rate),{ratios.treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
-    # print(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
+    daily_ir, annual_ir = ratios.information_ratio()
+    print(f"Information Ratio (Daily),{daily_ir:.4f}\n")
+    print(f"Information Ratio (Annualized),{annual_ir:.2f}\n")
 
     print("--- Fixed Income Info ---\n")
     fi_stats_df = portfolio_performance.get_fixed_income_info(fi_tickers)
@@ -144,7 +146,8 @@ def main():
         f.write(f"Portfolio Risk Premium,{market_comparison.portfolio_risk_premium(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
         f.write(f"Risk Adjusted Return (three month treasury rate),{market_comparison.risk_adjusted_return(THREE_MTH_TREASURY_RATE)*100:.2f}%\n")
         f.write(f"Treynor Ratio (three month treasury rate),{ratios.treynor_ratio(THREE_MTH_TREASURY_RATE):.2f}\n")
-        # f.write(f"Information Ratio (Custom Benchmark),{information_ratio():.2f}\n")
+        f.write(f"Information Ratio (vs. Custom Benchmark, daily),{daily_ir:.4f}\n")
+        f.write(f"Information Ratio (vs. Custom Benchmark, annual),{annual_ir:.2f}\n")
 
         # Fixed Income Metrics
         for ticker in fi_tickers:
