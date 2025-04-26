@@ -1,43 +1,43 @@
 Metric,Value
-Total Return including dividends,38.49%
-Daily Average Return,0.1072%
-Annualized Average Return,30.99%
-Daily Variance,0.1590%
-Annualized Variance,40.08%
-Daily Volatility,3.9879%
-Annualized Volatility,63.31%
-Daily Downside Variance,0.0730%
-Annualized Downside Variance,18.39%
-Daily Downside Volatility,2.7017%
-Annualized Downside Volatility,42.89%
-Sharpe Ratio (Annualized),0.36
-Sortino Ratio (Annualized),0.53
-Maximum Drawdown,-49.21%
-Custom Benchmark Variance (Daily),0.1911%
+Total Return including dividends,38.42%
+Daily Average Return,0.0447%
+Annualized Average Return,11.91%
+Daily Variance,0.0042%
+Annualized Variance,1.06%
+Daily Volatility,0.6487%
+Annualized Volatility,10.30%
+Daily Downside Variance,0.0021%
+Annualized Downside Variance,0.53%
+Daily Downside Volatility,0.4592%
+Annualized Downside Volatility,7.29%
+Sharpe Ratio (Annualized),0.67
+Sortino Ratio (Annualized),0.95
+Maximum Drawdown,-3.54%
+Custom Benchmark Variance (Daily),0.0043%
 SPY Variance (Daily),0.0130%
-Custom Benchmark Variance (Annualized),48.16%
+Custom Benchmark Variance (Annualized),1.09%
 SPY Variance (Annualized),3.27%
-Custom Benchmark Volatility (Daily),4.3718%
+Custom Benchmark Volatility (Daily),0.6567%
 SPY Volatility (Daily),1.1394%
-Custom Benchmark Volatility (Annualized),69.40%
+Custom Benchmark Volatility (Annualized),10.42%
 SPY Volatility (Annualized),18.09%
-Custom Benchmark Average Return (Daily),0.1172%
+Custom Benchmark Average Return (Daily),0.0441%
 SPY Average Return (Daily),0.0541%
-Custom Benchmark Average Return (Annualized),34.32%
+Custom Benchmark Average Return (Annualized),11.74%
 SPY Average Return (Annualized),14.60%
-Custom Benchmark Inception Return,37.87%
+Custom Benchmark Inception Return,37.73%
 SPY Inception Return,43.93%
-Portfolio Beta,0.9117
-Portfolio Alpha against custom benchmark,-0.6906%
-Portfolio Alpha against SPY,17.2939%
-Portfolio Risk Premium,26.63%
-Risk Adjusted Return (three month treasury rate),33.55%
-Treynor Ratio (three month treasury rate),0.29
-Information Ratio (vs. Custom Benchmark, daily),-0.0244
-Information Ratio (vs. Custom Benchmark, annual),-0.39
+Portfolio Beta,0.9763
+Portfolio Alpha against custom benchmark,0.3464%
+Portfolio Alpha against SPY,-2.4416%
+Portfolio Risk Premium,7.55%
+Risk Adjusted Return (three month treasury rate),12.00%
+Treynor Ratio (three month treasury rate),0.08
+Information Ratio (vs. Custom Benchmark, daily),0.0060
+Information Ratio (vs. Custom Benchmark, annual),0.10
 1 Day Return,0.28%
 1 Week Return,2.27%
 1 Month Return,-2.75%
-Year-to-Date Return,-2.43%
-1 Year Return,14.38%
-Inception,38.49%
+Year-to-Date Return,-2.44%
+1 Year Return,14.26%
+Inception,38.42%
