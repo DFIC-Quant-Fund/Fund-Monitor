@@ -23,27 +23,27 @@ securities:
   # Macro fund
 - ticker: XBB.TO
   fund: Macro Fund
-  type: Fixed Income
+  sector: Fixed Income
   geography: CAN
 - ticker: AGG
   fund: Macro Fund
-  type: Fixed Income
+  sector: Fixed Income
   geography: US
 - ticker: SPY
   fund: Macro Fund
-  type: Equity
+  sector: Equity
   geography: US
 - ticker: SPSB
   fund: Macro Fund
-  type: Fixed Income
+  sector: Fixed Income
   geography: US
 - ticker: SCHP
   fund: Macro Fund
-  type: Fixed Income
+  sector: Fixed Income
   geography: US
 - ticker: TLT
   fund: Macro Fund
-  type: Fixed Income
+  sector: Fixed Income
   geography: US
 
 # Industrials Fund

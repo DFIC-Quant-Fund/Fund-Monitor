@@ -49,7 +49,8 @@ def main():
     period_metrics = portfolio_performance.calculate_period_performance()
 
     # Fixed income tickers from config
-    fi_tickers = [security['ticker'] for security in config['securities'] if security['type'] == 'Fixed Income']
+    #TODO: sector naming inconsistent (pull this from db instead)
+    fi_tickers = [security['ticker'] for security in config['securities'] if security.get('sector') == 'Fixed Income']
 
     print(f"Total Return including dividends,{portfolio_performance.total_return()*100:.2f}%\n")
     print(f"Daily Average Return,{portfolio_performance.daily_average_return()*100:.4f}%\n")
