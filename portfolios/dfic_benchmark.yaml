@@ -31,25 +31,25 @@ currencies:
 # [TRANSACTIONS]
 transactions:
   
-- sector: Buy
+- type: Buy
   date: 2022-05-05
   ticker: XIU.TO
   price: 28.92279434
   quantity: 1054.30674
   currency: CAD
-- sector: Buy
+- type: Buy
   date: 2022-05-05
   ticker: SPY
   price: 397.25787354
   quantity: 60.26439139
   currency: USD
-- sector: Buy
+- type: Buy
   date: 2022-05-05
   ticker: AGG
   price: 92.74882507
   quantity: 172.0812466
   currency: USD
-- sector: Buy
+- type: Buy
   date: 2022-05-05
   ticker: XBB.TO
   price: 25.58189964
