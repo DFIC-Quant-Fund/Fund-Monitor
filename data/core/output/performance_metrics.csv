@@ -1,14 +1,14 @@
 Metric,Value
-Total Return including dividends,44.85%
+Total Return including dividends,44.89%
 Daily Average Return,0.0520%
-Annualized Average Return,13.98%
+Annualized Average Return,13.99%
 Daily Variance,0.0076%
 Annualized Variance,1.93%
 Daily Volatility,0.8741%
 Annualized Volatility,13.88%
 Daily Downside Variance,0.0043%
 Annualized Downside Variance,1.07%
-Daily Downside Volatility,0.6525%
+Daily Downside Volatility,0.6526%
 Annualized Downside Volatility,10.36%
 Sharpe Ratio (Annualized),0.63
 Sortino Ratio (Annualized),0.84
@@ -21,22 +21,22 @@ Custom Benchmark Volatility (Daily),0.6546%
 SPY Volatility (Daily),1.1367%
 Custom Benchmark Volatility (Annualized),10.39%
 SPY Volatility (Annualized),18.04%
-Custom Benchmark Average Return (Daily),0.0451%
+Custom Benchmark Average Return (Daily),0.0452%
 SPY Average Return (Daily),0.0566%
 Custom Benchmark Average Return (Annualized),12.05%
 SPY Average Return (Annualized),15.32%
-Custom Benchmark Inception Return,39.25%
+Custom Benchmark Inception Return,39.28%
 SPY Inception Return,47.18%
-Portfolio Beta,1.2138
-Portfolio Alpha against custom benchmark,0.2930%
-Portfolio Alpha against SPY,-3.6754%
-Portfolio Risk Premium,9.62%
+Portfolio Beta,1.2139
+Portfolio Alpha against custom benchmark,0.2934%
+Portfolio Alpha against SPY,-3.6673%
+Portfolio Risk Premium,9.63%
 Risk Adjusted Return (three month treasury rate),11.57%
 Treynor Ratio (three month treasury rate),0.08
-Information Ratio (vs. Custom Benchmark, daily),0.0174
-Information Ratio (vs. Custom Benchmark, annual),0.28
-XBB.TO Current Mkt Value,5209.96
-XBB.TO Fixed Income Mkt Share,9.37%
+Information Ratio (vs. Custom Benchmark daily),0.0174
+Information Ratio (vs. Custom Benchmark annual),0.28
+XBB.TO Current Mkt Value,5210.88
+XBB.TO Fixed Income Mkt Share,9.36%
 XBB.TO USD FI Mkt Share,0.00%
 AGG Current Mkt Value,0.00
 AGG Fixed Income Mkt Share,0.00%
@@ -44,15 +44,15 @@ AGG USD FI Mkt Share,0.00%
 SPSB Current Mkt Value,0.00
 SPSB Fixed Income Mkt Share,0.00%
 SPSB USD FI Mkt Share,0.00%
-SCHP Current Mkt Value,12938.70
+SCHP Current Mkt Value,12946.56
 SCHP Fixed Income Mkt Share,23.26%
 SCHP USD FI Mkt Share,25.66%
-TLT Current Mkt Value,37479.59
+TLT Current Mkt Value,37502.38
 TLT Fixed Income Mkt Share,67.38%
 TLT USD FI Mkt Share,74.34%
-1 Day Return,-0.14%
-1 Week Return,1.27%
-1 Month Return,5.04%
-Year-to-Date Return,-1.38%
-1 Year Return,16.22%
-Inception,44.85%
+1 Day Return,-0.12%
+1 Week Return,1.29%
+1 Month Return,5.06%
+Year-to-Date Return,-1.36%
+1 Year Return,16.24%
+Inception,44.89%
