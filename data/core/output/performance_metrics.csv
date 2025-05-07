@@ -1,42 +1,42 @@
 Metric,Value
-Total Return including dividends,45.32%
-Daily Average Return,0.0523%
-Annualized Average Return,14.08%
+Total Return including dividends,45.11%
+Daily Average Return,0.0520%
+Annualized Average Return,14.01%
 Daily Variance,0.0076%
 Annualized Variance,1.92%
-Daily Volatility,0.8727%
-Annualized Volatility,13.85%
-Daily Downside Variance,0.0042%
+Daily Volatility,0.8731%
+Annualized Volatility,13.86%
+Daily Downside Variance,0.0043%
 Annualized Downside Variance,1.07%
-Daily Downside Volatility,0.6509%
-Annualized Downside Volatility,10.33%
-Sharpe Ratio (Annualized),0.64
+Daily Downside Volatility,0.6521%
+Annualized Downside Volatility,10.35%
+Sharpe Ratio (Annualized),0.63
 Sortino Ratio (Annualized),0.85
-Maximum Drawdown,-5.44%
+Maximum Drawdown,-5.52%
 Custom Benchmark Variance (Daily),0.0043%
 SPY Variance (Daily),0.0129%
 Custom Benchmark Variance (Annualized),1.08%
 SPY Variance (Annualized),3.25%
-Custom Benchmark Volatility (Daily),0.6546%
-SPY Volatility (Daily),1.1364%
-Custom Benchmark Volatility (Annualized),10.39%
-SPY Volatility (Annualized),18.04%
-Custom Benchmark Average Return (Daily),0.0446%
-SPY Average Return (Daily),0.0554%
-Custom Benchmark Average Return (Annualized),11.90%
-SPY Average Return (Annualized),14.99%
-Custom Benchmark Inception Return,38.76%
-SPY Inception Return,45.99%
+Custom Benchmark Volatility (Daily),0.6540%
+SPY Volatility (Daily),1.1357%
+Custom Benchmark Volatility (Annualized),10.38%
+SPY Volatility (Annualized),18.03%
+Custom Benchmark Average Return (Daily),0.0453%
+SPY Average Return (Daily),0.0559%
+Custom Benchmark Average Return (Annualized),12.10%
+SPY Average Return (Annualized),15.12%
+Custom Benchmark Inception Return,39.57%
+SPY Inception Return,46.58%
 Portfolio Beta,1.2123
-Portfolio Alpha against custom benchmark,0.5794%
-Portfolio Alpha against SPY,-3.1675%
-Portfolio Risk Premium,9.72%
-Risk Adjusted Return (three month treasury rate),11.65%
+Portfolio Alpha against custom benchmark,0.2711%
+Portfolio Alpha against SPY,-3.3970%
+Portfolio Risk Premium,9.65%
+Risk Adjusted Return (three month treasury rate),11.59%
 Treynor Ratio (three month treasury rate),0.08
-Information Ratio (vs. Custom Benchmark daily),0.0197
-Information Ratio (vs. Custom Benchmark annual),0.31
-XBB.TO Current Mkt Value,5218.24
-XBB.TO Fixed Income Mkt Share,9.35%
+Information Ratio (vs. Custom Benchmark daily),0.0172
+Information Ratio (vs. Custom Benchmark annual),0.27
+XBB.TO Current Mkt Value,5238.48
+XBB.TO Fixed Income Mkt Share,9.34%
 XBB.TO USD FI Mkt Share,0.00%
 AGG Current Mkt Value,0.00
 AGG Fixed Income Mkt Share,0.00%
@@ -44,15 +44,15 @@ AGG USD FI Mkt Share,0.00%
 SPSB Current Mkt Value,0.00
 SPSB Fixed Income Mkt Share,0.00%
 SPSB USD FI Mkt Share,0.00%
-SCHP Current Mkt Value,12975.16
-SCHP Fixed Income Mkt Share,23.25%
-SCHP USD FI Mkt Share,25.64%
-TLT Current Mkt Value,37624.86
-TLT Fixed Income Mkt Share,67.41%
-TLT USD FI Mkt Share,74.36%
-1 Day Return,0.32%
-1 Week Return,1.52%
-1 Month Return,5.40%
-Year-to-Date Return,-1.04%
-1 Year Return,15.50%
-Inception,45.32%
+SCHP Current Mkt Value,13006.92
+SCHP Fixed Income Mkt Share,23.18%
+SCHP USD FI Mkt Share,25.57%
+TLT Current Mkt Value,37862.13
+TLT Fixed Income Mkt Share,67.48%
+TLT USD FI Mkt Share,74.43%
+1 Day Return,-0.17%
+1 Week Return,1.57%
+1 Month Return,4.96%
+Year-to-Date Return,-1.20%
+1 Year Return,15.15%
+Inception,45.11%
