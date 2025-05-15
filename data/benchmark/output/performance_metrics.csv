@@ -1,36 +1,36 @@
 Metric,Value
 Total Return including dividends,22.75%
 Daily Average Return,0.0290%
-Annualized Average Return,7.59%
+Annualized Average Return,7.58%
 Daily Variance,0.0052%
-Annualized Variance,1.32%
-Daily Volatility,0.7225%
-Annualized Volatility,11.47%
+Annualized Variance,1.31%
+Daily Volatility,0.7215%
+Annualized Volatility,11.45%
 Daily Downside Variance,0.0051%
-Annualized Downside Variance,1.30%
-Daily Downside Volatility,0.7172%
-Annualized Downside Volatility,11.39%
+Annualized Downside Variance,1.29%
+Daily Downside Volatility,0.7151%
+Annualized Downside Volatility,11.35%
 Sharpe Ratio (Annualized),0.26
 Sortino Ratio (Annualized),0.26
-Maximum Drawdown,-10.98%
+Maximum Drawdown,-10.93%
 Custom Benchmark Variance (Daily),0.0043%
 SPY Variance (Daily),0.0129%
 Custom Benchmark Variance (Annualized),1.08%
 SPY Variance (Annualized),3.26%
-Custom Benchmark Volatility (Daily),0.6538%
+Custom Benchmark Volatility (Daily),0.6540%
 SPY Volatility (Daily),1.1374%
 Custom Benchmark Volatility (Annualized),10.38%
 SPY Volatility (Annualized),18.06%
-Custom Benchmark Average Return (Daily),0.0487%
+Custom Benchmark Average Return (Daily),0.0486%
 SPY Average Return (Daily),0.0619%
-Custom Benchmark Average Return (Annualized),13.04%
+Custom Benchmark Average Return (Annualized),13.02%
 SPY Average Return (Annualized),16.86%
-Custom Benchmark Inception Return,43.60%
+Custom Benchmark Inception Return,43.52%
 SPY Inception Return,53.97%
-Portfolio Beta,0.9471
-Portfolio Alpha against custom benchmark,-4.9954%
-Portfolio Alpha against SPY,-8.6155%
-Portfolio Risk Premium,3.23%
+Portfolio Beta,0.9464
+Portfolio Alpha against custom benchmark,-4.9719%
+Portfolio Alpha against SPY,-8.6087%
+Portfolio Risk Premium,3.22%
 Risk Adjusted Return (three month treasury rate),7.28%
 Treynor Ratio (three month treasury rate),0.03
 Information Ratio (vs. Custom Benchmark daily),-0.0525
@@ -48,5 +48,5 @@ XBB.TO USD FI Mkt Share,0.00%
 1 Week Return,2.24%
 1 Month Return,5.50%
 Year-to-Date Return,3.40%
-1 Year Return,14.96%
+1 Year Return,14.90%
 Inception,22.75%
