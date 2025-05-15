@@ -1,8 +1,8 @@
 name: API Health Check
 
 on:
-  schedule:
-    - cron: '0 0 * * *'  # Runs once every 24 hours at midnight UTC
+  # schedule:
+  #   - cron: '0 0 * * *'  # Runs once every 24 hours at midnight UTC
   workflow_dispatch:
 
 jobs:
