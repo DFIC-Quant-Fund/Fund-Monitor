@@ -8,6 +8,7 @@ from io import StringIO
 
 import yaml
 
+from health_routes import health_bp
 from holdings_routes import holdings_bp
 
 load_dotenv()
@@ -22,6 +23,7 @@ CORS(app, resources={r"/*": {"origins": [
     r"^https://deploy-preview-\d+--dfic-fund\.netlify\.app$"
 ]}})
 
+app.register_blueprint(health_bp, url_prefix='/api')
 app.register_blueprint(holdings_bp, url_prefix='/api')
 
 def get_db_connection():
