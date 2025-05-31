@@ -9,7 +9,7 @@ import os
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 
-from FrontierAnalysis import FrontierAnalysis
+from frontier_analysis import FrontierAnalysis
 import yfinance as yf
 
 class TestFrontierAnalysis(unittest.TestCase):

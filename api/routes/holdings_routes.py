@@ -6,7 +6,7 @@ import sys
 import yaml
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.db_utils import get_db_connection
+from database.connection import get_db_connection
 
 holdings_bp = Blueprint('holdings', __name__)
 

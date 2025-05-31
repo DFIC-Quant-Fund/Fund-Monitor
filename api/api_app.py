@@ -8,8 +8,8 @@ from io import StringIO
 
 import yaml
 
-from health_routes import health_bp
-from holdings_routes import holdings_bp
+from api.routes.health_routes import health_bp
+from api.routes.holdings_routes import holdings_bp
 
 load_dotenv()
 

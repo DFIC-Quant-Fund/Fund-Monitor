@@ -5,7 +5,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 
-from utils.db_utils import get_db_connection
+from database.connection import get_db_connection
 
 load_dotenv()
 
