@@ -208,20 +208,20 @@ transactions:
     quantity: 56
     currency: USD
 
-  - type: Buy
-    date: 2022-05-09
-    ticker: AGG
-    # price: 132.41  #price in CAD
-    price: 102.50
-    quantity: 226
-    currency: USD
+  # - type: Buy
+  #   date: 2022-05-09
+  #   ticker: AGG
+  #   # price: 132.41  #price in CAD
+  #   price: 102.50
+  #   quantity: 226
+  #   currency: USD
 
-  - type: Buy
-    date: 2022-05-09
-    ticker: RSP
-    price: 192.16
-    quantity: 290
-    currency: CAD
+  # - type: Buy
+  #   date: 2022-05-09
+  #   ticker: RSP
+  #   price: 192.16
+  #   quantity: 290
+  #   currency: CAD
 
   # - type: Sell
   #   date: 2022-05-09
@@ -230,13 +230,13 @@ transactions:
   #   quantity: 265
   #   currency: CAD
 
-  - type: Sell
-    date: 2023-04-27
-    ticker: AGG
-    # price: 134.34 # CAD
-    price: 98.57
-    quantity: 226
-    currency: USD
+  # - type: Sell
+  #   date: 2023-04-27
+  #   ticker: AGG
+  #   # price: 134.34 # CAD
+  #   price: 98.57
+  #   quantity: 226
+  #   currency: USD
 
   - type: Buy
     date: 2023-04-27
@@ -245,12 +245,12 @@ transactions:
     quantity: 155
     currency: USD
 
-  - type: Sell
-    date: 2023-04-27
-    ticker: RSP
-    price: 192.30
-    quantity: 290
-    currency: CAD
+  # - type: Sell
+  #   date: 2023-04-27
+  #   ticker: RSP
+  #   price: 192.30
+  #   quantity: 290
+  #   currency: CAD
 
   - type: Buy
     date: 2023-04-27
@@ -285,7 +285,7 @@ transactions:
     ticker: SPY
     price: 406.81
     quantity: 35
-    currency: CAD
+    currency: USD
 
   - type: Buy
     date: 2023-04-27

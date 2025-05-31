@@ -8,7 +8,7 @@ HTTPS Cert:
 
     sudo certbot --nginx -d api.degrootefinance.com
 
-systemd for continuous uptime:
+systemid for continuous uptime:
 
     sudo nano /etc/systemd/system/fund-monitor-api.service
 
