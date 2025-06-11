@@ -1,14 +1,14 @@
 Metric,Value
-Total Return including dividends,44.33%
-Daily Average Return,0.0482%
-Annualized Average Return,12.90%
+Total Return including dividends,44.31%
+Daily Average Return,0.0481%
+Annualized Average Return,12.88%
 Daily Variance,0.0041%
 Annualized Variance,1.04%
-Daily Volatility,0.6428%
+Daily Volatility,0.6426%
 Annualized Volatility,10.20%
 Daily Downside Variance,0.0021%
 Annualized Downside Variance,0.53%
-Daily Downside Volatility,0.4565%
+Daily Downside Volatility,0.4566%
 Annualized Downside Volatility,7.25%
 Sharpe Ratio (Annualized),0.76
 Sortino Ratio (Annualized),1.07
@@ -16,37 +16,37 @@ Maximum Drawdown,-3.55%
 Custom Benchmark Variance (Daily),0.0042%
 SPY Variance (Daily),0.0128%
 Custom Benchmark Variance (Annualized),1.06%
-SPY Variance (Annualized),3.22%
-Custom Benchmark Volatility (Daily),0.6495%
-SPY Volatility (Daily),1.1300%
+SPY Variance (Annualized),3.21%
+Custom Benchmark Volatility (Daily),0.6494%
+SPY Volatility (Daily),1.1294%
 Custom Benchmark Volatility (Annualized),10.31%
-SPY Volatility (Annualized),17.94%
+SPY Volatility (Annualized),17.93%
 Custom Benchmark Average Return (Daily),0.0480%
-SPY Average Return (Daily),0.0631%
-Custom Benchmark Average Return (Annualized),12.87%
-SPY Average Return (Annualized),17.23%
-Custom Benchmark Inception Return,44.14%
-SPY Inception Return,57.15%
+SPY Average Return (Daily),0.0627%
+Custom Benchmark Average Return (Annualized),12.85%
+SPY Average Return (Annualized),17.10%
+Custom Benchmark Inception Return,44.13%
+SPY Inception Return,56.72%
 Portfolio Beta,0.9807
-Portfolio Alpha against custom benchmark,0.1963%
-Portfolio Alpha against SPY,-4.0767%
-Portfolio Risk Premium,8.54%
-Risk Adjusted Return (three month treasury rate),12.99%
+Portfolio Alpha against custom benchmark,0.1952%
+Portfolio Alpha against SPY,-3.9741%
+Portfolio Risk Premium,8.52%
+Risk Adjusted Return (three month treasury rate),12.97%
 Treynor Ratio (three month treasury rate),0.09
 Information Ratio (vs. Custom Benchmark daily),0.0013
 Information Ratio (vs. Custom Benchmark annual),0.02
-XIU.TO Current Mkt Value,41961.41
-XIU.TO Fixed Income Mkt Share,43.82%
+XIU.TO Current Mkt Value,42130.10
+XIU.TO Fixed Income Mkt Share,43.89%
 XIU.TO USD FI Mkt Share,0.00%
-AGG Current Mkt Value,31401.41
-AGG Fixed Income Mkt Share,32.79%
+AGG Current Mkt Value,31488.20
+AGG Fixed Income Mkt Share,32.80%
 AGG USD FI Mkt Share,100.00%
-XBB.TO Current Mkt Value,22393.61
-XBB.TO Fixed Income Mkt Share,23.39%
+XBB.TO Current Mkt Value,22369.77
+XBB.TO Fixed Income Mkt Share,23.30%
 XBB.TO USD FI Mkt Share,0.00%
-1 Day Return,0.27%
-1 Week Return,0.20%
-1 Month Return,2.71%
-Year-to-Date Return,2.02%
-1 Year Return,15.10%
-Inception,44.33%
+1 Day Return,-0.06%
+1 Week Return,0.23%
+1 Month Return,1.47%
+Year-to-Date Return,2.06%
+1 Year Return,15.13%
+Inception,44.31%
