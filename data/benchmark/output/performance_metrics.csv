@@ -1,5 +1,5 @@
 Metric,Value
-Total Return including dividends,45.80%
+Total Return including dividends,45.81%
 Daily Average Return,0.0492%
 Annualized Average Return,13.19%
 Daily Variance,0.0041%
@@ -25,28 +25,28 @@ Custom Benchmark Average Return (Daily),0.0491%
 SPY Average Return (Daily),0.0627%
 Custom Benchmark Average Return (Annualized),13.16%
 SPY Average Return (Annualized),17.11%
-Custom Benchmark Inception Return,45.63%
+Custom Benchmark Inception Return,45.64%
 SPY Inception Return,57.05%
 Portfolio Beta,0.9806
-Portfolio Alpha against custom benchmark,0.1990%
-Portfolio Alpha against SPY,-3.6756%
+Portfolio Alpha against custom benchmark,0.1985%
+Portfolio Alpha against SPY,-3.6736%
 Portfolio Risk Premium,8.83%
-Risk Adjusted Return (three month treasury rate),13.28%
+Risk Adjusted Return (three month treasury rate),13.29%
 Treynor Ratio (three month treasury rate),0.09
 Information Ratio (vs. Custom Benchmark daily),0.0011
 Information Ratio (vs. Custom Benchmark annual),0.02
 XIU.TO Current Mkt Value,42172.27
 XIU.TO Fixed Income Mkt Share,44.19%
 XIU.TO USD FI Mkt Share,0.00%
-AGG Current Mkt Value,30968.94
-AGG Fixed Income Mkt Share,32.45%
+AGG Current Mkt Value,30978.99
+AGG Fixed Income Mkt Share,32.46%
 AGG USD FI Mkt Share,100.00%
 XBB.TO Current Mkt Value,22282.36
 XBB.TO Fixed Income Mkt Share,23.35%
 XBB.TO USD FI Mkt Share,0.00%
-1 Day Return,0.24%
+1 Day Return,0.25%
 1 Week Return,-0.04%
-1 Month Return,-0.14%
-Year-to-Date Return,1.90%
+1 Month Return,-0.13%
+Year-to-Date Return,1.91%
 1 Year Return,14.68%
-Inception,45.80%
+Inception,45.81%
