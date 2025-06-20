@@ -1,3 +1,15 @@
+"""
+Data processing and visualization module.
+
+This module handles data aggregation and visualization tasks.
+It provides methods for:
+- Aggregating market values, cash, and dividend data
+- Creating portfolio value plots
+- Data preprocessing for other modules
+
+This module focuses on data processing and visualization, serving as a utility for other modules.
+"""
+
 import os
 import pandas as pd
 import matplotlib.pyplot as plt

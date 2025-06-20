@@ -1,8 +1,21 @@
+"""
+Portfolio ratio calculation module.
+
+This module calculates various financial ratios used to evaluate portfolio performance.
+It provides methods for:
+- Sharpe Ratio: Risk-adjusted return relative to risk-free rate
+- Sortino Ratio: Downside risk-adjusted return
+- Treynor Ratio: Systematic risk-adjusted return
+- Information Ratio: Active return relative to tracking error
+
+This module focuses solely on ratio calculations and assumes input data is already processed.
+"""
+
 import os
 import pandas as pd
-from .Benchmark import Benchmark
-from .MarketComparison import MarketComparison
-from .PortfolioPerformance import PortfolioPerformance
+from benchmark import Benchmark
+from market_comparison import MarketComparison
+from returns_calculator import ReturnsCalculator
 
 class Ratios:
     def __init__(self, output_folder):

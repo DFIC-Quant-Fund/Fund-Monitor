@@ -1,14 +1,27 @@
+"""
+Performance report generation module.
+
+This module orchestrates the generation of comprehensive performance reports.
+It coordinates:
+- Data processing and aggregation
+- Benchmark comparisons
+- Risk metric calculations
+- Market comparison analysis
+- Ratio calculations
+- Report generation and output
+
+This is the main orchestration module that ties together all other performance-related modules.
+"""
+
 import os
 import sys
 import yaml
-from performance import (
-    DataProcessor, 
-    Benchmark, 
-    PortfolioPerformance, 
-    RiskMetrics, 
-    MarketComparison,
-    Ratios
-)
+from data_processor import DataProcessor
+from benchmark import Benchmark
+from returns_calculator import ReturnsCalculator
+from risk_metrics import RiskMetrics
+from market_comparison import MarketComparison
+from ratios import Ratios
 
 '''
 FILE PURPOSE: RUNS TO FILL SECONDARY OUtPUT TABLES (ones that require calcuation - getting calc from performance files)
@@ -38,7 +51,7 @@ def main():
 
     data_processor = DataProcessor(output_folder)
     benchmark = Benchmark(output_folder)
-    portfolio_performance = PortfolioPerformance(output_folder)
+    portfolio_performance = ReturnsCalculator(output_folder)
     risk_metrics = RiskMetrics(output_folder)
     market_comparison = MarketComparison(output_folder)
     ratios = Ratios(output_folder)

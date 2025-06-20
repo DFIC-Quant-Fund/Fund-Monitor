@@ -1,3 +1,16 @@
+"""
+Benchmark data management and calculation module.
+
+This module handles benchmark-related operations and calculations.
+It provides methods for:
+- Retrieving and processing SPY benchmark data
+- Creating and managing custom benchmarks
+- Calculating benchmark-specific metrics (returns, variance, volatility)
+- Managing benchmark inception returns
+
+This module focuses on benchmark data management and calculations.
+"""
+
 import os
 import pandas as pd
 

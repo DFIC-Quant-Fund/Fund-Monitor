@@ -1,3 +1,16 @@
+"""
+Portfolio risk metrics calculation module.
+
+This module calculates various risk metrics for portfolio analysis.
+It provides methods for:
+- Variance calculations (daily and annualized)
+- Volatility calculations (daily and annualized)
+- Downside risk metrics
+- Maximum drawdown analysis
+
+This module focuses solely on risk metric calculations and assumes input data is already processed.
+"""
+
 import os
 import pandas as pd
 
