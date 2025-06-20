@@ -4,6 +4,8 @@ python Performance.py fund                  # Run historical using all dates fro
 python Performance.py fund yyyy-mm-dd       # Run for specific date (must be in portfolio_total.csv)
 """
 
+# This file is no longer used, but is kept for reference #########################################################
+
 import pandas as pd
 import os
 import sys

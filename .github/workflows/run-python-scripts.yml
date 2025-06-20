@@ -43,21 +43,21 @@ jobs:
             echo "Using current date: $CURRENT_DATE"
             echo "date=$CURRENT_DATE" >> $GITHUB_OUTPUT
           fi
-      - name: Run Portfolio.py Script
-        run: python Portfolio.py ${{ matrix.fund }}
-      - name: Run PerformanceTracker.py Script
-        run: python PerformanceTracker.py ${{ matrix.fund }}
+      - name: Run portfolio_csv_builder.py Script
+        run: python portfolio_csv_builder.py ${{ matrix.fund }}
+      - name: Run generate_performance_reports.py Script
+        run: python generate_performance_reports.py ${{ matrix.fund }}
       # Disabled Frontier Analysis due to yfinance rate limiting
       # - name: Run Frontier Analysis.py Script
       #   run: python FrontierAnalysis.py ${{ matrix.fund }}
-      - name: Run Performance.py Script
-        if: ${{ github.ref == 'refs/heads/main' }}
-        env:
-          DB_HOSTNAME: ${{ secrets.DB_HOSTNAME }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_PORT: ${{ secrets.DB_PORT }}
-        run: python Performance.py ${{ matrix.fund }} ${{ steps.determine_date.outputs.date }}
+      # - name: Run Performance.py Script
+      #   if: ${{ github.ref == 'refs/heads/main' }}
+      #   env:
+      #     DB_HOSTNAME: ${{ secrets.DB_HOSTNAME }}
+      #     DB_USER: ${{ secrets.DB_USER }}
+      #     DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      #     DB_PORT: ${{ secrets.DB_PORT }}
+      #   run: python Performance.py ${{ matrix.fund }} ${{ steps.determine_date.outputs.date }}
       - name: Upload Output Files to Main Branch
         if: ${{ github.ref == 'refs/heads/main' }}
         uses: EndBug/add-and-commit@v9
