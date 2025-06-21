@@ -8,6 +8,13 @@ import pandas as pd
 import yfinance as yf
 import yaml
 from dotenv import load_dotenv
+import time
+try:
+    # yfinance can use curl_cffi which raises this specific error
+    from curl_cffi.requests import HTTPError
+except ImportError:
+    # Fallback if curl_cffi is not used or installed
+    from requests.exceptions import HTTPError
 
 load_dotenv()
 
@@ -48,33 +55,58 @@ def create_securities_table():
 
 # %%
 # Backfill Securities Table
-
 def backfill_securities_table(portfolio, securities):
-
     for security in securities:
         ticker = security['ticker']
-        data = yf.Ticker(ticker)
-        fund = security['fund']
-        sector = security['sector'] 
-        name = data.info['longName']
-        geography = security['geography'] 
-        type = data.info['typeDisp']
-        currency = data.info['currency']
+        print(f"Fetching info for {ticker}...")
+        
+        retries = 3
+        info = None
+        for i in range(retries):
+            try:
+                # Add a small delay before each attempt
+                time.sleep((i+1) * 2) 
+                info = yf.Ticker(ticker).info
+                
+                # Check if we got meaningful data
+                if info and info.get('longName'):
+                    print(f"Successfully fetched info for {ticker}.")
+                    break # Succeeded, exit retry loop
+                else:
+                    raise ValueError("Empty or incomplete info dictionary returned.")
 
-        cursor.execute("""
-        INSERT INTO Securities (ticker, name, type, geography, sector, fund, currency, portfolio)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-        ticker = VALUES(ticker),
-        name = VALUES(name),
-        type = VALUES(type),
-        geography = VALUES(geography),
-        sector = VALUES(sector),
-        fund = VALUES(fund),
-        currency = VALUES(currency),
-        portfolio = VALUES(portfolio);
-        """, (ticker, name, type, geography, sector, fund, currency, portfolio))
-        connection.commit()
+            except (HTTPError, ValueError, KeyError) as e:
+                print(f"Attempt {i+1}/{retries} failed for {ticker}: {e}")
+                if i == retries - 1:
+                    print(f"All retries failed for {ticker}. Skipping.")
+        
+        if not info or not info.get('longName'):
+            continue # Skip to the next security
+
+        try:
+            fund = security['fund']
+            sector = security['sector'] 
+            name = info['longName']
+            geography = security['geography'] 
+            type_disp = info.get('typeDisp') or info.get('quoteType')
+            currency = info['currency']
+
+            cursor.execute("""
+            INSERT INTO Securities (ticker, name, type, geography, sector, fund, currency, portfolio)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+            ticker = VALUES(ticker),
+            name = VALUES(name),
+            type = VALUES(type),
+            geography = VALUES(geography),
+            sector = VALUES(sector),
+            fund = VALUES(fund),
+            currency = VALUES(currency),
+            portfolio = VALUES(portfolio);
+            """, (ticker, name, type_disp, geography, sector, fund, currency, portfolio))
+            connection.commit()
+        except Exception as e:
+            print(f"Error inserting {ticker} into database: {e}")
 
     print("Securities table backfilled")
 
@@ -545,135 +577,253 @@ def drop_dividends_table():
     print("Dividends table dropped")
 
 # %% [markdown]
-# # Generate Holdings Table
+# # Generate Cash Holdings Table
 
 # %%
-def create_holdings_view():
+def create_cash_balances_table():
     cursor.execute("""
-    CREATE OR REPLACE VIEW Holdings AS
-    SELECT
-        p.trading_date,
-        p.ticker,
-        p.portfolio,
-        s.name,
-        s.type,
-        s.geography,
-        s.sector,
-        s.fund,
-        s.currency AS security_currency,
-
-        -- Shares held calculation
-        (
-            SELECT SUM(
-                CASE 
-                    WHEN t.action = 'BUY' THEN t.shares 
-                    ELSE -t.shares 
-                END
-            )
-            FROM Transactions t
-            WHERE t.ticker = p.ticker 
-                AND t.portfolio = p.portfolio
-                AND t.date <= p.trading_date
-        ) AS shares_held,
-
-        p.price,
-
-        -- Market value calculation
-        (
-            (
-                SELECT SUM(
-                    CASE 
-                        WHEN t.action = 'BUY' THEN t.shares 
-                        ELSE -t.shares 
-                    END
-                )
-                FROM Transactions t
-                WHERE t.ticker = p.ticker 
-                    AND t.portfolio = p.portfolio
-                    AND t.date <= p.trading_date
-            ) * p.price
-        ) AS market_value,
-
-        -- Dividend market value calculation (only when shares were held)
-        (
-            SELECT COALESCE(SUM(sub.amount * sub.shares), 0)
-            FROM (
-                SELECT
-                    d1.amount,
-                    (
-                        SELECT SUM(
-                            CASE 
-                                WHEN t.action = 'BUY' THEN t.shares 
-                                ELSE -t.shares 
-                            END
-                        )
-                        FROM Transactions t
-                        WHERE t.ticker = d1.ticker
-                            AND t.portfolio = d1.portfolio
-                            AND t.date <= d1.date
-                    ) AS shares
-                FROM Dividends d1
-                WHERE d1.ticker = p.ticker
-                    AND d1.portfolio = p.portfolio
-                    AND d1.date <= p.trading_date
-            ) AS sub
-            WHERE sub.shares > 0
-        ) AS dividend_market_value,
-
-        -- Total market value = market + dividend
-        (
-            (
-                (
-                    SELECT SUM(
-                        CASE 
-                            WHEN t.action = 'BUY' THEN t.shares 
-                            ELSE -t.shares 
-                        END
-                    )
-                    FROM Transactions t
-                    WHERE t.ticker = p.ticker 
-                        AND t.portfolio = p.portfolio
-                        AND t.date <= p.trading_date
-                ) * p.price
-            ) +
-            (
-                SELECT COALESCE(SUM(sub.amount * sub.shares), 0)
-                FROM (
-                    SELECT
-                        d1.amount,
-                        (
-                            SELECT SUM(
-                                CASE 
-                                    WHEN t.action = 'BUY' THEN t.shares 
-                                    ELSE -t.shares 
-                                END
-                            )
-                            FROM Transactions t
-                            WHERE t.ticker = d1.ticker
-                                AND t.portfolio = d1.portfolio
-                                AND t.date <= d1.date
-                        ) AS shares
-                    FROM Dividends d1
-                    WHERE d1.ticker = p.ticker
-                        AND d1.portfolio = p.portfolio
-                        AND d1.date <= p.trading_date
-                ) AS sub
-                WHERE sub.shares > 0
-            )
-        ) AS total_market_value
-
-    FROM Prices p
-    JOIN Securities s ON s.ticker = p.ticker AND s.portfolio = p.portfolio;
+    CREATE TABLE IF NOT EXISTS CashBalances (
+        date DATE PRIMARY KEY,
+        cash_cad DECIMAL(20, 10) NOT NULL DEFAULT 0,
+        cash_usd DECIMAL(20, 10) NOT NULL DEFAULT 0,
+        cash_agg_cad DECIMAL(20, 10) NOT NULL DEFAULT 0
+    );
     """)
     connection.commit()
-    print("Holdings view created")
+    print("CashBalances table created")
+
+def drop_cash_balances_table():
+    cursor.execute("DROP TABLE IF EXISTS CashBalances")
+    connection.commit()
+    print("CashBalances table dropped")
+
+# %%
+def backfill_cash_balances_table():
+    portfolio = 'core'
+    # Get all trading dates
+    cursor.execute("SELECT trading_date FROM TradingCalendar ORDER BY trading_date")
+    dates = [row[0] for row in cursor.fetchall()]
+    if not dates:
+        print("No trading dates found.")
+        return
+
+    # Get all transactions for the core portfolio, ordered by date
+    cursor.execute("""
+        SELECT date, action, ticker, shares, price, currency
+        FROM Transactions
+        WHERE portfolio = %s
+        ORDER BY date
+    """, (portfolio,))
+    transactions = cursor.fetchall()
+
+    # Get all dividends for the core portfolio, ordered by date
+    cursor.execute("""
+        SELECT date, ticker, amount, currency
+        FROM Dividends
+        WHERE portfolio = %s
+        ORDER BY date
+    """, (portfolio,))
+    dividends = cursor.fetchall()
+
+    # Get currency rates for each date
+    cursor.execute("SELECT date, CAD, USD FROM Currencies")
+    currency_rates = {row[0]: {'CAD': row[1], 'USD': row[2]} for row in cursor.fetchall()}
+
+    # Load starting cash from config.yaml
+    with open("../../config/config.yaml", "r") as f:
+        config = yaml.safe_load(f)
+        starting_cash_cad = config.get('starting_cash_cad', 0.0)
+        starting_cash_usd = config.get('starting_cash_usd', 0.0)
+
+    # Initialize balances
+    cash_cad = starting_cash_cad
+    cash_usd = starting_cash_usd
+    cash_balances = []
+    tx_idx = 0
+    div_idx = 0
+    for date in dates:
+        # Apply all transactions for this date
+        while tx_idx < len(transactions) and transactions[tx_idx][0] == date:
+            _, action, _, shares, price, currency = transactions[tx_idx]
+            amount = shares * price
+            usd_rate = currency_rates.get(date, {}).get('USD', 1.0)
+            if action == 'BUY':
+                if currency == 'CAD':
+                    cash_cad -= amount
+                elif currency == 'USD':
+                    # If not enough USD cash, convert from CAD
+                    if cash_usd < amount:
+                        usd_needed = amount - cash_usd
+                        cad_equiv = usd_needed * usd_rate
+                        if cash_cad >= cad_equiv:
+                            cash_cad -= cad_equiv
+                            cash_usd += usd_needed
+                        else:
+                            # Not enough CAD to convert, convert as much as possible
+                            usd_possible = cash_cad / usd_rate if usd_rate != 0 else 0
+                            cash_usd += usd_possible
+                            cash_cad = 0
+                    cash_usd -= amount
+            elif action == 'SELL':
+                if currency == 'CAD':
+                    cash_cad += amount
+                elif currency == 'USD':
+                    cash_usd += amount
+            tx_idx += 1
+        # Apply all dividends for this date
+        while div_idx < len(dividends) and dividends[div_idx][0] == date:
+            _, _, amount, currency = dividends[div_idx]
+            if currency == 'CAD':
+                cash_cad += amount
+            elif currency == 'USD':
+                cash_usd += amount
+            div_idx += 1
+        # Calculate aggregate cash in CAD
+        usd_rate = currency_rates.get(date, {}).get('USD', 1.0)
+        cash_agg_cad = cash_cad + (cash_usd * usd_rate)
+        cash_balances.append((date, cash_cad, cash_usd, cash_agg_cad))
+    # Insert into table
+    cursor.executemany("""
+        INSERT INTO CashBalances (date, cash_cad, cash_usd, cash_agg_cad)
+        VALUES (%s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            cash_cad = VALUES(cash_cad),
+            cash_usd = VALUES(cash_usd),
+            cash_agg_cad = VALUES(cash_agg_cad)
+    """, cash_balances)
+    connection.commit()
+    print("CashBalances table backfilled")
+
+# %% [markdown]
+# # Generate Holdings Table (can delete)
+
+# %%
+# def create_holdings_view():
+#     cursor.execute("""
+#     CREATE OR REPLACE VIEW Holdings AS
+#     SELECT
+#         p.trading_date,
+#         p.ticker,
+#         p.portfolio,
+#         s.name,
+#         s.type,
+#         s.geography,
+#         s.sector,
+#         s.fund,
+#         s.currency AS security_currency,
+
+#         -- Shares held calculation
+#         (
+#             SELECT SUM(
+#                 CASE 
+#                     WHEN t.action = 'BUY' THEN t.shares 
+#                     ELSE -t.shares 
+#                 END
+#             )
+#             FROM Transactions t
+#             WHERE t.ticker = p.ticker 
+#                 AND t.portfolio = p.portfolio
+#                 AND t.date <= p.trading_date
+#         ) AS shares_held,
+
+#         p.price,
+
+#         -- Market value calculation
+#         (
+#             (
+#                 SELECT SUM(
+#                     CASE 
+#                         WHEN t.action = 'BUY' THEN t.shares 
+#                         ELSE -t.shares 
+#                     END
+#                 )
+#                 FROM Transactions t
+#                 WHERE t.ticker = p.ticker 
+#                     AND t.portfolio = p.portfolio
+#                     AND t.date <= p.trading_date
+#             ) * p.price
+#         ) AS market_value,
+
+#         -- Dividend market value calculation (only when shares were held)
+#         (
+#             SELECT COALESCE(SUM(sub.amount * sub.shares), 0)
+#             FROM (
+#                 SELECT
+#                     d1.amount,
+#                     (
+#                         SELECT SUM(
+#                             CASE 
+#                                 WHEN t.action = 'BUY' THEN t.shares 
+#                                 ELSE -t.shares 
+#                             END
+#                         )
+#                         FROM Transactions t
+#                         WHERE t.ticker = d1.ticker
+#                             AND t.portfolio = d1.portfolio
+#                             AND t.date <= d1.date
+#                     ) AS shares
+#                 FROM Dividends d1
+#                 WHERE d1.ticker = p.ticker
+#                     AND d1.portfolio = p.portfolio
+#                     AND d1.date <= p.trading_date
+#             ) AS sub
+#             WHERE sub.shares > 0
+#         ) AS dividend_market_value,
+
+#         -- Total market value = market + dividend
+#         (
+#             (
+#                 (
+#                     SELECT SUM(
+#                         CASE 
+#                             WHEN t.action = 'BUY' THEN t.shares 
+#                             ELSE -t.shares 
+#                         END
+#                     )
+#                     FROM Transactions t
+#                     WHERE t.ticker = p.ticker 
+#                         AND t.portfolio = p.portfolio
+#                         AND t.date <= p.trading_date
+#                 ) * p.price
+#             ) +
+#             (
+#                 SELECT COALESCE(SUM(sub.amount * sub.shares), 0)
+#                 FROM (
+#                     SELECT
+#                         d1.amount,
+#                         (
+#                             SELECT SUM(
+#                                 CASE 
+#                                     WHEN t.action = 'BUY' THEN t.shares 
+#                                     ELSE -t.shares 
+#                                 END
+#                             )
+#                             FROM Transactions t
+#                             WHERE t.ticker = d1.ticker
+#                                 AND t.portfolio = d1.portfolio
+#                                 AND t.date <= d1.date
+#                         ) AS shares
+#                     FROM Dividends d1
+#                     WHERE d1.ticker = p.ticker
+#                         AND d1.portfolio = p.portfolio
+#                         AND d1.date <= p.trading_date
+#                 ) AS sub
+#                 WHERE sub.shares > 0
+#             )
+#         ) AS total_market_value
+
+#     FROM Prices p
+#     JOIN Securities s ON s.ticker = p.ticker AND s.portfolio = p.portfolio;
+#     """)
+#     connection.commit()
+#     print("Holdings view created")
 
 
 # %%
-def drop_holdings_view():
-    cursor.execute("DROP VIEW IF EXISTS Holdings")
-    connection.commit()
-    print("Holdings view dropped")
+# def drop_holdings_view():
+#     cursor.execute("DROP VIEW IF EXISTS Holdings")
+#     connection.commit()
+#     print("Holdings view dropped")
 
 
 # %% [markdown]
@@ -843,6 +993,80 @@ def drop_materialized_holdings():
     print("Materialized Holdings table dropped")
 
 # %% [markdown]
+# # Performance Metrics
+# (this needs to be adapted to calculate metrics from db data rather than csv before actual usage)
+
+# %%
+def drop_performance_metrics_table():
+    cursor.execute("DROP TABLE IF EXISTS PerformanceReturns")
+    connection.commit()
+    print("PerformanceReturns table dropped")
+
+def create_performance_metrics_table():
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS PerformanceReturns (
+        date DATE NOT NULL,
+        portfolio VARCHAR(50) NOT NULL,
+        one_day_return FLOAT,
+        one_week_return FLOAT,
+        one_month_return FLOAT,
+        ytd_return FLOAT,
+        one_year_return FLOAT,
+        inception_return FLOAT,
+        PRIMARY KEY (date, portfolio)
+    );
+    """)
+    connection.commit()
+    print("PerformanceReturns table created")
+
+# def insert_performance_metrics(metrics_df, date=None, portfolio=None):
+#     """
+#     Insert a row into PerformanceReturns from a DataFrame row or dict.
+#     metrics_df: DataFrame with columns ['Metric', 'Value']
+#     date: date for the row (defaults to today if not provided)
+#     portfolio: portfolio name (must be provided)
+#     """
+#     insert_query = """
+#     INSERT INTO PerformanceReturns (
+#         date,
+#         portfolio,
+#         one_day_return,
+#         one_week_return,
+#         one_month_return,
+#         ytd_return,
+#         one_year_return,
+#         inception_return
+#     )
+#     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+#     ON DUPLICATE KEY UPDATE
+#         one_day_return = VALUES(one_day_return),
+#         one_week_return = VALUES(one_week_return),
+#         one_month_return = VALUES(one_month_return),
+#         ytd_return = VALUES(ytd_return),
+#         one_year_return = VALUES(one_year_return),
+#         inception_return = VALUES(inception_return)
+#     """
+#     if date is None:
+#         from datetime import datetime
+#         date = datetime.now().date()
+#     if portfolio is None:
+#         raise ValueError("portfolio must be provided")
+#     metrics_dict = pd.Series(metrics_df.Value.values, index=metrics_df.Metric).to_dict()
+#     values = [
+#         date,
+#         portfolio,
+#         float(metrics_dict['1 Day Return'].strip('%')),
+#         float(metrics_dict['1 Week Return'].strip('%')),
+#         float(metrics_dict['1 Month Return'].strip('%')),
+#         float(metrics_dict['Year-to-Date Return'].strip('%')),
+#         float(metrics_dict['1 Year Return'].strip('%')),
+#         float(metrics_dict['Inception'].strip('%'))
+#     ]
+#     cursor.execute(insert_query, values)
+#     connection.commit()
+#     print(f"Inserted performance metrics for {portfolio} on {date}")
+
+# %% [markdown]
 # # Runner
 
 # %%
@@ -852,7 +1076,9 @@ drop_dividends_table()
 drop_securities_table()
 drop_currencies_table()
 drop_trading_calendar_table()
-drop_holdings_view()
+drop_cash_balances_table()
+# drop_performance_metrics_table()
+# drop_holdings_view()
 
 drop_materialized_holdings() #--------------------------------
 
@@ -863,29 +1089,30 @@ create_currencies_table()
 create_trading_calendar_table()
 create_prices_table()
 create_dividends_table()
+create_cash_balances_table()
 
 create_materialized_holdings() #--------------------------------
 
 # Import config
-with open("../config.yaml", "r") as f:
+with open("../../config/config.yaml", "r") as f:
     config = yaml.safe_load(f)
     start_date = config['start_date']
 
 end_date = pd.to_datetime('today').date() + pd.Timedelta(days=1)
 
-# Import benchmark config
-with open("../portfolios/dfic_benchmark.yaml", "r") as f:
-    config = yaml.safe_load(f)
-    securities = config['securities']
-    currencies = config['currencies']
-    transactions = config['transactions']
-    portfolio = config['portfolio']['name']
+# # Import benchmark config
+# with open("../../config/portfolio_definitions/dfic_benchmark.yaml", "r") as f:
+#     config = yaml.safe_load(f)
+#     securities = config['securities']
+#     currencies = config['currencies']
+#     transactions = config['transactions']
+#     portfolio = config['portfolio']['name']
 
-backfill_securities_table(portfolio, securities)
-backfill_transactions_table(portfolio, transactions)
+# backfill_securities_table(portfolio, securities)
+# backfill_transactions_table(portfolio, transactions)
 
 # Import core config
-with open("../portfolios/dfic_core.yaml", "r") as f:
+with open("../../config/portfolio_definitions/dfic_core.yaml", "r") as f:
     config = yaml.safe_load(f)
     securities = config['securities']
     currencies = config['currencies']
@@ -903,8 +1130,8 @@ backfill_prices_table()
 frontfill_prices_table()
 
 backfill_dividends_table()
-
-create_holdings_view()
+backfill_cash_balances_table()
+# create_holdings_view()
 refresh_materialized_holdings()#--------------------------------
 
 # %%
