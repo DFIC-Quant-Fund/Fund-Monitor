@@ -1,1 +1,0 @@
-This directory is for performance-related service files. Please add your performance analysis and calculation services here. 

@@ -4,7 +4,7 @@ python Performance.py fund                  # Run historical using all dates fro
 python Performance.py fund yyyy-mm-dd       # Run for specific date (must be in portfolio_total.csv)
 """
 
-# This file is no longer used, but is kept for reference #########################################################
+# This file is to be deprecated #########################################################
 
 import pandas as pd
 import os
@@ -118,6 +118,9 @@ class Performance:
         # Save to CSV
         results_df.to_csv(self.output_file, mode='w', index=True, header=True)
 
+
+    #TODO: all this database logic needs to be moved to the app.
+    #TODO: also, these calculations should no longer be made based on the csv files
     def save_results_to_db(self, results):
         """
         Saves the performance results to a database.
