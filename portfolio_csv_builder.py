@@ -20,14 +20,14 @@ end_date = (pd.Timestamp.now() + timedelta(days=1)).strftime('%Y-%m-%d') # yfina
 # file names as variables 
 trades_file = 'trades.csv'
 prices_file = 'prices.csv'
-dividends_file = 'dividends.csv'
 holdings_file = 'holdings.csv'
 cash_file = 'cash.csv'
 
 market_values_file = 'market_values.csv'
-dividend_values_file = 'dividend_values.csv'
 exchange_rates_file = 'exchange_rates.csv'
-exchange_rate_table_file = 'exchange_rate_table.csv'
+
+dividend_per_share_file = 'dividend_per_share.csv'
+cad_dividend_income_file = 'cad_dividend_income.csv'
 
 class Portfolio:
     def __init__(self, start_date, end_date, starting_cash, folder_prefix):
@@ -50,17 +50,18 @@ class Portfolio:
         self.holdings = None
         self.cash = None
 
-        self.market_values = None
-        self.dividend_values = None
+        self.cad_market_values = None
         self.exchange_rates = None
-        self.exchange_rate_table = None
+
+        self.dividend_per_share = None
+        self.cad_dividend_income = None
 
         # call valid dates function to get dates that both TSX and American exchanges open 
         self.get_valid_dates()
         # all tickers invested in from trades csv 
-        self.load_trades_data()
+        self.load_trades()
 
-    def load_exchange_rates(self):
+    def create_table_exchange_rates(self):
         # exchange rates from web and shave them for all start and end dates 
         self.exchange_rates = pd.DataFrame(index=self.valid_dates)
 
@@ -79,13 +80,13 @@ class Portfolio:
 
         pd.DataFrame(self.exchange_rates).to_csv(os.path.join(self.output_folder, exchange_rates_file), index_label='Date')
 
-    def load_trades_data(self):
+    def load_trades(self):
         self.trades = pd.read_csv(os.path.join(self.input_folder, trades_file))
         self.trades['Date'] = pd.to_datetime(self.trades['Date'])
         self.trades.set_index('Date', inplace=True)
         self.tickers = sorted(self.trades['Ticker'].unique())
 
-    def load_prices_data(self):
+    def create_table_prices(self):
         self.prices = pd.DataFrame(index=self.valid_dates)
 
         for ticker in self.tickers:
@@ -98,7 +99,7 @@ class Portfolio:
 
         pd.DataFrame(self.prices).to_csv(os.path.join(self.output_folder, prices_file), index_label='Date')
 
-    def load_dividends_data(self):
+    def create_table_dividend_per_share(self):
         self.dividends = pd.DataFrame(index=self.valid_dates)
 
         for ticker in self.tickers:
@@ -106,22 +107,18 @@ class Portfolio:
             divs.index = pd.to_datetime(divs.index).tz_localize(None)
             self.dividends[ticker] = self.dividends.index.map(lambda x: divs.get(x, 0.0))
 
-        pd.DataFrame(self.dividends).to_csv(os.path.join(self.output_folder, dividends_file), index_label='Date')
+        pd.DataFrame(self.dividends).to_csv(os.path.join(self.output_folder, dividend_per_share_file), index_label='Date')
 
-    def load_holdings_data(self):
+    def create_table_holdings(self):
         # function: amount of stocks we are holding on a certain date 
 
         self.holdings = pd.DataFrame(index=self.valid_dates)
-        self.cash = pd.DataFrame(index=self.valid_dates)
-
-        self.cash.at[self.valid_dates[0], 'Cash'] = self.starting_cash
         for ticker in self.tickers: self.holdings[ticker] = 0.0
 
         for i, date in enumerate(self.valid_dates):
             
             if i != 0:
                 self.holdings.loc[date] = self.holdings.loc[self.valid_dates[i - 1]]
-                self.cash.loc[date] = self.cash.loc[self.valid_dates[i - 1]]
 
             if date in self.trades.index:
                 print(f"Trades on {date}")
@@ -129,53 +126,113 @@ class Portfolio:
 
                 for _, row in self.trades.loc[date].iterrows():
                     quantity = row['Quantity']
-                    currency = row['Currency']
                     ticker = row['Ticker']
-                    price = row['Price']
                     self.holdings.at[date, ticker] = self.holdings.loc[date, ticker] + quantity
-                    self.current_cash_balance -= quantity * price * self.exchange_rates.loc[date, currency]
-                    self.cash.at[date, 'Cash'] = self.current_cash_balance
             else:
                 print(f"No trades on {date}")
 
-        pd.DataFrame(self.cash).to_csv(os.path.join(self.output_folder, cash_file), index_label='Date')
         pd.DataFrame(self.holdings).to_csv(os.path.join(self.output_folder, holdings_file), index_label='Date')
 
-    def load_exchange_rate_table(self):
-        self.exchange_rate_table = pd.DataFrame(index=self.valid_dates)
+    def create_table_cash(self):
+        # function: track cash balance over time
 
+        self.cash = pd.DataFrame(index=self.valid_dates)
+        self.cash['CAD_Cash'] = 0.0
+        self.cash['USD_Cash'] = 0.0
+        self.cash['Total_CAD'] = 0.0
+        
+        # Initialize starting cash (assumed to be in CAD)
+        self.cash.at[self.valid_dates[0], 'CAD_Cash'] = self.starting_cash
+        self.cash.at[self.valid_dates[0], 'Total_CAD'] = self.starting_cash
+        
+        # Track current balances
+        current_cad_cash = self.starting_cash
+        current_usd_cash = 0.0
+
+        for i, date in enumerate(self.valid_dates):
+            
+            if i != 0:
+                self.cash.loc[date] = self.cash.loc[self.valid_dates[i - 1]]
+                current_cad_cash = self.cash.loc[date, 'CAD_Cash']
+                current_usd_cash = self.cash.loc[date, 'USD_Cash']
+
+            if date in self.trades.index:
+                for _, row in self.trades.loc[date].iterrows():
+                    quantity = row['Quantity']
+                    currency = row['Currency']
+                    price = row['Price']
+                    trade_value = quantity * price
+                    
+                    if currency == 'CAD':
+                        # For CAD trades, use CAD cash directly
+                        current_cad_cash -= trade_value
+                    elif currency == 'USD':
+                        # For USD trades, use USD cash first, convert CAD if needed
+                        if current_usd_cash >= trade_value:
+                            # We have enough USD cash
+                            current_usd_cash -= trade_value
+                        else:
+                            # Need to convert some CAD to USD
+                            usd_needed = trade_value - current_usd_cash
+                            cad_to_convert = usd_needed / self.exchange_rates.loc[date, 'USD']
+                            
+                            # Use all available USD cash
+                            current_usd_cash = 0
+                            # Convert CAD to USD and deduct from CAD balance
+                            current_cad_cash -= cad_to_convert
+                    
+                    # Update cash balances
+                    self.cash.at[date, 'CAD_Cash'] = current_cad_cash
+                    self.cash.at[date, 'USD_Cash'] = current_usd_cash
+                    
+                    # Calculate total in CAD
+                    total_cad = current_cad_cash + (current_usd_cash * self.exchange_rates.loc[date, 'USD'])
+                    self.cash.at[date, 'Total_CAD'] = total_cad
+
+        pd.DataFrame(self.cash).to_csv(os.path.join(self.output_folder, cash_file), index_label='Date')
+
+
+    def create_table_cad_market_values(self):
+        holdings = self.holdings[self.tickers]
+        prices = self.prices[self.tickers]
+        
+        # Convert to CAD directly using exchange rates
+        market_values_cad = pd.DataFrame(index=self.valid_dates)
         for ticker in self.tickers:
             try:
                 currency = yf.Ticker(ticker).info['currency']
             except:
                 currency = 'CAD'
-            print(f"Currency for {ticker}: {currency}")
-            self.exchange_rate_table[ticker] = self.exchange_rates[currency] 
+            market_values_cad[ticker] = prices[ticker] * holdings[ticker] * self.exchange_rates[currency]
 
-        pd.DataFrame(self.exchange_rate_table).to_csv(os.path.join(self.output_folder, exchange_rate_table_file), index_label='Date')
+        self.cad_market_values = market_values_cad
+        pd.DataFrame(self.cad_market_values).to_csv(os.path.join(self.output_folder, market_values_file), index_label='Date')
 
-    def calculate_market_values(self):
-        holdings_data = self.holdings[self.tickers]
-        price_data = self.prices[self.tickers]
-        exchange_rate_table_data = self.exchange_rate_table[self.tickers]
+    def create_table_dividend_per_share(self):
+        self.dividend_per_share = pd.DataFrame(index=self.valid_dates)
+        for ticker in self.tickers:
+            divs = yf.Ticker(ticker).dividends.loc[self.start_date:self.end_date]
+            divs.index = pd.to_datetime(divs.index).tz_localize(None)
+            self.dividend_per_share[ticker] = self.dividend_per_share.index.map(lambda x: divs.get(x, 0.0))
+        pd.DataFrame(self.dividend_per_share).to_csv(os.path.join(self.output_folder, dividend_per_share_file), index_label='Date')
 
-        self.market_values = price_data * holdings_data * exchange_rate_table_data
-
-        pd.DataFrame(self.market_values).to_csv(os.path.join(self.output_folder, market_values_file), index_label='Date')
-
-    def calculate_dividend_values(self):
-        holdings_data = self.holdings[self.tickers]
-        dividend_data = self.dividends[self.tickers]
-        exchange_rate_table_data = self.exchange_rate_table[self.tickers]
-
-        self.dividend_values = dividend_data * holdings_data * exchange_rate_table_data
-
-        pd.DataFrame(self.dividend_values).to_csv(os.path.join(self.output_folder, dividend_values_file), index_label='Date')
+    def create_table_cad_dividend_income(self):
+        holdings = self.holdings[self.tickers]
+        dividend = self.dividend_per_share[self.tickers]
+        cad_dividend_income = pd.DataFrame(index=self.valid_dates)
+        for ticker in self.tickers:
+            try:
+                currency = yf.Ticker(ticker).info['currency']
+            except:
+                currency = 'CAD'
+            cad_dividend_income[ticker] = dividend[ticker] * holdings[ticker] * self.exchange_rates[currency]
+        self.cad_dividend_income = cad_dividend_income
+        pd.DataFrame(self.cad_dividend_income).to_csv(os.path.join(self.output_folder, cad_dividend_income_file), index_label='Date')
 
     def calculate_final_values(self):
-        market_values_total = self.market_values.loc[self.valid_dates[-1]].sum()
-        cash_total = self.cash.loc[self.valid_dates[-1]].sum()
-        dividends_total = self.dividend_values.sum().sum()
+        market_values_total = self.cad_market_values.loc[self.valid_dates[-1]].sum()
+        cash_total_cad = self.cash.loc[self.valid_dates[-1], 'Total_CAD']
+        dividends_total = self.cad_dividend_income.sum().sum()
 
         print()
         print(f"Start Date: {self.start_date}")
@@ -183,14 +240,16 @@ class Portfolio:
         print()
         print(f"Starting Cash: {starting_cash:.2f}")
         print()
-        print(f"Cash: {cash_total:.2f}")
+        print(f"CAD Cash: {self.cash.loc[self.valid_dates[-1], 'CAD_Cash']:.2f}")
+        print(f"USD Cash: {self.cash.loc[self.valid_dates[-1], 'USD_Cash']:.2f}")
+        print(f"Total Cash (CAD): {cash_total_cad:.2f}")
         print(f"Market Value: {market_values_total:.2f}")
-        print(f"Total Value: {(market_values_total + cash_total):.2f}")
-        print(f"Profit/Loss: {((market_values_total + cash_total) / starting_cash - 1) * 100:.2f}%")
+        print(f"Total Value: {(market_values_total + cash_total_cad):.2f}")
+        print(f"Profit/Loss: {((market_values_total + cash_total_cad) / starting_cash - 1) * 100:.2f}%")
         print()
         print(f"Dividends: {dividends_total:.2f}")
-        print(f"Total Value with Dividends: {(market_values_total + cash_total + dividends_total):.2f}")
-        print(f"Profit/Loss with Dividends: {((market_values_total + cash_total + dividends_total) / starting_cash - 1) * 100:.2f}%")
+        print(f"Total Value with Dividends: {(market_values_total + cash_total_cad + dividends_total):.2f}")
+        print(f"Profit/Loss with Dividends: {((market_values_total + cash_total_cad + dividends_total) / starting_cash - 1) * 100:.2f}%")
         print()
 
     def get_valid_dates(self):
@@ -211,15 +270,15 @@ if __name__ == '__main__':
     portfolio = Portfolio(start_date, end_date, starting_cash, folder_prefix)
 
     # load functions after intial set up - fills all output CSVs 
-    portfolio.load_exchange_rates()
-    portfolio.load_trades_data()
-    portfolio.load_exchange_rate_table()
+    portfolio.create_table_exchange_rates()
+    portfolio.load_trades()
 
-    portfolio.load_prices_data()
-    portfolio.load_dividends_data()
-    portfolio.load_holdings_data()
+    portfolio.create_table_prices()
+    portfolio.create_table_holdings()
+    portfolio.create_table_cad_market_values()
+    portfolio.create_table_cash()
 
-    portfolio.calculate_market_values()
-    portfolio.calculate_dividend_values()
+    portfolio.create_table_dividend_per_share()
+    portfolio.create_table_cad_dividend_income()
 
     portfolio.calculate_final_values()
