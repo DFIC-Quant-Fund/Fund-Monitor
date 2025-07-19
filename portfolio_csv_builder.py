@@ -232,73 +232,6 @@ class Portfolio:
                     self.cash.at[date, 'Total_CAD'] = total_cad
                     print(f"  After dividend - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}, Total CAD: ${total_cad:.2f}")
 
-        print(f"\n=== FINAL CASH BALANCES ===")
-        print(f"Final CAD cash: ${self.cash.loc[self.valid_dates[-1], 'CAD_Cash']:.2f}")
-        print(f"Final USD cash: ${self.cash.loc[self.valid_dates[-1], 'USD_Cash']:.2f}")
-        print(f"Final total CAD: ${self.cash.loc[self.valid_dates[-1], 'Total_CAD']:.2f}")
-
-        # --- Begin cash tracker debug dataframe logic ---
-        # debug_rows = []
-        # last_trade_date = None
-        # last_trade_idx = None
-        # for i, date in enumerate(self.valid_dates):
-        #     if date in self.trades.index:
-        #         for _, row in self.trades.loc[date].iterrows():
-        #             # Trade info
-        #             quantity = row['Quantity']
-        #             currency = row['Currency']
-        #             price = row['Price']
-        #             ticker = row['Ticker']
-        #             action = 'buy' if quantity > 0 else 'sell'
-        #             trade_value = quantity * price
-        #             fx = self.exchange_rates.loc[date, 'USD']
-
-        #             # Calculate dividends since last trade (inclusive of this date, exclusive of last)
-        #             if last_trade_date is not None:
-        #                 divs_since = self.dividend_income.loc[last_trade_date:date]
-        #             else:
-        #                 divs_since = self.dividend_income.loc[:date]
-        #             # Sum by currency
-        #             div_cad = 0.0
-        #             div_usd = 0.0
-        #             for div_date, div_row in divs_since.iterrows():
-        #                 for t in self.tickers:
-        #                     try:
-        #                         t_curr = yf.Ticker(t).info['currency']
-        #                     except:
-        #                         t_curr = 'CAD'
-        #                     amt = div_row[t]
-        #                     if t_curr == 'CAD':
-        #                         div_cad += amt
-        #                     elif t_curr == 'USD':
-        #                         div_usd += amt
-        #             div_tot = div_cad + div_usd * fx
-
-        #             # Get cash balances after this trade (from the main cash table)
-        #             cad_cash = self.cash.loc[date, 'CAD_Cash']
-        #             usd_cash = self.cash.loc[date, 'USD_Cash']
-        #             tot_cad = self.cash.loc[date, 'Total_CAD']
-
-        #             debug_rows.append({
-        #                 'Date': date,
-        #                 'Ticker': ticker,
-        #                 'Action': action,
-        #                 'Price': price,
-        #                 'Qty': quantity,
-        #                 'Curr': currency,
-        #                 'CAD': cad_cash,
-        #                 'USD': usd_cash,
-        #                 'TotCAD': tot_cad,
-        #                 'FX': fx,
-        #                 'DivCAD': div_cad,
-        #                 'DivUSD': div_usd,
-        #                 'DivTot': div_tot
-        #             })
-        #             last_trade_date = date
-        # debug_df = pd.DataFrame(debug_rows)
-        # debug_df.to_csv(os.path.join(self.output_folder, 'cash_tracker_debug.csv'), index=False)
-        # --- End cash tracker debug dataframe logic ---
-
         pd.DataFrame(self.cash).to_csv(os.path.join(self.output_folder, cash_file), index_label='Date')
 
     def _convert_currency_for_trade(self, trade_value, trade_currency, current_cad_cash, current_usd_cash, date):
@@ -378,7 +311,9 @@ class Portfolio:
             divs = yf.Ticker(ticker).dividends.loc[self.start_date:self.end_date]
             divs.index = pd.to_datetime(divs.index).tz_localize(None)
             self.dividend_per_share[ticker] = self.dividend_per_share.index.map(lambda x: divs.get(x, 0.0))
-        pd.DataFrame(self.dividend_per_share).to_csv(os.path.join(self.output_folder, dividend_per_share_file), index_label='Date')
+        # Only keep rows with at least one nonzero value
+        nonzero_div_per_share = self.dividend_per_share[(self.dividend_per_share != 0).any(axis=1)]
+        nonzero_div_per_share.to_csv(os.path.join(self.output_folder, dividend_per_share_file), index_label='Date')
 
     def create_table_dividend_income(self):
         holdings = self.holdings[self.tickers]
@@ -387,12 +322,35 @@ class Portfolio:
         for ticker in self.tickers:
             dividend_income[ticker] = dividend[ticker] * holdings[ticker]
         self.dividend_income = dividend_income
-        pd.DataFrame(self.dividend_income).to_csv(os.path.join(self.output_folder, dividend_income_file), index_label='Date')
+        # Only keep rows with at least one nonzero value
+        nonzero_div_income = self.dividend_income[(self.dividend_income != 0).any(axis=1)]
+        nonzero_div_income.to_csv(os.path.join(self.output_folder, dividend_income_file), index_label='Date')
 
-    def calculate_final_values(self):
+    def print_final_values(self):
         market_values_total = self.cad_market_values.loc[self.valid_dates[-1]].sum()
         cash_total_cad = self.cash.loc[self.valid_dates[-1], 'Total_CAD']
-        dividends_total = self.dividend_income.sum().sum()
+        
+        # Calculate dividends by currency
+        cad_dividends = 0.0
+        usd_dividends = 0.0
+        if self.dividend_income is not None:
+            for ticker in self.tickers:
+                try:
+                    currency = yf.Ticker(ticker).info.get('currency', 'CAD')
+                except Exception:
+                    currency = 'CAD'
+                
+                ticker_dividends = self.dividend_income[ticker].sum()
+                if currency == 'USD':
+                    usd_dividends += ticker_dividends
+                else:
+                    # CAD dividends (or unknown currency defaults to CAD)
+                    cad_dividends += ticker_dividends
+        
+        # Convert USD dividends to CAD for total
+        avg_exchange_rate = self.exchange_rates['USD'].mean()
+        usd_dividends_cad = usd_dividends * avg_exchange_rate
+        total_dividends_cad = cad_dividends + usd_dividends_cad
 
         print()
         print(f"Start Date: {self.start_date}")
@@ -400,17 +358,15 @@ class Portfolio:
         print()
         print(f"Starting Cash: {starting_cash:.2f}")
         print()
-        print(f"CAD Cash: {self.cash.loc[self.valid_dates[-1], 'CAD_Cash']:.2f}")
-        print(f"USD Cash: {self.cash.loc[self.valid_dates[-1], 'USD_Cash']:.2f}")
-        print(f"Total Cash (CAD): {cash_total_cad:.2f}")
-        print(f"Market Value: {market_values_total:.2f}")
-        print(f"Total Value: {(market_values_total + cash_total_cad):.2f}")
-        print(f"Profit/Loss: {((market_values_total + cash_total_cad) / starting_cash - 1) * 100:.2f}%")
-        print()
-        print(f"Dividends: {dividends_total:.2f}")
-        print(f"Total Value with Dividends: {(market_values_total + cash_total_cad + dividends_total):.2f}")
-        print(f"Profit/Loss with Dividends: {((market_values_total + cash_total_cad + dividends_total) / starting_cash - 1) * 100:.2f}%")
-        print()
+        print(f"CAD Cash (including dividends): {self.cash.loc[self.valid_dates[-1], 'CAD_Cash']:.2f}")
+        print(f"USD Cash (including dividends): {self.cash.loc[self.valid_dates[-1], 'USD_Cash']:.2f}")
+        print(f"CAD Dividends: {cad_dividends:.2f}")
+        print(f"USD Dividends: {usd_dividends:.2f}")
+        print(f"Total Dividends (CAD): {total_dividends_cad:.2f}")
+        print(f"Total Cash (CAD, including dividends): {cash_total_cad:.2f}")
+        print(f"Market Value of holdings: {market_values_total:.2f}")
+        print(f"Total Value of portfolio: {(market_values_total + cash_total_cad):.2f}")
+        print(f"Total Return: {((market_values_total + cash_total_cad) / starting_cash - 1) * 100:.2f}%")
 
     def get_valid_dates(self):
         sp500 = yf.Ticker('^GSPC').history(start=self.start_date, end=self.end_date)
@@ -440,4 +396,4 @@ if __name__ == '__main__':
     portfolio.create_table_dividend_income()
     portfolio.create_table_cash()
 
-    portfolio.calculate_final_values()
+    portfolio.print_final_values()
