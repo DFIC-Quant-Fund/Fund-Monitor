@@ -25,7 +25,7 @@ class FixedIncomeAnalyzer:
             output_folder (str): Path to folder containing market values and exchange rates
         """
         self.output_folder = output_folder
-        self.market_values = pd.read_csv(os.path.join(output_folder, 'market_values.csv'))
+        self.market_values = pd.read_csv(os.path.join(output_folder, 'cad_market_values.csv'))
         self.exchange_rates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
 
     def get_fixed_income_info(self, tickers: list):

@@ -2,9 +2,10 @@
 Portfolio Controller - Main business logic orchestrator.
 
 This controller handles all portfolio operations including:
-- Loading portfolio data
+- Loading portfolio data via DataService
 - Calculating performance metrics
 - Managing data building operations
+- Serving data directly to views
 """
 
 import os
@@ -25,7 +26,7 @@ from .risk_metrics import RiskMetrics
 from .ratios import Ratios
 from .market_comparison import MarketComparison
 from .benchmark import Benchmark
-from .data_processor import DataProcessor
+from .data_service import DataService
 
 # Import config
 from src.config.securities_config import securities_config
@@ -39,8 +40,10 @@ class PortfolioController:
         self.output_folder = os.path.join(data_directory, portfolio_name, "output")
         self.input_folder = os.path.join(data_directory, portfolio_name, "input")
         
+        # Initialize data service
+        self._data_service = DataService(portfolio_name, data_directory)
+        
         # Initialize performance calculators
-        self._data_processor = DataProcessor(self.output_folder)
         self._risk_metrics = RiskMetrics(self.output_folder)
         self._ratios = Ratios(self.output_folder)
         self._market_comparison = MarketComparison(self.output_folder)
@@ -78,156 +81,98 @@ class PortfolioController:
         csv_builder.create_table_dividend_income()
         csv_builder.create_table_cash()
         
-        # Aggregate data for performance analysis
-        self._aggregate_portfolio_data()
+        # Clear cache after data rebuild
+        self._data_service.clear_cache()
         
         print(f"Portfolio data build complete for {self.portfolio_name}")
         csv_builder.print_final_values()
     
-    def _aggregate_portfolio_data(self) -> None:
-        """Aggregate market values, cash, and dividends into portfolio_total.csv"""
-        market_values_file = os.path.join(self.output_folder, 'market_values.csv')
-        cash_file = os.path.join(self.output_folder, 'cash.csv')
-        dividends_file = os.path.join(self.output_folder, 'dividend_income.csv')
-        output_file = os.path.join(self.output_folder, 'portfolio_total.csv')
-        
-        self._data_processor.aggregate_data(market_values_file, cash_file, dividends_file, output_file)
-    
     def get_portfolio_summary(self, as_of_date: str = None) -> Dict[str, Any]:
         """Get portfolio summary data"""
-        # Load the data files
-        holdings_df = self._load_csv_file('holdings.csv')
-        market_values_df = self._load_csv_file('market_values.csv')
-        
-        if holdings_df.empty or market_values_df.empty:
-            raise ValueError(f"Required data files not found for portfolio {self.portfolio_name}")
-        
-        # Determine the date to use
-        if as_of_date is None:
-            as_of_date = holdings_df['Date'].max()
-        else:
-            as_of_date = pd.to_datetime(as_of_date)
-        
-        # Get data for the specific date
-        holdings_data = holdings_df[holdings_df['Date'] == as_of_date].iloc[0] if len(holdings_df[holdings_df['Date'] == as_of_date]) > 0 else holdings_df.iloc[-1]
-        market_values_data = market_values_df[market_values_df['Date'] == as_of_date].iloc[0] if len(market_values_df[market_values_df['Date'] == as_of_date]) > 0 else market_values_df.iloc[-1]
+        try:
+            holdings_df = self._data_service.get_holdings_data(as_of_date)
+            
+            if holdings_df.empty:
+                raise ValueError(f"No holdings data found for portfolio {self.portfolio_name}. Please ensure the portfolio data has been built.")
+        except Exception as e:
+            raise ValueError(f"Error loading portfolio data for {self.portfolio_name}: {str(e)}")
         
         # Calculate summary metrics
-        total_value = sum(market_values_data[ticker] for ticker in holdings_data.index if ticker != 'Date' and holdings_data[ticker] > 0)
-        total_holdings = sum(1 for ticker in holdings_data.index if ticker != 'Date' and holdings_data[ticker] > 0)
+        total_value = holdings_df['market_value'].sum()
+        total_holdings = len(holdings_df)
         
         # Find largest position
-        largest_position = max(
-            ((ticker, market_values_data[ticker]) 
-            for ticker in holdings_data.index 
-            if ticker != 'Date' and holdings_data[ticker] > 0),
-            key=lambda x: x[1]
-        ) if total_holdings > 0 else ("", 0)
-        
-        # Ensure as_of_date is a datetime object
-        if isinstance(as_of_date, str):
-            as_of_date = pd.to_datetime(as_of_date)
+        if total_holdings > 0:
+            largest_position = holdings_df.iloc[0]  # Already sorted by market value
+            largest_position_ticker = largest_position['ticker']
+            largest_position_value = largest_position['market_value']
+            largest_position_weight = (largest_position_value / total_value * 100) if total_value > 0 else 0
+        else:
+            largest_position_ticker = ""
+            largest_position_value = 0
+            largest_position_weight = 0
         
         return {
             'total_value': total_value,
             'total_holdings': total_holdings,
-            'largest_position_ticker': largest_position[0],
-            'largest_position_value': largest_position[1],
-            'largest_position_weight': (largest_position[1] / total_value * 100) if total_value > 0 else 0,
-            'as_of_date': as_of_date
+            'largest_position_ticker': largest_position_ticker,
+            'largest_position_value': largest_position_value,
+            'largest_position_weight': largest_position_weight,
+            'as_of_date': pd.to_datetime(as_of_date) if as_of_date else pd.to_datetime(datetime.now())
         }
     
     def get_holdings_data(self, as_of_date: str = None) -> pd.DataFrame:
         """Get holdings data as DataFrame"""
-        holdings_df = self._load_csv_file('holdings.csv')
-        market_values_df = self._load_csv_file('market_values.csv')
-        prices_df = self._load_csv_file('prices.csv')
+        holdings_df = self._data_service.get_holdings_data(as_of_date)
         
-        if holdings_df.empty or market_values_df.empty or prices_df.empty:
-            raise ValueError(f"Required data files not found for portfolio {self.portfolio_name}")
+        if holdings_df.empty:
+            return pd.DataFrame()
         
-        # Determine the date to use
-        if as_of_date is None:
-            as_of_date = holdings_df['Date'].max()
-        else:
-            as_of_date = pd.to_datetime(as_of_date)
-        
-        # Get data for the specific date
-        holdings_data = holdings_df[holdings_df['Date'] == as_of_date].iloc[0] if len(holdings_df[holdings_df['Date'] == as_of_date]) > 0 else holdings_df.iloc[-1]
-        market_values_data = market_values_df[market_values_df['Date'] == as_of_date].iloc[0] if len(market_values_df[market_values_df['Date'] == as_of_date]) > 0 else market_values_df.iloc[-1]
-        prices_data = prices_df[prices_df['Date'] == as_of_date].iloc[0] if len(prices_df[prices_df['Date'] == as_of_date]) > 0 else prices_df.iloc[-1]
-        
-        # Create holdings DataFrame
-        holdings_list = []
-        total_value = 0
-        
-        for ticker in holdings_data.index:
-            if ticker == 'Date':
-                continue
-                
-            shares = holdings_data[ticker]
-            if shares > 0:  # Only include non-zero positions
-                market_value = market_values_data[ticker]
-                price = prices_data[ticker]
-                total_value += market_value
-                
-                holdings_list.append({
-                    'ticker': ticker,
-                    'shares': shares,
-                    'price': price,
-                    'market_value': market_value,
-                    'sector': self._get_sector(ticker),
-                    'fund': self._get_fund(ticker),
-                    'geography': self._get_geography(ticker)
-                })
+        # Add sector, fund, and geography information
+        holdings_df['sector'] = holdings_df['ticker'].apply(self._get_sector)
+        holdings_df['fund'] = holdings_df['ticker'].apply(self._get_fund)
+        holdings_df['geography'] = holdings_df['ticker'].apply(self._get_geography)
         
         # Calculate weights
-        for holding in holdings_list:
-            holding['weight_percent'] = (holding['market_value'] / total_value * 100) if total_value > 0 else 0
+        total_value = holdings_df['market_value'].sum()
+        holdings_df['weight_percent'] = (holdings_df['market_value'] / total_value * 100) if total_value > 0 else 0
         
-        # Sort by market value
-        holdings_list.sort(key=lambda h: h['market_value'], reverse=True)
-        
-        return pd.DataFrame(holdings_list)
+        return holdings_df
     
     def get_performance_metrics(self, date: str = None, risk_free_rate: float = 0.02) -> Dict[str, Any]:
         """Get comprehensive performance metrics"""
-        portfolio_total_file = os.path.join(self.output_folder, 'portfolio_total.csv')
+        portfolio_total_df = self._data_service.get_portfolio_total_data()
         
-        if not os.path.exists(portfolio_total_file):
-            raise FileNotFoundError(f"Portfolio total file not found: {portfolio_total_file}")
-        
-        df = pd.read_csv(portfolio_total_file)
-        df['Date'] = pd.to_datetime(df['Date'])
+        if portfolio_total_df.empty:
+            raise FileNotFoundError(f"Portfolio total data not found for {self.portfolio_name}")
         
         if date is None:
-            date = df['Date'].max()
+            date = portfolio_total_df['Date'].max()
         else:
             date = pd.to_datetime(date)
         
         # Calculate returns for different periods
-        returns_calc = ReturnsCalculator(df, date)
+        returns_calc = ReturnsCalculator(portfolio_total_df, date)
         if not returns_calc.valid_date():
             print(f"Warning: Date {date} not available in data, using latest available date")
-            date = df['Date'].max()
-            returns_calc = ReturnsCalculator(df, date)
+            date = portfolio_total_df['Date'].max()
+            returns_calc = ReturnsCalculator(portfolio_total_df, date)
         
         performance = returns_calc.calculate_performance()
         
-        # Add risk metrics
         risk_metrics = {
-            'daily_volatility': self._risk_metrics.daily_volatility(),
-            'annualized_volatility': self._risk_metrics.annualized_volatility(),
-            'maximum_drawdown': self._risk_metrics.maximum_drawdown(),
-            'daily_downside_volatility': self._risk_metrics.daily_downside_volatility(),
-            'annualized_downside_volatility': self._risk_metrics.annualized_downside_volatility()
+            'daily_volatility': self._risk_metrics.daily_volatility(portfolio_total_df),
+            'annualized_volatility': self._risk_metrics.annualized_volatility(portfolio_total_df),
+            'maximum_drawdown': self._risk_metrics.maximum_drawdown(portfolio_total_df),
+            'daily_downside_volatility': self._risk_metrics.daily_downside_volatility(portfolio_total_df),
+            'annualized_downside_volatility': self._risk_metrics.annualized_downside_volatility(portfolio_total_df)
         }
         
-        # Add ratios
+        # Add ratios - pass portfolio data to avoid reading non-existent file
         try:
-            daily_sharpe, annualized_sharpe = self._ratios.sharpe_ratio(risk_free_rate)
-            daily_sortino, annualized_sortino = self._ratios.sortino_ratio(risk_free_rate)
-            daily_info, annualized_info = self._ratios.information_ratio()
+            daily_sharpe, annualized_sharpe = self._ratios.sharpe_ratio(risk_free_rate, portfolio_total_df)
+            daily_sortino, annualized_sortino = self._ratios.sortino_ratio(risk_free_rate, portfolio_total_df)
+            daily_info, annualized_info = self._ratios.information_ratio(portfolio_total_df)
             
             ratios = {
                 'daily_sharpe_ratio': daily_sharpe,
@@ -241,11 +186,11 @@ class PortfolioController:
             print(f"Warning: Could not calculate ratios: {e}")
             ratios = {}
         
-        # Add market comparison metrics
+        # Add market comparison metrics - pass portfolio data to avoid reading non-existent file
         try:
-            beta = self._market_comparison.beta()
-            alpha = self._market_comparison.alpha(risk_free_rate)
-            risk_premium = self._market_comparison.portfolio_risk_premium(risk_free_rate)
+            beta = self._market_comparison.beta(portfolio_total_df)
+            alpha = self._market_comparison.alpha(risk_free_rate, portfolio_total_df)
+            risk_premium = self._market_comparison.portfolio_risk_premium(risk_free_rate, portfolio_total_df)
             
             market_metrics = {
                 'beta': beta,
@@ -266,60 +211,43 @@ class PortfolioController:
     
     def get_cash_data(self, as_of_date: str = None) -> Dict[str, float]:
         """Get cash data for a specific date"""
-        cash_df = self._load_csv_file('cash.csv')
-        
-        if cash_df.empty:
-            return {'CAD_Cash': 0.0, 'USD_Cash': 0.0, 'Total_CAD': 0.0}
-        
-        # Determine the date to use
-        if as_of_date is None:
-            as_of_date = cash_df['Date'].max()
-        else:
-            as_of_date = pd.to_datetime(as_of_date)
-        
-        # Get data for the specific date
-        cash_data = cash_df[cash_df['Date'] == as_of_date].iloc[0] if len(cash_df[cash_df['Date'] == as_of_date]) > 0 else cash_df.iloc[-1]
-        
-        return {
-            'CAD_Cash': cash_data['CAD_Cash'],
-            'USD_Cash': cash_data['USD_Cash'],
-            'Total_CAD': cash_data['Total_CAD']
-        }
+        return self._data_service.get_cash_data(as_of_date)
     
     def get_total_portfolio_value(self, as_of_date: str = None) -> float:
         """Get total portfolio value (including cash) for a specific date"""
-        portfolio_total_df = self._load_csv_file('portfolio_total.csv')
+        portfolio_total_df = self._data_service.get_portfolio_total_data()
         
         if portfolio_total_df.empty:
             return 0.0
         
-        # Determine the date to use
         if as_of_date is None:
             as_of_date = portfolio_total_df['Date'].max()
         else:
             as_of_date = pd.to_datetime(as_of_date)
         
         # Get data for the specific date
-        portfolio_data = portfolio_total_df[portfolio_total_df['Date'] == as_of_date].iloc[0] if len(portfolio_total_df[portfolio_total_df['Date'] == as_of_date]) > 0 else portfolio_total_df.iloc[-1]
+        portfolio_data = portfolio_total_df[portfolio_total_df['Date'] == as_of_date]
+        if len(portfolio_data) == 0:
+            # Use latest available data
+            portfolio_data = portfolio_total_df.iloc[-1:]
         
-        return portfolio_data['Total_Portfolio_Value']
+        return portfolio_data.iloc[0]['Total_Portfolio_Value']
     
-    def _load_csv_file(self, filename: str) -> pd.DataFrame:
-        """Load a CSV file from the output folder"""
-        file_path = os.path.join(self.output_folder, filename)
-        try:
-            if os.path.exists(file_path):
-                df = pd.read_csv(file_path)
-                # Convert Date column to datetime if it exists
-                if 'Date' in df.columns:
-                    df['Date'] = pd.to_datetime(df['Date'])
-                return df
-            else:
-                print(f"File not found: {file_path}")
-                return pd.DataFrame()
-        except Exception as e:
-            print(f"Error reading file {file_path}: {e}")
-            return pd.DataFrame()
+    def get_portfolio_total_data(self) -> pd.DataFrame:
+        """Get portfolio total data DataFrame"""
+        return self._data_service.get_portfolio_total_data()
+    
+    def get_dividend_data(self) -> pd.DataFrame:
+        """Get dividend data DataFrame"""
+        return self._data_service.get_dividend_data()
+    
+    def clear_cache(self):
+        """Clear data cache"""
+        self._data_service.clear_cache()
+    
+    def get_cache_info(self) -> Dict[str, Any]:
+        """Get cache information"""
+        return self._data_service.get_cache_info()
     
     def _get_sector(self, ticker: str) -> str:
         """Get sector for ticker from config or fallback mapping"""

@@ -15,16 +15,17 @@ Run every day (first thing run in github actions)
 # TODO: Clean this up
 STARTING_CASH = 101644.99
 start_date = '2022-05-01'
-# end_date = (pd.Timestamp.now() + timedelta(days=1)).strftime('%Y-%m-%d') # yfinance end_dates are exclusive for download and history functions
-end_date = '2025-05-30'
+end_date = (pd.Timestamp.now() + timedelta(days=1)).strftime('%Y-%m-%d') # yfinance end_dates are exclusive for download and history functions
+# end_date = '2025-05-30'
 
 # file names as variables 
 trades_file = 'trades.csv'
 prices_file = 'prices.csv'
 holdings_file = 'holdings.csv'
 cash_file = 'cash.csv'
+portfolio_total_file = 'portfolio_total.csv'
 
-market_values_file = 'market_values.csv'
+market_values_file = 'cad_market_values.csv'
 exchange_rates_file = 'exchange_rates.csv'
 
 dividend_per_share_file = 'dividend_per_share.csv'
@@ -55,10 +56,35 @@ class Portfolio:
         self.dividend_per_share = None
         self.dividend_income = None
 
+        # Clean up existing CSV files before building new ones
+        self.cleanup_existing_csv_files()
+        
         # call valid dates function to get dates that both TSX and American exchanges open 
         self.get_valid_dates()
         # all tickers invested in from trades csv 
         self.load_trades()
+
+    def cleanup_existing_csv_files(self):
+        """Clean up existing CSV files before building new ones to ensure fresh data"""
+        csv_files = [
+            exchange_rates_file,
+            prices_file,
+            holdings_file,
+            cash_file,
+            market_values_file,
+            dividend_per_share_file,
+            dividend_income_file,
+            portfolio_total_file
+        ]
+        
+        for csv_file in csv_files:
+            file_path = os.path.join(self.output_folder, csv_file)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    print(f"Removed existing file: {csv_file}")
+                except Exception as e:
+                    print(f"Warning: Could not remove {csv_file}: {e}")
 
     def create_table_exchange_rates(self):
         # exchange rates from web and shave them for all start and end dates 
@@ -319,6 +345,13 @@ class Portfolio:
         nonzero_div_income = self.dividend_income[(self.dividend_income != 0).any(axis=1)]
         nonzero_div_income.to_csv(os.path.join(self.output_folder, dividend_income_file), index_label='Date')
 
+    def create_table_portfolio_total(self):
+        self.portfolio_total = pd.DataFrame(index=self.valid_dates)
+        self.portfolio_total['Total_Market_Value'] = self.cad_market_values.sum(axis=1)
+        self.portfolio_total['Total_Portfolio_Value'] = self.portfolio_total['Total_Market_Value'] + self.cash['Total_CAD']
+        # self.portfolio_total['pct_change'] = self.portfolio_total['Total_Portfolio_Value'].pct_change()
+        pd.DataFrame(self.portfolio_total).to_csv(os.path.join(self.output_folder, portfolio_total_file), index_label='Date')
+
     # TODO: to remove this because this should be done by a dedicated calculator class/file
     def print_final_values(self):
         market_values_total = self.cad_market_values.loc[self.valid_dates[-1]].sum()
@@ -389,5 +422,5 @@ if __name__ == '__main__':
     portfolio.create_table_dividend_per_share()
     portfolio.create_table_dividend_income()
     portfolio.create_table_cash()
-
+    portfolio.create_table_portfolio_total()
     portfolio.print_final_values()

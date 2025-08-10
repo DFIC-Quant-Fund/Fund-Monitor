@@ -28,14 +28,13 @@ class MarketComparison:
     def __init__(self, output_folder):
         self.output_folder = output_folder
 
-    def beta(self, benchmark='custom'):
+    def beta(self, df, benchmark='custom'):
         benchmark_class = Benchmark(self.output_folder)
         if benchmark == 'custom':
             benchmark_df = pd.read_csv(os.path.join(self.output_folder, 'custom_benchmark.csv'))
         else:
             benchmark_df = benchmark_class.get_spy_benchmark()
         
-        df = pd.read_csv(os.path.join(self.output_folder, 'portfolio_total.csv'))
         daily_portfolio_return = df['pct_change'].dropna()
         
         # Handle empty or NaN values in benchmark pct_change
@@ -64,42 +63,40 @@ class MarketComparison:
         return beta
         
 
-    def alpha(self, risk_free_rate, benchmark='custom'): 
+    def alpha(self, risk_free_rate, df, benchmark='custom'): 
         try:
             benchmark_class = Benchmark(self.output_folder)
             benchmark_returns = benchmark_class.benchmark_average_return(benchmark)
             annual_benchmark_return = benchmark_returns[1]  # Get the annualized return
             
             # Load portfolio data for ReturnsCalculator
-            portfolio_df = pd.read_csv(os.path.join(self.output_folder, 'portfolio_total.csv'))
-            portfolio_performance = ReturnsCalculator(portfolio_df)
+            portfolio_performance = ReturnsCalculator(df)
             
             print("benchmark: ", benchmark)
             print("annual_benchmark_return ", annual_benchmark_return)
-            beta_value = self.beta()
+            beta_value = self.beta(df)
             alpha = (portfolio_performance.annualized_average_return() - risk_free_rate) - beta_value * (annual_benchmark_return - risk_free_rate)
             return alpha
         except Exception as e:
             print(f"Warning: Could not calculate alpha: {e}")
             return 0.0
         
-    def portfolio_risk_premium(self, risk_free_return):
+    def portfolio_risk_premium(self, risk_free_return, df):
         try:
             # Load portfolio data for ReturnsCalculator
-            portfolio_df = pd.read_csv(os.path.join(self.output_folder, 'portfolio_total.csv'))
-            portfolio_performance = ReturnsCalculator(portfolio_df)
+            portfolio_performance = ReturnsCalculator(df)
             return portfolio_performance.annualized_average_return() - risk_free_return
         except Exception as e:
             print(f"Warning: Could not calculate portfolio risk premium: {e}")
             return 0.0
 
-    def risk_adjusted_return(self, risk_free_return):
+    def risk_adjusted_return(self, risk_free_return, df):
         try:
             risk_metrics = RiskMetrics(self.output_folder)
             benchmark = Benchmark(self.output_folder)
             benchmark_vol = benchmark.benchmark_volatility()[1]
-            portfolio_volatility = risk_metrics.annualized_volatility()
-            portfolio_risk_prem = self.portfolio_risk_premium(risk_free_return)
+            portfolio_volatility = risk_metrics.annualized_volatility(df)
+            portfolio_risk_prem = self.portfolio_risk_premium(risk_free_return, df)
             risk_adjusted_return = portfolio_risk_prem * benchmark_vol / portfolio_volatility + risk_free_return
             
             return risk_adjusted_return
