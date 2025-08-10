@@ -13,9 +13,15 @@ This module focuses solely on ratio calculations and assumes input data is alrea
 
 import os
 import pandas as pd
-from benchmark import Benchmark
-from market_comparison import MarketComparison
-from returns_calculator import ReturnsCalculator
+try:
+    from .benchmark import Benchmark
+    from .market_comparison import MarketComparison
+    from .returns_calculator import ReturnsCalculator
+except ImportError:
+    # Fallback for when running as script
+    from benchmark import Benchmark
+    from market_comparison import MarketComparison
+    from returns_calculator import ReturnsCalculator
 
 class Ratios:
     def __init__(self, output_folder):

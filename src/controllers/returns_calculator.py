@@ -16,7 +16,7 @@ from datetime import timedelta
 
 
 class ReturnsCalculator:
-    def __init__(self, output_folder=None, portfolio_data=None, date=None, portfolio_column="Total_Portfolio_Value"):
+    def __init__(self, portfolio_data=None, date=None, portfolio_column="Total_Portfolio_Value"):
         """
         Initialize the ReturnsCalculator.
         
@@ -26,16 +26,9 @@ class ReturnsCalculator:
             date (str/datetime, optional): The date for performance calculation
             portfolio_column (str): Column name representing portfolio value
         """
-        self.output_folder = output_folder
         self.df = portfolio_data
         self.date = pd.to_datetime(date) if date else None
         self.portfolio_column = portfolio_column
-        
-        if output_folder and not portfolio_data:
-            self.df = pd.read_csv(os.path.join(output_folder, 'portfolio_total.csv'))
-            self.df['Date'] = pd.to_datetime(self.df['Date'])
-            if not date:
-                self.date = self.df['Date'].max()
 
     def valid_date(self):
         """

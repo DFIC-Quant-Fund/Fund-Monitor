@@ -15,7 +15,8 @@ Run every day (first thing run in github actions)
 # TODO: Clean this up
 STARTING_CASH = 101644.99
 start_date = '2022-05-01'
-end_date = (pd.Timestamp.now() + timedelta(days=1)).strftime('%Y-%m-%d') # yfinance end_dates are exclusive for download and history functions
+# end_date = (pd.Timestamp.now() + timedelta(days=1)).strftime('%Y-%m-%d') # yfinance end_dates are exclusive for download and history functions
+end_date = '2025-05-30'
 
 # file names as variables 
 trades_file = 'trades.csv'

@@ -24,18 +24,26 @@ class DataProcessor:
         cash_value = pd.read_csv(cash_file)
         market_values['Date'] = pd.to_datetime(market_values['Date'])
         cash_value['Date'] = pd.to_datetime(cash_value['Date'])
+        
+        # Get numeric columns for market values (excluding Date)
         numeric_columns = market_values.columns.drop('Date')
         market_values[numeric_columns] = market_values[numeric_columns].apply(pd.to_numeric, errors='coerce')
-        cash_value['Cash'] = cash_value['Cash'].apply(pd.to_numeric, errors='coerce')
+        
+        # Use Total_CAD column from cash file (matches portfolio_csv_builder.py)
+        cash_value['Total_CAD'] = cash_value['Total_CAD'].apply(pd.to_numeric, errors='coerce')
 
+        # Load dividends data
         dividends = pd.read_csv(dividends_file)
-        # get the sum of all dividends for each day and all previous days
         dividends['Date'] = pd.to_datetime(dividends['Date'])
-        dividends['Daily Total'] = dividends[numeric_columns].sum(axis=1)
-        dividends['Cum Sum'] = dividends['Daily Total'].cumsum()
-        # print(dividends.head())
-
-        market_values['Total_Portfolio_Value'] = market_values[numeric_columns].sum(axis=1) + cash_value['Cash'] + dividends['Cum Sum']
+        
+        # Calculate total market value for each date
+        market_values['Total_Market_Value'] = market_values[numeric_columns].sum(axis=1)
+        
+        # Calculate total portfolio value: market value + cash (which already includes dividends)
+        # This matches the calculation in portfolio_csv_builder.py print_final_values method
+        market_values['Total_Portfolio_Value'] = market_values['Total_Market_Value'] + cash_value['Total_CAD']
+        
+        # Create output dataframe with required columns
         output_df = market_values[['Date', 'Total_Portfolio_Value']].copy()
         output_df = output_df.sort_values('Date')
         output_df['pct_change'] = output_df['Total_Portfolio_Value'].pct_change()

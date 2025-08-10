@@ -14,8 +14,13 @@ import os
 import sys
 import pandas as pd
 from datetime import datetime, timedelta
-from returns_calculator import ReturnsCalculator
-from csv_writer import PerformanceCSVWriter
+try:
+    from .returns_calculator import ReturnsCalculator
+    from .csv_writer import PerformanceCSVWriter
+except ImportError:
+    # Fallback for when running as script
+    from returns_calculator import ReturnsCalculator
+    from csv_writer import PerformanceCSVWriter
 
 def update_performance_csv(fund, date=None):
     """

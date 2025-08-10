@@ -16,12 +16,21 @@ This is the main orchestration module that ties together all other performance-r
 import os
 import sys
 import yaml
-from data_processor import DataProcessor
-from benchmark import Benchmark
-from returns_calculator import ReturnsCalculator
-from risk_metrics import RiskMetrics
-from market_comparison import MarketComparison
-from ratios import Ratios
+try:
+    from .data_processor import DataProcessor
+    from .benchmark import Benchmark
+    from .returns_calculator import ReturnsCalculator
+    from .risk_metrics import RiskMetrics
+    from .market_comparison import MarketComparison
+    from .ratios import Ratios
+except ImportError:
+    # Fallback for when running as script
+    from data_processor import DataProcessor
+    from benchmark import Benchmark
+    from returns_calculator import ReturnsCalculator
+    from risk_metrics import RiskMetrics
+    from market_comparison import MarketComparison
+    from ratios import Ratios
 
 '''
 FILE PURPOSE: RUNS TO FILL SECONDARY OUtPUT TABLES (ones that require calcuation - getting calc from performance files)
@@ -32,7 +41,7 @@ run every day (second thing run in github actions - after portfolio (which updat
 def main():
     market_values_file = os.path.join(output_folder, "market_values.csv")
     cash_file = os.path.join(output_folder, "cash.csv") 
-    dividend_file = os.path.join(output_folder, "dividend_values.csv") 
+    dividend_file = os.path.join(output_folder, "dividend_income.csv") 
     output_file = os.path.join(output_folder, "portfolio_total.csv") 
     THREE_MTH_TREASURY_RATE = 0.0436 # 3-month treasury rate
     FIVE_PERCENT = 0.05
