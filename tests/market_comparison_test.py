@@ -17,7 +17,7 @@ class TestMarketComparison(unittest.TestCase):
     def setUp(self):
         # Set up output as fake (don't need to store anything)
         self.output_folder = "tests/mock_data"  # Assume mock data folder
-        self.market_comparison = MarketComparison(self.output_folder)
+        self.market_comparison = MarketComparison()
 
     # create objects, so when show up in code use these instead 
     @patch.object(Benchmark, 'benchmark_variance', return_value=(0.02, 5))  

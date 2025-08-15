@@ -15,12 +15,18 @@ import os
 import pandas as pd
 
 class Benchmark:
-    def __init__(self, output_folder):
-        self.output_folder = output_folder
+    def __init__(self, useSpy=False):
+        self.OUTPUT_PATH = "data/benchmark/output"
+
+        if useSpy:
+            self.benchmark_df = self.get_spy_benchmark()
+        else:
+            self.benchmark_df = pd.read_csv(os.path.join(self.OUTPUT_PATH, 'custom_benchmark.csv'))
+        
 
     def get_spy_benchmark(self):
-        prices = pd.read_csv(os.path.join(self.output_folder, 'prices.csv'))
-        dividend_df = pd.read_csv(os.path.join(self.output_folder, 'dividends.csv'))[['Date', 'SPY']]
+        prices = pd.read_csv(os.path.join(self.OUTPUT_PATH, 'prices.csv'))
+        dividend_df = pd.read_csv(os.path.join(self.OUTPUT_PATH, 'dividends.csv'))[['Date', 'SPY']]
 
         dividend_df['Date'] = pd.to_datetime(dividend_df['Date'])
         dividend_df['SPY'].fillna(0)
@@ -39,15 +45,15 @@ class Benchmark:
     
     def create_custom_benchmark(self):
         STARTING_CASH = 101644.99
-        prices = pd.read_csv(os.path.join(self.output_folder, 'prices.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
+        prices = pd.read_csv(os.path.join(self.OUTPUT_PATH, 'prices.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
         prices['Date'] = pd.to_datetime(prices['Date'])
 
-        exchange_rates = pd.read_csv(os.path.join(self.output_folder, 'exchange_rates.csv'))
+        exchange_rates = pd.read_csv(os.path.join(self.OUTPUT_PATH, 'exchange_rates.csv'))
         exchange_rates['Date'] = pd.to_datetime(exchange_rates['Date'])
         initial_exchange_rate = exchange_rates['USD'].iloc[0]
 
         # dividends.csv is $/share dividend payments
-        dividend_payments = pd.read_csv(os.path.join(self.output_folder, 'dividends.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
+        dividend_payments = pd.read_csv(os.path.join(self.OUTPUT_PATH, 'dividends.csv'))[['Date', 'XIU.TO', 'SPY', 'AGG', 'XBB.TO']]
 
         xiu_shares = 0.3*STARTING_CASH/prices['XIU.TO'].iloc[0]
         spy_shares = 0.3*STARTING_CASH/(prices['SPY'].iloc[0] * initial_exchange_rate)
@@ -81,12 +87,11 @@ class Benchmark:
         custom_benchmark['pct_change'] = custom_benchmark['Total Mkt Val'].pct_change()
 
         #output the custom benchmark to a csv file
-        custom_benchmark.to_csv(os.path.join(self.output_folder, 'custom_benchmark.csv'), index=True)
+        custom_benchmark.to_csv(os.path.join(self.OUTPUT_PATH, 'custom_benchmark.csv'), index=True)
 
     def benchmark_inception_return(self):
-        benchmark_df = pd.read_csv(os.path.join(self.output_folder, 'custom_benchmark.csv'))
-        inception_value = benchmark_df['Total Mkt Val'].iloc[0]
-        latest_value = benchmark_df['Total Mkt Val'].iloc[-1]
+        inception_value = self.benchmark_df['Total Mkt Val'].iloc[0]
+        latest_value = self.benchmark_df['Total Mkt Val'].iloc[-1]
 
         inception_return = (latest_value - inception_value) / inception_value
 
@@ -101,33 +106,20 @@ class Benchmark:
 
         return inception_return
 
-    def benchmark_variance(self, benchmark='custom'):
-        if benchmark == 'custom':
-            benchmark_df = pd.read_csv(os.path.join(self.output_folder, 'custom_benchmark.csv'))
-        else:
-            benchmark_df = self.get_spy_benchmark()
+    def benchmark_variance(self):
         
-        daily_benchmark_variance = benchmark_df['pct_change'].dropna().var()
+        daily_benchmark_variance = self.benchmark_df['pct_change'].dropna().var()
         annualized_benchmark_variance = daily_benchmark_variance * 252
         return daily_benchmark_variance, annualized_benchmark_variance
     
-    def benchmark_volatility(self, benchmark='custom'):
-        if benchmark == 'custom':
-            benchmark_df = pd.read_csv(os.path.join(self.output_folder, 'custom_benchmark.csv'))
-        else:
-            benchmark_df = self.get_spy_benchmark()
-        
-        daily_benchmark_volatility = benchmark_df['pct_change'].dropna().std()
+    def benchmark_volatility(self):    
+        daily_benchmark_volatility = self.benchmark_df['pct_change'].dropna().std()
         annualized_benchmark_volatility = daily_benchmark_volatility * (252 ** 0.5)
 
         return daily_benchmark_volatility, annualized_benchmark_volatility
     
-    def benchmark_average_return(self, benchmark='custom'):
-        if benchmark == 'custom':
-            benchmark_df = pd.read_csv(os.path.join(self.output_folder, 'custom_benchmark.csv'))
-        else:
-            benchmark_df = self.get_spy_benchmark()
-        daily_benchmark_return = benchmark_df['pct_change'].dropna().mean()
+    def benchmark_average_return(self):
+        daily_benchmark_return = self.benchmark_df['pct_change'].dropna().mean()
         annualized_benchmark_return = (1+daily_benchmark_return) ** 252 - 1
 
         return daily_benchmark_return, annualized_benchmark_return

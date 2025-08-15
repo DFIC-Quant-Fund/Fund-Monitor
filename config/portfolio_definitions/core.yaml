@@ -130,6 +130,16 @@ securities:
   sector: Financials
   geography: US
 
+- ticker: FFH.TO
+  fund: Financials Fund
+  sector: Financials
+  geography: CAN
+
+- ticker: RY.TO
+  fund: Financials Fund
+  sector: Financials
+  geography: CAN
+
 # TMT Fund
 - ticker: AAPL
   fund: TMT Fund
@@ -148,6 +158,11 @@ securities:
   sector: Healthcare
   geography: US
 - ticker: TMUS
+  fund: TMT Fund
+  sector: Communication Services
+  geography: US
+
+- ticker: GOOG
   fund: TMT Fund
   sector: Communication Services
   geography: US
@@ -436,3 +451,80 @@ transactions:
     price: 26.6199
     quantity: 256
     currency: USD
+
+  - type: Sell
+    date: 2025-06-16
+    ticker: AAPL
+    price: 196.2
+    quantity: 4
+    currency: USD
+
+  - type: Sell
+    date: 2025-06-16
+    ticker: BLBD
+    price: 41.022
+    quantity: 61
+    currency: USD
+
+  - type: Sell
+    date: 2025-06-16
+    ticker: HBM.TO
+    price: 13.07
+    quantity: 225
+    currency: CAD
+
+  - type: Sell
+    date: 2025-06-16
+    ticker: DOLE
+    price: 14.12
+    quantity: 108
+    currency: USD
+
+  - type: Buy
+    date: 2025-06-17
+    ticker: GOOG
+    price: 177.18
+    quantity: 29
+    currency: USD
+
+  - type: Buy
+    date: 2025-06-17
+    ticker: FFH.TO
+    price: 2415
+    quantity: 2
+    currency: CAD
+
+  - type: Sell
+    date: 2025-07-14
+    ticker: MP
+    price: 47.05
+    quantity: 245
+    currency: USD
+
+  - type: Sell
+    date: 2025-07-14
+    ticker: MA
+    price: 555.31
+    quantity: 5
+    currency: USD
+
+  - type: Sell
+    date: 2025-07-14
+    ticker: CG
+    price: 58.06
+    quantity: 51
+    currency: USD
+
+  - type: Sell
+    date: 2025-07-14
+    ticker: EA
+    price: 149.47
+    quantity: 16
+    currency: USD
+
+  - type: Buy
+    date: 2025-07-14
+    ticker: RY.TO
+    price: 180.31
+    quantity: 33
+    currency: CAD

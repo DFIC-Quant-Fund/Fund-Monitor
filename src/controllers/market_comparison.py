@@ -25,15 +25,13 @@ except ImportError:
 
 
 class MarketComparison:
-    def __init__(self, output_folder):
-        self.output_folder = output_folder
+    def __init__(self, useSpy: bool = False):
+        # Mirror Benchmark's constructor pattern: local path constant via Benchmark and a chosen source
+        self.benchmark_instance = Benchmark(useSpy=useSpy)
 
-    def beta(self, df, benchmark='custom'):
-        benchmark_class = Benchmark(self.output_folder)
-        if benchmark == 'custom':
-            benchmark_df = pd.read_csv(os.path.join(self.output_folder, 'custom_benchmark.csv'))
-        else:
-            benchmark_df = benchmark_class.get_spy_benchmark()
+    def beta(self, df):
+        # Use the configured benchmark instance
+        benchmark_df = self.benchmark_instance.benchmark_df
         
         daily_portfolio_return = df['pct_change'].dropna()
         
@@ -53,7 +51,7 @@ class MarketComparison:
         daily_portfolio_return = daily_portfolio_return.iloc[:min_length]
         daily_benchmark_return = daily_benchmark_return.iloc[:min_length]
         
-        daily_benchmark_var, _ = benchmark_class.benchmark_variance(benchmark)
+        daily_benchmark_var, _ = self.benchmark_instance.benchmark_variance()
         if daily_benchmark_var == 0:
             return 0.0  # Avoid division by zero
         
@@ -63,17 +61,15 @@ class MarketComparison:
         return beta
         
 
-    def alpha(self, risk_free_rate, df, benchmark='custom'): 
+    def alpha(self, risk_free_rate, df): 
         try:
-            benchmark_class = Benchmark(self.output_folder)
-            benchmark_returns = benchmark_class.benchmark_average_return(benchmark)
+            benchmark_returns = self.benchmark_instance.benchmark_average_return()
             annual_benchmark_return = benchmark_returns[1]  # Get the annualized return
             
             # Load portfolio data for ReturnsCalculator
             portfolio_performance = ReturnsCalculator(df)
             
-            print("benchmark: ", benchmark)
-            print("annual_benchmark_return ", annual_benchmark_return)
+            print("annual_benchmark_return", annual_benchmark_return)
             beta_value = self.beta(df)
             alpha = (portfolio_performance.annualized_average_return() - risk_free_rate) - beta_value * (annual_benchmark_return - risk_free_rate)
             return alpha
@@ -90,12 +86,36 @@ class MarketComparison:
             print(f"Warning: Could not calculate portfolio risk premium: {e}")
             return 0.0
 
+    def treynor_ratio(self, risk_free_return, df):
+        try:
+            return self.portfolio_risk_premium(risk_free_return, df) / self.beta(df)
+        except Exception as e:
+            print(f"Warning: Could not calculate treynor ratio: {e}")
+            return 0.0
+
+    def information_ratio(self, df, benchmark_is_custom: bool = True):
+        try:
+            # Read portfolio returns
+            daily_portfolio_returns = df['pct_change'].dropna()
+
+            # Select benchmark source
+            benchmark_df = (Benchmark(useSpy=not benchmark_is_custom)).benchmark_df
+            daily_benchmark_returns = benchmark_df['pct_change'].dropna()
+
+            # Excess returns and IR
+            excess_returns = daily_portfolio_returns - daily_benchmark_returns
+            daily_information_ratio = excess_returns.mean() / excess_returns.std()
+            annualized_information_ratio = daily_information_ratio * (252 ** 0.5)
+            return daily_information_ratio, annualized_information_ratio
+        except Exception as e:
+            print(f"Warning: Could not calculate information ratio: {e}")
+            return 0.0, 0.0
+
     def risk_adjusted_return(self, risk_free_return, df):
         try:
-            risk_metrics = RiskMetrics(self.output_folder)
-            benchmark = Benchmark(self.output_folder)
-            benchmark_vol = benchmark.benchmark_volatility()[1]
-            portfolio_volatility = risk_metrics.annualized_volatility(df)
+            risk_metrics = RiskMetrics(df)
+            benchmark_vol = self.benchmark_instance.benchmark_volatility()[1]
+            portfolio_volatility = risk_metrics.annualized_volatility()
             portfolio_risk_prem = self.portfolio_risk_premium(risk_free_return, df)
             risk_adjusted_return = portfolio_risk_prem * benchmark_vol / portfolio_volatility + risk_free_return
             

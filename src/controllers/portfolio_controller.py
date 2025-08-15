@@ -23,7 +23,6 @@ from src.models.portfolio_csv_builder import Portfolio as CSVBuilderPortfolio
 # Import performance modules
 from .returns_calculator import ReturnsCalculator
 from .risk_metrics import RiskMetrics
-from .ratios import Ratios
 from .market_comparison import MarketComparison
 from .benchmark import Benchmark
 from .data_service import DataService
@@ -44,10 +43,9 @@ class PortfolioController:
         self._data_service = DataService(portfolio_name, data_directory)
         
         # Initialize performance calculators
-        self._risk_metrics = RiskMetrics(self.output_folder)
-        self._ratios = Ratios(self.output_folder)
-        self._market_comparison = MarketComparison(self.output_folder)
-        self._benchmark = Benchmark(self.output_folder)
+        self._risk_metrics = None  # Will build per-request with actual df
+        self._market_comparison = MarketComparison()
+        self._benchmark = Benchmark()  # defaults to SPY via internal path
     
     def get_available_portfolios(self) -> List[str]:
         """Get list of available portfolios"""
@@ -161,18 +159,19 @@ class PortfolioController:
         performance = returns_calc.calculate_performance()
         
         risk_metrics = {
-            'daily_volatility': self._risk_metrics.daily_volatility(portfolio_total_df),
-            'annualized_volatility': self._risk_metrics.annualized_volatility(portfolio_total_df),
-            'maximum_drawdown': self._risk_metrics.maximum_drawdown(portfolio_total_df),
-            'daily_downside_volatility': self._risk_metrics.daily_downside_volatility(portfolio_total_df),
-            'annualized_downside_volatility': self._risk_metrics.annualized_downside_volatility(portfolio_total_df)
+            'daily_volatility': RiskMetrics(portfolio_total_df).daily_volatility(),
+            'annualized_volatility': RiskMetrics(portfolio_total_df).annualized_volatility(),
+            'maximum_drawdown': RiskMetrics(portfolio_total_df).maximum_drawdown(),
+            'daily_downside_volatility': RiskMetrics(portfolio_total_df).daily_downside_volatility(),
+            'annualized_downside_volatility': RiskMetrics(portfolio_total_df).annualized_downside_volatility()
         }
         
         # Add ratios - pass portfolio data to avoid reading non-existent file
         try:
-            daily_sharpe, annualized_sharpe = self._ratios.sharpe_ratio(risk_free_rate, portfolio_total_df)
-            daily_sortino, annualized_sortino = self._ratios.sortino_ratio(risk_free_rate, portfolio_total_df)
-            daily_info, annualized_info = self._ratios.information_ratio(portfolio_total_df)
+            risk_metrics_inst = RiskMetrics(portfolio_total_df)
+            daily_sharpe, annualized_sharpe = risk_metrics_inst.sharpe_ratio(risk_free_rate)
+            daily_sortino, annualized_sortino = risk_metrics_inst.sortino_ratio(risk_free_rate)
+            daily_info, annualized_info = self._market_comparison.information_ratio(portfolio_total_df)
             
             ratios = {
                 'daily_sharpe_ratio': daily_sharpe,
