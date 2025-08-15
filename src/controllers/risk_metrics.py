@@ -14,8 +14,9 @@ This module focuses solely on risk metric calculations and assumes input data is
 import pandas as pd
 
 class RiskMetrics:
-    def __init__(self, df):
+    def __init__(self, df, risk_free_rate: float = 0.02):
         self.df = df
+        self.RISK_FREE_RATE = risk_free_rate
 
     def daily_variance(self):
         daily_returns = self.df['pct_change'].dropna()

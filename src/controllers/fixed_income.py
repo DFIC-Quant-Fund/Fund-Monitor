@@ -11,33 +11,16 @@ It handles:
 The module requires access to market values and exchange rate data.
 """
 
-import os
 import pandas as pd
 import yfinance as yf
 
 
 class FixedIncomeAnalyzer:
-    def __init__(self, output_folder):
-        """
-        Initialize the FixedIncomeAnalyzer.
-        
-        Args:
-            output_folder (str): Path to folder containing market values and exchange rates
-        """
-        self.output_folder = output_folder
-        self.market_values = pd.read_csv(os.path.join(output_folder, 'cad_market_values.csv'))
-        self.exchange_rates = pd.read_csv(os.path.join(output_folder, 'exchange_rates.csv'))
+    def __init__(self):
+        self.market_values = pd.read_csv("data/core/output/cad_market_values.csv")
+        self.exchange_rates = pd.read_csv("data/core/output/exchange_rates.csv")
 
     def get_fixed_income_info(self, tickers: list):
-        """
-        Calculate fixed income security information including market values and shares.
-        
-        Args:
-            tickers (list): List of ticker symbols to analyze
-            
-        Returns:
-            pd.DataFrame: DataFrame containing market values and shares for each ticker
-        """
         usd_tickers = []
 
         # Convert USD values to CAD
