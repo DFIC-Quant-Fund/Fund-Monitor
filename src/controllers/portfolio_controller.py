@@ -24,6 +24,7 @@ from .risk_metrics import RiskMetrics
 from .market_comparison import MarketComparison
 from .benchmark import Benchmark
 from .data_service import DataService
+from .benchmark import Benchmark
 
 # Import config
 from src.config.securities_config import securities_config
@@ -43,7 +44,7 @@ class PortfolioController:
         # Initialize performance calculators
         self._risk_metrics = None  # Will build per-request with actual df
         self._market_comparison = None  # Construct per-request with current portfolio df
-        self._benchmark = Benchmark()  # defaults to SPY via internal path
+        self._benchmark = Benchmark()
     
     def get_available_portfolios(self) -> List[str]:
         """Get list of available portfolios"""
