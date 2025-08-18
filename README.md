@@ -39,7 +39,13 @@ pip install -r requirements.txt
 streamlit run src/app.py
 ```
 
-### 3. Use the Controller
+### 3. Build Data (one-time or when inputs change)
+```bash
+python scripts/build_all_portfolios.py
+```
+This runs the legacy builder for both `core` and `benchmark`.
+
+### 4. Use the Controller
 ```python
 from src.controllers.portfolio_controller import PortfolioController
 
@@ -51,8 +57,7 @@ summary = controller.get_portfolio_summary()
 holdings = controller.get_holdings_data()
 performance = controller.get_performance_metrics()
 
-# Rebuild data
-controller.build_portfolio_data()
+# Note: Building is done via scripts/build_all_portfolios.py, not via the controller
 ```
 
 ## 📁 Project Structure
@@ -133,13 +138,9 @@ print(f"Sharpe Ratio: {performance['ratios']['annualized_sharpe_ratio']:.3f}")
 ```
 
 ### Rebuild Data
-```python
-# Rebuild all CSV files from scratch
-controller.build_portfolio_data(
-    start_date='2022-05-01',
-    end_date='2025-05-30',
-    starting_cash=101644.99
-)
+Use the script instead of the controller:
+```bash
+python scripts/build_all_portfolios.py
 ```
 
 ## 🔄 Data Flow

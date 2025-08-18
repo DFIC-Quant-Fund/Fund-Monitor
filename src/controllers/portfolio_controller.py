@@ -17,10 +17,6 @@ from typing import List, Dict, Optional, Any
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-# Import models
-from src.models.portfolio_builder import PortfolioCsvBuilder
-from src.models.core_portfolio import CorePortfolio
-from src.models.benchmark_portfolio import BenchmarkPortfolio
 
 # Import performance modules
 from .returns_calculator import ReturnsCalculator
@@ -59,29 +55,6 @@ class PortfolioController:
             if os.path.isdir(os.path.join(self.data_directory, folder))
         ]
     
-    def build_portfolio_data(self, start_date: str = '2022-05-01', 
-                           end_date: str = None, 
-                           starting_cash: float = 101644.99) -> None:
-        """Build all portfolio CSV files using the CSV builder"""
-        if end_date is None:
-            end_date = (pd.Timestamp.now() + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
-        
-        # Choose portfolio implementation based on portfolio name
-        if self.portfolio_name.lower() == 'benchmark':
-            portfolio = BenchmarkPortfolio(start_date, end_date, starting_cash, self.portfolio_name)
-        else:
-            portfolio = CorePortfolio(start_date, end_date, starting_cash, self.portfolio_name)
-        csv_builder = PortfolioCsvBuilder(portfolio)
-        
-        # Run the complete data processing pipeline
-        print(f"Building portfolio data for {self.portfolio_name}...")
-        
-        csv_builder.build_all()
-        
-        # Clear cache after data rebuild
-        self._data_service.clear_cache()
-        
-        print(f"Portfolio data build complete for {self.portfolio_name}")
     
     def get_portfolio_summary(self, as_of_date: str = None) -> Dict[str, Any]:
         """Get portfolio summary data"""
