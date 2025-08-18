@@ -5,5 +5,12 @@ env
 venv
 __pycache__
 .vscode/
-*.csv
 *.xlsx
+
+# Generated data outputs and caches
+data/**/output/**
+data/**/output/.cache/**
+
+# Cache/hash files
+*.hash
+*.csv.hash

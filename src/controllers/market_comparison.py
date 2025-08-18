@@ -11,19 +11,13 @@ It provides methods for:
 This module focuses on comparative analysis and assumes benchmark data is available.
 """
 
-try:
-    from .benchmark import Benchmark
-    from .returns_calculator import ReturnsCalculator
-    from .risk_metrics import RiskMetrics
-except ImportError:
-    # Fallback for when running as script
-    from benchmark import Benchmark
-    from returns_calculator import ReturnsCalculator
-    from risk_metrics import RiskMetrics
+from .benchmark import Benchmark
+from .returns_calculator import ReturnsCalculator
+from .risk_metrics import RiskMetrics
 
 
 class MarketComparison:
-    def __init__(self, df, useSpy: bool = False, risk_free_rate: float = 0.02):
+    def __init__(self, df=None, useSpy: bool = False, risk_free_rate: float = 0.02):
         # Mirror Benchmark's constructor pattern: local path constant via Benchmark and a chosen source
         self.benchmark_instance = Benchmark(useSpy=useSpy)
         self.df = df
@@ -43,13 +37,11 @@ class MarketComparison:
             benchmark_df['pct_change'] = benchmark_df['Total Mkt Val'].pct_change()
             daily_benchmark_return = benchmark_df['pct_change'].dropna()
         
-        # Ensure we have matching data
-        min_length = min(len(daily_portfolio_return), len(daily_benchmark_return))
-        if min_length == 0:
-            return 0.0  # Return 0 if no valid data
-        
-        daily_portfolio_return = daily_portfolio_return.iloc[:min_length]
-        daily_benchmark_return = daily_benchmark_return.iloc[:min_length]
+        # Align on dates to ensure matching observations
+        aligned = daily_portfolio_return.align(daily_benchmark_return, join='inner')
+        daily_portfolio_return, daily_benchmark_return = aligned
+        if len(daily_portfolio_return) == 0:
+            return 0.0
         
         daily_benchmark_var, _ = self.benchmark_instance.benchmark_variance()
         if daily_benchmark_var == 0:
@@ -70,7 +62,7 @@ class MarketComparison:
             portfolio_performance = ReturnsCalculator(self.df)
             
             print("annual_benchmark_return", annual_benchmark_return)
-            beta_value = self.beta(self.df)
+            beta_value = self.beta()
             alpha = (portfolio_performance.annualized_average_return() - self.RISK_FREE_RATE) - beta_value * (annual_benchmark_return - self.RISK_FREE_RATE)
             return alpha
         except Exception as e:
@@ -97,8 +89,13 @@ class MarketComparison:
         try:
             # Read portfolio returns
             daily_portfolio_returns = self.df['pct_change'].dropna()
-
             daily_benchmark_returns = self.benchmark_instance.benchmark_df['pct_change'].dropna()
+
+            # Align on dates to avoid NaNs due to mismatch
+            aligned = daily_portfolio_returns.align(daily_benchmark_returns, join='inner')
+            daily_portfolio_returns, daily_benchmark_returns = aligned
+            if len(daily_portfolio_returns) == 0:
+                return 0.0, 0.0
 
             # Excess returns and IR
             excess_returns = daily_portfolio_returns - daily_benchmark_returns

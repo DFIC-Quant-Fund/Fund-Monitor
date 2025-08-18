@@ -18,7 +18,9 @@ from typing import List, Dict, Optional, Any
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 # Import models
-from src.models.portfolio_csv_builder import Portfolio as CSVBuilderPortfolio
+from src.models.portfolio_builder import PortfolioCsvBuilder
+from src.models.core_portfolio import CorePortfolio
+from src.models.benchmark_portfolio import BenchmarkPortfolio
 
 # Import performance modules
 from .returns_calculator import ReturnsCalculator
@@ -44,7 +46,7 @@ class PortfolioController:
         
         # Initialize performance calculators
         self._risk_metrics = None  # Will build per-request with actual df
-        self._market_comparison = MarketComparison()
+        self._market_comparison = None  # Construct per-request with current portfolio df
         self._benchmark = Benchmark()  # defaults to SPY via internal path
     
     def get_available_portfolios(self) -> List[str]:
@@ -64,26 +66,22 @@ class PortfolioController:
         if end_date is None:
             end_date = (pd.Timestamp.now() + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
         
-        # Initialize the CSV builder
-        csv_builder = CSVBuilderPortfolio(start_date, end_date, starting_cash, self.portfolio_name)
+        # Choose portfolio implementation based on portfolio name
+        if self.portfolio_name.lower() == 'benchmark':
+            portfolio = BenchmarkPortfolio(start_date, end_date, starting_cash, self.portfolio_name)
+        else:
+            portfolio = CorePortfolio(start_date, end_date, starting_cash, self.portfolio_name)
+        csv_builder = PortfolioCsvBuilder(portfolio)
         
         # Run the complete data processing pipeline
         print(f"Building portfolio data for {self.portfolio_name}...")
         
-        csv_builder.create_table_exchange_rates()
-        csv_builder.load_trades()
-        csv_builder.create_table_prices()
-        csv_builder.create_table_holdings()
-        csv_builder.create_table_cad_market_values()
-        csv_builder.create_table_dividend_per_share()
-        csv_builder.create_table_dividend_income()
-        csv_builder.create_table_cash()
+        csv_builder.build_all()
         
         # Clear cache after data rebuild
         self._data_service.clear_cache()
         
         print(f"Portfolio data build complete for {self.portfolio_name}")
-        csv_builder.print_final_values()
     
     def get_portfolio_summary(self, as_of_date: str = None) -> Dict[str, Any]:
         """Get portfolio summary data"""
@@ -95,8 +93,23 @@ class PortfolioController:
         except Exception as e:
             raise ValueError(f"Error loading portfolio data for {self.portfolio_name}: {str(e)}")
         
-        # Calculate summary metrics
-        total_value = holdings_df['market_value'].sum()
+        # Use authoritative totals from portfolio_total.csv
+        totals_df = self._data_service.get_portfolio_total_data()
+        if as_of_date:
+            as_of_dt = pd.to_datetime(as_of_date)
+        else:
+            as_of_dt = totals_df['Date'].max() if not totals_df.empty else pd.to_datetime(datetime.now())
+        row = totals_df[totals_df['Date'] == as_of_dt]
+        if row.empty and not totals_df.empty:
+            # closest previous date
+            as_of_dt = totals_df['Date'].max()
+            row = totals_df[totals_df['Date'] == as_of_dt]
+        total_equity_value = float(row.iloc[0]['Total_Market_Value']) if not row.empty else holdings_df['market_value'].sum()
+        total_portfolio_value = float(row.iloc[0]['Total_Portfolio_Value']) if not row.empty else total_equity_value
+        total_cash_cad = total_portfolio_value - total_equity_value
+        
+        # Calculate summary metrics using consistent equity value
+        total_value = total_equity_value
         total_holdings = len(holdings_df)
         
         # Find largest position
@@ -116,7 +129,9 @@ class PortfolioController:
             'largest_position_ticker': largest_position_ticker,
             'largest_position_value': largest_position_value,
             'largest_position_weight': largest_position_weight,
-            'as_of_date': pd.to_datetime(as_of_date) if as_of_date else pd.to_datetime(datetime.now())
+            'as_of_date': as_of_dt,
+            'total_portfolio_value': total_portfolio_value,
+            'total_cash_cad': total_cash_cad
         }
     
     def get_holdings_data(self, as_of_date: str = None) -> pd.DataFrame:
@@ -166,12 +181,13 @@ class PortfolioController:
             'annualized_downside_volatility': RiskMetrics(portfolio_total_df).annualized_downside_volatility()
         }
         
-        # Add ratios - pass portfolio data to avoid reading non-existent file
+        # Add ratios - use in-memory portfolio data
         try:
             risk_metrics_inst = RiskMetrics(portfolio_total_df)
             daily_sharpe, annualized_sharpe = risk_metrics_inst.sharpe_ratio(risk_free_rate)
             daily_sortino, annualized_sortino = risk_metrics_inst.sortino_ratio(risk_free_rate)
-            daily_info, annualized_info = self._market_comparison.information_ratio(portfolio_total_df)
+            market_comp = MarketComparison(portfolio_total_df, useSpy=True, risk_free_rate=risk_free_rate)
+            daily_info, annualized_info = market_comp.information_ratio()
             
             ratios = {
                 'daily_sharpe_ratio': daily_sharpe,
@@ -185,11 +201,12 @@ class PortfolioController:
             print(f"Warning: Could not calculate ratios: {e}")
             ratios = {}
         
-        # Add market comparison metrics - pass portfolio data to avoid reading non-existent file
+        # Add market comparison metrics - use in-memory portfolio data
         try:
-            beta = self._market_comparison.beta(portfolio_total_df)
-            alpha = self._market_comparison.alpha(risk_free_rate, portfolio_total_df)
-            risk_premium = self._market_comparison.portfolio_risk_premium(risk_free_rate, portfolio_total_df)
+            market_comp = market_comp if 'market_comp' in locals() else MarketComparison(portfolio_total_df, useSpy=True, risk_free_rate=risk_free_rate)
+            beta = market_comp.beta()
+            alpha = market_comp.alpha()
+            risk_premium = market_comp.portfolio_risk_premium()
             
             market_metrics = {
                 'beta': beta,
@@ -209,7 +226,7 @@ class PortfolioController:
         }
     
     def get_cash_data(self, as_of_date: str = None) -> Dict[str, float]:
-        """Get cash data for a specific date"""
+        """Get cash data for a specific date with CAD/USD breakdown from cash.csv"""
         return self._data_service.get_cash_data(as_of_date)
     
     def get_total_portfolio_value(self, as_of_date: str = None) -> float:

@@ -120,7 +120,7 @@ def render_cash_breakdown(cash_data: Dict[str, float]):
     """
     if cash_data['CAD_Cash'] > 0 or cash_data['USD_Cash'] > 0:
         st.subheader("💰 Cash Breakdown")
-        cash_col1, cash_col2, cash_col3 = st.columns(3)
+        cash_col1, cash_col2, cash_col3, cash_col4 = st.columns(4)
         
         with cash_col1:
             st.metric(
@@ -142,5 +142,13 @@ def render_cash_breakdown(cash_data: Dict[str, float]):
                 f"${cash_data['Total_CAD']:,.2f}",
                 help="Total cash converted to CAD"
             )
+        
+        with cash_col4:
+            if cash_data.get('USD_CAD_Rate') is not None:
+                st.metric(
+                    "USD→CAD Rate",
+                    f"{cash_data['USD_CAD_Rate']:.4f}",
+                    help="Exchange rate used to convert USD cash to CAD"
+                )
         
         st.markdown("---")

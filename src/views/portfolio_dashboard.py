@@ -180,13 +180,13 @@ class PortfolioDashboard:
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                st.metric("1 Day", f"{performance.get('1d', 0)*100:.2f}%")
+                st.metric("1 Day", f"{(performance.get('one_day') or 0):.2f}%")
             with col2:
-                st.metric("1 Week", f"{performance.get('1w', 0)*100:.2f}%")
+                st.metric("1 Week", f"{(performance.get('one_week') or 0):.2f}%")
             with col3:
-                st.metric("1 Month", f"{performance.get('1m', 0)*100:.2f}%")
+                st.metric("1 Month", f"{(performance.get('one_month') or 0):.2f}%")
             with col4:
-                st.metric("1 Year", f"{performance.get('1y', 0)*100:.2f}%")
+                st.metric("1 Year", f"{(performance.get('one_year') or 0):.2f}%")
             
             # Risk metrics
             st.subheader("Risk Metrics")

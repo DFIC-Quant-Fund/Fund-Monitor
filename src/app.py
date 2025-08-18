@@ -12,6 +12,7 @@ import pandas as pd
 from datetime import datetime
 import sys
 import os
+import traceback
 
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -74,17 +75,14 @@ def main():
     
     # Date selection
     try:
-        st.info("Loading portfolio data...")
+        loading_placeholder = st.empty()
+        loading_placeholder.info("Loading portfolio data...")
         summary = portfolio_controller.get_portfolio_summary()
-        st.success("Portfolio data loaded successfully!")
         
-        # Get the latest available date from the data
-        latest_date = summary['as_of_date']
-        st.info(f"Latest date from data: {latest_date} (type: {type(latest_date)})")
-        
-        # Convert to datetime.date for Streamlit
-        latest_date_date = latest_date.date() if hasattr(latest_date, 'date') else pd.to_datetime(latest_date).date()
-        st.info(f"Converted date: {latest_date_date} (type: {type(latest_date_date)})")
+        # Get the latest available date from portfolio totals for accuracy
+        totals_df = portfolio_controller.get_portfolio_total_data()
+        latest_date = totals_df['Date'].max() if not totals_df.empty else summary['as_of_date']
+        latest_date_date = pd.to_datetime(latest_date).date()
         
         selected_date = st.sidebar.date_input(
             "As of Date",
@@ -92,10 +90,11 @@ def main():
             max_value=latest_date_date,
             min_value=pd.to_datetime('2022-05-01').date()
         )
+        # Clear loading message once loaded
+        loading_placeholder.empty()
     except Exception as e:
         st.error(f"Error loading portfolio data: {e}")
         st.error(f"Error type: {type(e)}")
-        import traceback
         st.error(f"Traceback: {traceback.format_exc()}")
         st.info("This usually means the portfolio data hasn't been built yet. Please ensure the data building process has been completed.")
         return
@@ -105,13 +104,14 @@ def main():
         portfolio_summary = portfolio_controller.get_portfolio_summary(selected_date.strftime('%Y-%m-%d'))
         holdings_data = portfolio_controller.get_holdings_data(selected_date.strftime('%Y-%m-%d'))
         performance_data = portfolio_controller.get_performance_metrics(selected_date.strftime('%Y-%m-%d'))
+        # Use cash breakdown from cash.csv and totals from portfolio_total.csv
         cash_data = portfolio_controller.get_cash_data(selected_date.strftime('%Y-%m-%d'))
-        total_portfolio_value = portfolio_controller.get_total_portfolio_value(selected_date.strftime('%Y-%m-%d'))
+        total_portfolio_value = portfolio_summary.get('total_portfolio_value', 0.0)
     except Exception as e:
         st.error(f"Error loading data for selected date: {e}")
         return
     
-    # Calculate equity value (sum of all holdings)
+    # Equity value from authoritative totals
     equity_value = portfolio_summary['total_value']
     
     # Render portfolio summary using components
