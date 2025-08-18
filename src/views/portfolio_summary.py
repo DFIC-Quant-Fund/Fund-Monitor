@@ -152,3 +152,5 @@ def render_cash_breakdown(cash_data: Dict[str, float]):
                 )
         
         st.markdown("---")
+
+

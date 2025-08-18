@@ -2,7 +2,40 @@
 Views package - Streamlit UI components.
 """
 
-# Views are implemented directly in the main app.py file
-# This package is for future view components if needed
+from .portfolio_summary import (
+	render_portfolio_summary,
+	render_portfolio_breakdown,
+	render_cash_breakdown,
+)
+from .holdings_table import (
+	render_holdings_table,
+	render_holdings_summary,
+)
+from .allocation_charts import (
+	render_allocation_charts,
+	render_allocation_summary,
+)
+from .performance_metrics import (
+	render_performance_metrics,
+	render_period_returns,
+	render_risk_metrics,
+	render_risk_ratios,
+	render_market_metrics,
+	render_performance_summary,
+)
 
-__all__ = []
+__all__ = [
+	'render_portfolio_summary',
+	'render_portfolio_breakdown',
+	'render_cash_breakdown',
+	'render_holdings_table',
+	'render_holdings_summary',
+	'render_allocation_charts',
+	'render_allocation_summary',
+	'render_performance_metrics',
+	'render_period_returns',
+	'render_risk_metrics',
+	'render_risk_ratios',
+	'render_market_metrics',
+	'render_performance_summary',
+]

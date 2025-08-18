@@ -21,7 +21,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.controllers.portfolio_controller import PortfolioController
 
 # Import UI components
-from src.views.components import (
+from src.views import (
     render_portfolio_summary,
     render_portfolio_breakdown,
     render_cash_breakdown,
@@ -54,10 +54,15 @@ def main():
         return
     
     # Portfolio selection
+    # Default to 'core' if present
+    try:
+        default_index = [p.lower() for p in available_portfolios].index('core')
+    except ValueError:
+        default_index = 0
     selected_portfolio = st.sidebar.selectbox(
         "Select Portfolio",
         available_portfolios,
-        index=0
+        index=default_index
     )
     
     # Create controller for selected portfolio
