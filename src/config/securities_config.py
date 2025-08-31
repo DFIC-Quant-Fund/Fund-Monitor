@@ -5,7 +5,6 @@ This module loads the authoritative securities configuration from core.yaml
 and provides a clean interface for accessing fund, sector, and geography information.
 """
 
-import os
 import yaml
 from typing import Dict, List, Optional, NamedTuple
 from enum import Enum

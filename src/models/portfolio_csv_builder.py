@@ -130,10 +130,10 @@ class Portfolio:
         # function: amount of stocks we are holding on a certain date 
 
         self.holdings = pd.DataFrame(index=self.valid_dates)
-        for ticker in self.tickers: self.holdings[ticker] = 0.0
+        for ticker in self.tickers: 
+            self.holdings[ticker] = 0.0
 
         for i, date in enumerate(self.valid_dates):
-            
             if i != 0:
                 self.holdings.loc[date] = self.holdings.loc[self.valid_dates[i - 1]]
 
@@ -199,7 +199,7 @@ class Portfolio:
                         current_cad_cash, current_usd_cash, conversion_type = self._convert_currency_for_trade(
                             trade_value, currency, current_cad_cash, current_usd_cash, date
                         )
-                        print(f"  Buy: Decreased cash for purchase.")
+                        print("  Buy: Decreased cash for purchase.")
                     elif quantity < 0:
                         # Sell: Add proceeds to correct cash balance
                         if currency == 'CAD':
@@ -317,7 +317,7 @@ class Portfolio:
         for ticker in self.tickers:
             try:
                 currency = yf.Ticker(ticker).info['currency']
-            except:
+            except (KeyError, AttributeError, Exception):
                 currency = 'CAD'
             market_values_cad[ticker] = prices[ticker] * holdings[ticker] * self.exchange_rates[currency]
 

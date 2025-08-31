@@ -13,8 +13,6 @@ import pandas as pd
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
 import hashlib
-import pickle
-from functools import lru_cache
 
 class DataService:
     """Centralized data service for portfolio data management"""
