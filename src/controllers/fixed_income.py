@@ -27,7 +27,7 @@ class FixedIncomeAnalyzer:
         for t in tickers:
             try:
                 currency = yf.Ticker(t).info['currency']
-            except:
+            except (KeyError, AttributeError, Exception):
                 currency = 'CAD'
 
             if currency == 'USD':

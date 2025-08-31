@@ -12,7 +12,7 @@ import os
 import sys
 import pandas as pd
 from datetime import datetime
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Any
 
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -24,7 +24,6 @@ from .risk_metrics import RiskMetrics
 from .market_comparison import MarketComparison
 from .benchmark import Benchmark
 from .data_service import DataService
-from .benchmark import Benchmark
 
 # Import config
 from src.config.securities_config import securities_config

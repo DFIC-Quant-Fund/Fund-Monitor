@@ -11,7 +11,6 @@ It provides methods for:
 This module focuses solely on risk metric calculations and assumes input data is already processed.
 """
 
-import pandas as pd
 
 class RiskMetrics:
     def __init__(self, df, risk_free_rate: float = 0.02):

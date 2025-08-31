@@ -2,7 +2,6 @@ import unittest
 import pandas as pd
 import os
 import sys
-import os
 # Add the parent directory to sys.path - need to access files from tests folder
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
