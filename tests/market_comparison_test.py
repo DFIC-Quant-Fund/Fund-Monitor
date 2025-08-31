@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 import unittest
 import pandas as pd
 import os
@@ -7,10 +8,10 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 
 from unittest.mock import patch
-from performance import MarketComparison  
-from performance import Benchmark
-from performance import PortfolioPerformance
-from performance import RiskMetrics
+from src.controllers.market_comparison import MarketComparison  
+from src.controllers.benchmark import Benchmark
+from src.controllers.returns_calculator import ReturnsCalculator as PortfolioPerformance
+from src.controllers.risk_metrics import RiskMetrics
 
 class TestMarketComparison(unittest.TestCase):
     def setUp(self):
