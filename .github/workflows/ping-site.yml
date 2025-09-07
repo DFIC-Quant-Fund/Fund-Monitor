@@ -1,0 +1,13 @@
+name: Ping DFIC Fund Monitor Site
+
+on:
+  schedule:
+    - cron: '*/15 * * * *' # Every 15 minutes
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Streamlit app
+        run: curl -s https://dfic-fund.streamlit.app/ || echo "Ping failed"
