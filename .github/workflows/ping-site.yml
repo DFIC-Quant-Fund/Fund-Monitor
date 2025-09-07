@@ -2,7 +2,7 @@ name: Ping DFIC Fund Monitor Site
 
 on:
   schedule:
-    - cron: '*/5 * * * *' # Here it runs every 15 mins
+    - cron: '*/5 * * * *' # Here it runs every 5 mins
   workflow_dispatch:
 
 jobs:
