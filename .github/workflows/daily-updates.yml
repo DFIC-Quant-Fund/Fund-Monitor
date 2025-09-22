@@ -24,6 +24,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Ensure latest main (fast-forward only)
+        run: git pull --ff-only origin main
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
