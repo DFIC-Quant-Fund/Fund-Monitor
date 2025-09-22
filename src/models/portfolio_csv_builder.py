@@ -141,7 +141,13 @@ class Portfolio:
                 print(f"Trades on {date}")
                 print(f"{self.trades.loc[date]}")
 
-                for _, row in self.trades.loc[date].iterrows():
+                rows_for_date = self.trades.loc[date]
+
+                # Ensure rows_for_date is a DataFrame
+                # (if there is only one row, it will be a Series)
+                if isinstance(rows_for_date, pd.Series):
+                    rows_for_date = rows_for_date.to_frame().T
+                for _, row in rows_for_date.iterrows():
                     quantity = row['Quantity']
                     ticker = row['Ticker']
                     self.holdings.at[date, ticker] = self.holdings.loc[date, ticker] + quantity
@@ -184,7 +190,10 @@ class Portfolio:
                 print(f"\n--- Processing trades on {date.strftime('%Y-%m-%d')} ---")
                 print(f"Starting balances - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}")
                 
-                for _, row in self.trades.loc[date].iterrows():
+                rows_for_date = self.trades.loc[date]
+                if isinstance(rows_for_date, pd.Series):
+                    rows_for_date = rows_for_date.to_frame().T
+                for _, row in rows_for_date.iterrows():
                     quantity = row['Quantity']
                     currency = row['Currency']
                     price = row['Price']

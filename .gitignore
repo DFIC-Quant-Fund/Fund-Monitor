@@ -7,9 +7,10 @@ __pycache__
 .vscode/
 *.xlsx
 
-# Generated data outputs and caches
+# Generated data outputs/inputs and caches
 data/**/output/**
 data/**/output/.cache/**
+data/*/input/trades.csv
 
 # Cache/hash files
 *.hash

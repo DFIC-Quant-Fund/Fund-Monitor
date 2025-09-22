@@ -528,3 +528,10 @@ transactions:
     price: 180.31
     quantity: 33
     currency: CAD
+
+  - type: Sell
+    date: 2025-09-09
+    ticker: TLT
+    price: 89.11
+    quantity: 225
+    currency: USD

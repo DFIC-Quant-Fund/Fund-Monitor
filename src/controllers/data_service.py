@@ -230,7 +230,7 @@ class DataService:
             'USD_CAD_Rate': usd_cad_rate
         }
         
-        self._update_cache(cache_key, [result], [cash_file, fx_file])
+        self._update_cache(cache_key, result, [cash_file, fx_file])
         return result
     
     def get_dividend_data(self) -> pd.DataFrame:
