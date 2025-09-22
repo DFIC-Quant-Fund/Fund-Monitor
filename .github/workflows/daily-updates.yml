@@ -46,6 +46,4 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: update portfolio CSVs [skip ci]"
-          file_pattern: | 
-            data/**/output/*.csv
-            data/**/input/trades.csv
+          file_pattern: data/*
