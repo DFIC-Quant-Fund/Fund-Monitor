@@ -4,10 +4,17 @@ on:
   schedule:
     - cron: '0 22 * * 1-5'  # Runs at 10:00 PM UTC Monday to Friday (5:00 PM EST or 6:00 PM EDT)
   workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-portfolios:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,3 +31,9 @@ jobs:
       - name: Build portfolios
         run: python scripts/build_all_portfolios.py
         # TODO: change this to be more like a data migration than a complete rewrite
+      - name: Commit updated CSVs
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update portfolio CSVs [skip ci]"
+          file_pattern: data/**/output/*.csv
