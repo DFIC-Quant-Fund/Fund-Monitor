@@ -18,6 +18,7 @@ import yaml
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from config.logging_config import get_logger
 
+logger = get_logger(__name__)
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -85,7 +86,6 @@ def derive_trades_for_portfolio(portfolio_name: str) -> str:
 
 
 def main(args: List[str]) -> None:
-    logger = get_logger(__name__)
     portfolios = args or ['core', 'benchmark']
     for name in portfolios:
         path = derive_trades_for_portfolio(name)

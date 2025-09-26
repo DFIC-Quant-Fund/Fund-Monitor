@@ -16,12 +16,12 @@ import subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from config.logging_config import get_logger
 
+logger = get_logger(__name__)
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
 def run_builder(portfolio_name: str) -> None:
-    logger = get_logger(__name__)
     # Fix the import warning by running the file directly instead of as a module
     script_path = os.path.join(PROJECT_ROOT, 'src', 'models', 'portfolio_csv_builder.py')
     cmd = [sys.executable, script_path, portfolio_name]
@@ -33,7 +33,6 @@ def run_builder(portfolio_name: str) -> None:
 
 
 def main() -> None:
-    logger = get_logger(__name__)
     portfolios = ['core', 'benchmark']
     # Derive trades.csv from YAML before building
     derive_cmd = [sys.executable, os.path.join(PROJECT_ROOT, 'scripts', 'derive_trades_from_yaml.py')] + portfolios
