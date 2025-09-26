@@ -12,9 +12,9 @@ import os
 import sys
 import subprocess
 
-# Add src to path to import logging config
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-from config.logging_config import get_logger
+# Add project root to Python path for absolute imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.config.logging_config import get_logger
 
 logger = get_logger(__name__)
 
