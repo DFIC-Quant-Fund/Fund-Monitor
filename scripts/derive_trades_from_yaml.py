@@ -14,6 +14,10 @@ from typing import List, Dict, Any
 
 import yaml
 
+# Add src to path to import logging config
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+from config.logging_config import get_logger
+
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -81,10 +85,11 @@ def derive_trades_for_portfolio(portfolio_name: str) -> str:
 
 
 def main(args: List[str]) -> None:
+    logger = get_logger(__name__)
     portfolios = args or ['core', 'benchmark']
     for name in portfolios:
         path = derive_trades_for_portfolio(name)
-        print(f"Derived trades for '{name}' -> {path}")
+        logger.info(f"Derived trades for '{name}' -> {path}")
 
 
 if __name__ == '__main__':

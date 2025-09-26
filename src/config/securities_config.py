@@ -8,6 +8,7 @@ and provides a clean interface for accessing fund, sector, and geography informa
 import yaml
 from typing import Dict, List, Optional, NamedTuple
 from enum import Enum
+from .logging_config import get_logger
 
 class Fund(Enum):
     """Fund classifications from core.yaml"""
@@ -52,6 +53,7 @@ class SecuritiesConfig:
         self.config_path = config_path
         self._securities_data: Dict[str, SecurityInfo] = {}
         self._funds_data: Dict[str, str] = {}
+        self.logger = get_logger(__name__)
         self._load_config()
     
     def _load_config(self):
@@ -78,10 +80,10 @@ class SecuritiesConfig:
                             )
                             self._securities_data[security['ticker']] = security_info
                         except (ValueError, KeyError) as e:
-                            print(f"Warning: Could not parse security {security.get('ticker', 'unknown')}: {e}")
+                            self.logger.warning(f"Could not parse security {security.get('ticker', 'unknown')}: {e}")
                             
         except Exception as e:
-            print(f"Error loading securities config: {e}")
+            self.logger.exception(f"Error loading securities config: {e}")
     
     def get_security_info(self, ticker: str) -> Optional[SecurityInfo]:
         """Get security information for a ticker"""
