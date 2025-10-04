@@ -4,6 +4,19 @@ import pandas as pd
 import yfinance as yf
 from datetime import timedelta
 
+# Add project root to Python path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+# Import logging - works both as module and standalone script
+try:
+    from src.config.logging_config import get_logger
+except ImportError:
+    # Fallback for standalone execution
+    from config.logging_config import get_logger
+
+# Set up logger for this module
+logger = get_logger(__name__)
+
 
 '''
 FILE PURPOSE: GOAL IS TO SET UP METRICS AND FILL PRIMARY OUTPUT TABLES 
@@ -82,9 +95,9 @@ class Portfolio:
             if os.path.exists(file_path):
                 try:
                     os.remove(file_path)
-                    print(f"Removed existing file: {csv_file}")
+                    logger.info(f"Removed existing file: {csv_file}")
                 except Exception as e:
-                    print(f"Warning: Could not remove {csv_file}: {e}")
+                    logger.warning(f"Could not remove {csv_file}: {e}")
 
     def create_table_exchange_rates(self):
         # exchange rates from web and shave them for all start and end dates 
@@ -138,8 +151,8 @@ class Portfolio:
                 self.holdings.loc[date] = self.holdings.loc[self.valid_dates[i - 1]]
 
             if date in self.trades.index:
-                print(f"Trades on {date}")
-                print(f"{self.trades.loc[date]}")
+                logger.debug(f"Trades on {date}")
+                logger.debug(f"{self.trades.loc[date]}")
 
                 rows_for_date = self.trades.loc[date]
 
@@ -152,7 +165,7 @@ class Portfolio:
                     ticker = row['Ticker']
                     self.holdings.at[date, ticker] = self.holdings.loc[date, ticker] + quantity
             else:
-                print(f"No trades on {date}")
+                logger.debug(f"No trades on {date}")
 
         pd.DataFrame(self.holdings).to_csv(os.path.join(self.output_folder, holdings_file), index_label='Date')
 
@@ -187,8 +200,8 @@ class Portfolio:
 
             # Process trades for this date
             if date in self.trades.index:
-                print(f"\n--- Processing trades on {date.strftime('%Y-%m-%d')} ---")
-                print(f"Starting balances - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}")
+                logger.info(f"--- Processing trades on {date.strftime('%Y-%m-%d')} ---")
+                logger.debug(f"Starting balances - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}")
                 
                 rows_for_date = self.trades.loc[date]
                 if isinstance(rows_for_date, pd.Series):
@@ -200,27 +213,27 @@ class Portfolio:
                     ticker = row['Ticker']
                     trade_value = abs(quantity * price)
 
-                    print(f"\n  Trade: {ticker} - {quantity} shares @ ${price:.2f} {currency}")
-                    print(f"  Trade value: ${trade_value:.2f} {currency}")
+                    logger.debug(f"Trade: {ticker} - {quantity} shares @ ${price:.2f} {currency}")
+                    logger.debug(f"Trade value: ${trade_value:.2f} {currency}")
 
                     if quantity > 0:
                         # Buy: Deduct cash using helper
                         current_cad_cash, current_usd_cash, conversion_type = self._convert_currency_for_trade(
                             trade_value, currency, current_cad_cash, current_usd_cash, date
                         )
-                        print("  Buy: Decreased cash for purchase.")
+                        logger.debug("Buy: Decreased cash for purchase.")
                     elif quantity < 0:
                         # Sell: Add proceeds to correct cash balance
                         if currency == 'CAD':
                             current_cad_cash += trade_value
-                            print(f"  Sell: Increased CAD cash by ${trade_value:.2f}")
+                            logger.debug(f"Sell: Increased CAD cash by ${trade_value:.2f}")
                         elif currency == 'USD':
                             current_usd_cash += trade_value
-                            print(f"  Sell: Increased USD cash by ${trade_value:.2f}")
+                            logger.debug(f"Sell: Increased USD cash by ${trade_value:.2f}")
                         else:
                             # If unknown currency, default to CAD
                             current_cad_cash += trade_value
-                            print(f"  Sell: Unknown currency, increased CAD cash by ${trade_value:.2f}")
+                            logger.debug(f"Sell: Unknown currency, increased CAD cash by ${trade_value:.2f}")
 
                     # Update cash balances
                     self.cash.at[date, 'CAD_Cash'] = current_cad_cash
@@ -228,37 +241,37 @@ class Portfolio:
                     # Calculate total in CAD
                     total_cad = current_cad_cash + (current_usd_cash * self.exchange_rates.loc[date, 'USD'])
                     self.cash.at[date, 'Total_CAD'] = total_cad
-                    print(f"  After trade - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}, Total CAD: ${total_cad:.2f}")
+                    logger.debug(f"After trade - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}, Total CAD: ${total_cad:.2f}")
 
             # Process dividends for this date
             if self.dividend_income is not None and date in self.dividend_income.index:
-                print(f"\n--- Processing dividends on {date.strftime('%Y-%m-%d')} ---")
-                print(f"Starting balances - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}")
+                logger.info(f"--- Processing dividends on {date.strftime('%Y-%m-%d')} ---")
+                logger.debug(f"Starting balances - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}")
                 
                 for ticker in self.tickers:
                     dividend_amount = self.dividend_income.at[date, ticker] if ticker in self.dividend_income.columns else 0.0
                     if pd.isna(dividend_amount) or dividend_amount == 0.0:
                         continue
                     currency = ticker_currency.get(ticker, 'CAD')
-                    print(f"\n  Dividend: {ticker} - ${dividend_amount:.2f} {currency}")
+                    logger.debug(f"Dividend: {ticker} - ${dividend_amount:.2f} {currency}")
                     # Add dividend to appropriate currency balance
                     if currency == 'CAD':
                         current_cad_cash += dividend_amount
-                        print(f"  Added ${dividend_amount:.2f} to CAD cash")
+                        logger.debug(f"Added ${dividend_amount:.2f} to CAD cash")
                     elif currency == 'USD':
                         current_usd_cash += dividend_amount
-                        print(f"  Added ${dividend_amount:.2f} to USD cash")
+                        logger.debug(f"Added ${dividend_amount:.2f} to USD cash")
                     else:
                         # If unknown currency, default to CAD
                         current_cad_cash += dividend_amount
-                        print(f"  Unknown currency, added ${dividend_amount:.2f} to CAD cash")
+                        logger.debug(f"Unknown currency, added ${dividend_amount:.2f} to CAD cash")
                     # Update cash balances
                     self.cash.at[date, 'CAD_Cash'] = current_cad_cash
                     self.cash.at[date, 'USD_Cash'] = current_usd_cash
                     # Calculate total in CAD
                     total_cad = current_cad_cash + (current_usd_cash * self.exchange_rates.loc[date, 'USD'])
                     self.cash.at[date, 'Total_CAD'] = total_cad
-                    print(f"  After dividend - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}, Total CAD: ${total_cad:.2f}")
+                    logger.debug(f"After dividend - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}, Total CAD: ${total_cad:.2f}")
 
         pd.DataFrame(self.cash).to_csv(os.path.join(self.output_folder, cash_file), index_label='Date')
 
@@ -280,7 +293,7 @@ class Portfolio:
             # For CAD trades, use CAD cash first, convert USD if needed
             if current_cad_cash >= trade_value:
                 # We have enough CAD cash
-                print(f"  CAD trade - using existing CAD cash (${current_cad_cash:.2f} available)")
+                logger.debug(f"CAD trade - using existing CAD cash (${current_cad_cash:.2f} available)")
                 return current_cad_cash - trade_value, current_usd_cash, "used_cad_cash"
             else:
                 # Need to convert some USD to CAD
@@ -288,9 +301,9 @@ class Portfolio:
                 usd_to_convert = cad_needed / self.exchange_rates.loc[date, 'USD']
                 exchange_rate = self.exchange_rates.loc[date, 'USD']
                 
-                print(f"  CAD trade - need ${cad_needed:.2f} more CAD")
-                print(f"  Converting ${usd_to_convert:.2f} USD to CAD (rate: {exchange_rate:.4f})")
-                print(f"  Using all available CAD cash: ${current_cad_cash:.2f}")
+                logger.debug(f"CAD trade - need ${cad_needed:.2f} more CAD")
+                logger.debug(f"Converting ${usd_to_convert:.2f} USD to CAD (rate: {exchange_rate:.4f})")
+                logger.debug(f"Using all available CAD cash: ${current_cad_cash:.2f}")
                 
                 # Use all available CAD cash and convert USD
                 new_cad_cash = 0
@@ -300,7 +313,7 @@ class Portfolio:
             # For USD trades, use USD cash first, convert CAD if needed
             if current_usd_cash >= trade_value:
                 # We have enough USD cash
-                print(f"  USD trade - using existing USD cash (${current_usd_cash:.2f} available)")
+                logger.debug(f"USD trade - using existing USD cash (${current_usd_cash:.2f} available)")
                 return current_cad_cash, current_usd_cash - trade_value, "used_usd_cash"
             else:
                 # Need to convert some CAD to USD
@@ -308,9 +321,9 @@ class Portfolio:
                 cad_to_convert = usd_needed * self.exchange_rates.loc[date, 'USD']
                 exchange_rate = self.exchange_rates.loc[date, 'USD']
                 
-                print(f"  USD trade - need ${usd_needed:.2f} more USD")
-                print(f"  Converting ${cad_to_convert:.2f} CAD to USD (rate: {exchange_rate:.4f})")
-                print(f"  Using all available USD cash: ${current_usd_cash:.2f}")
+                logger.debug(f"  USD trade - need ${usd_needed:.2f} more USD")
+                logger.debug(f"  Converting ${cad_to_convert:.2f} CAD to USD (rate: {exchange_rate:.4f})")
+                logger.debug(f"  Using all available USD cash: ${current_usd_cash:.2f}")
                 
                 # Use all available USD cash and convert CAD
                 new_cad_cash = current_cad_cash - cad_to_convert
@@ -388,21 +401,22 @@ class Portfolio:
         usd_dividends_cad = usd_dividends * avg_exchange_rate
         total_dividends_cad = cad_dividends + usd_dividends_cad
 
-        print()
-        print(f"Start Date: {self.start_date}")
-        print(f"End Date: {(pd.to_datetime(self.end_date) - timedelta(days=1)).strftime('%Y-%m-%d')}")
-        print()
-        print(f"Starting Cash: {STARTING_CASH:.2f}")
-        print()
-        print(f"CAD Cash (including dividends): {self.cash.loc[self.valid_dates[-1], 'CAD_Cash']:.2f}")
-        print(f"USD Cash (including dividends): {self.cash.loc[self.valid_dates[-1], 'USD_Cash']:.2f}")
-        print(f"CAD Dividends: {cad_dividends:.2f}")
-        print(f"USD Dividends: {usd_dividends:.2f}")
-        print(f"Total Dividends (CAD): {total_dividends_cad:.2f}")
-        print(f"Total Cash (CAD, including dividends): {cash_total_cad:.2f}")
-        print(f"Market Value of holdings: {market_values_total:.2f}")
-        print(f"Total Value of portfolio: {(market_values_total + cash_total_cad):.2f}")
-        print(f"Total Return: {((market_values_total + cash_total_cad) / STARTING_CASH - 1) * 100:.2f}%")
+        logger.info("")
+        logger.info("Portfolio Summary:")
+        logger.info(f"Start Date: {self.start_date}")
+        logger.info(f"End Date: {(pd.to_datetime(self.end_date) - timedelta(days=1)).strftime('%Y-%m-%d')}")
+        logger.info("")
+        logger.info(f"Starting Cash: {STARTING_CASH:.2f}")
+        logger.info("")
+        logger.info(f"CAD Cash (including dividends): {self.cash.loc[self.valid_dates[-1], 'CAD_Cash']:.2f}")
+        logger.info(f"USD Cash (including dividends): {self.cash.loc[self.valid_dates[-1], 'USD_Cash']:.2f}")
+        logger.info(f"CAD Dividends: {cad_dividends:.2f}")
+        logger.info(f"USD Dividends: {usd_dividends:.2f}")
+        logger.info(f"Total Dividends (CAD): {total_dividends_cad:.2f}")
+        logger.info(f"Total Cash (CAD, including dividends): {cash_total_cad:.2f}")
+        logger.info(f"Market Value of holdings: {market_values_total:.2f}")
+        logger.info(f"Total Value of portfolio: {(market_values_total + cash_total_cad):.2f}")
+        logger.info(f"Total Return: {((market_values_total + cash_total_cad) / STARTING_CASH - 1) * 100:.2f}%")
 
     def get_valid_dates(self):
         sp500 = yf.Ticker('^GSPC').history(start=self.start_date, end=self.end_date)
