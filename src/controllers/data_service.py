@@ -134,7 +134,7 @@ class DataService:
         # Check if source files exist
         for file_path in source_files:
             if not os.path.exists(file_path):
-                logger.warning(f"Source file not found: {file_path}")
+                logger.error(f"Source file not found: {file_path}")
                 return pd.DataFrame()
         
         if self._is_cache_valid(cache_key, source_files):

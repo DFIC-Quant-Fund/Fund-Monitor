@@ -81,7 +81,7 @@ class SecuritiesConfig:
                             )
                             self._securities_data[security['ticker']] = security_info
                         except (ValueError, KeyError) as e:
-                            logger.warning(f"Could not parse security {security.get('ticker', 'unknown')}: {e}")
+                            logger.exception(f"Could not parse security {security.get('ticker', 'unknown')}: {e}")
                             
         except Exception as e:
             logger.exception(f"Error loading securities config: {e}")
