@@ -14,6 +14,11 @@ from typing import List, Dict, Any
 
 import yaml
 
+# Add project root to Python path for absolute imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.config.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -84,7 +89,7 @@ def main(args: List[str]) -> None:
     portfolios = args or ['core', 'benchmark']
     for name in portfolios:
         path = derive_trades_for_portfolio(name)
-        print(f"Derived trades for '{name}' -> {path}")
+        logger.info(f"Derived trades for '{name}' -> {path}")
 
 
 if __name__ == '__main__':

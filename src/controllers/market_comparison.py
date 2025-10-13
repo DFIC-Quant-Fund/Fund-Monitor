@@ -14,6 +14,10 @@ This module focuses on comparative analysis and assumes benchmark data is availa
 from .benchmark import Benchmark
 from .returns_calculator import ReturnsCalculator
 from .risk_metrics import RiskMetrics
+from ..config.logging_config import get_logger
+
+# Set up logger for this module
+logger = get_logger(__name__)
 
 
 class MarketComparison:
@@ -61,12 +65,12 @@ class MarketComparison:
             # Load portfolio data for ReturnsCalculator
             portfolio_performance = ReturnsCalculator(self.df)
             
-            print("annual_benchmark_return", annual_benchmark_return)
+            logger.debug(f"annual_benchmark_return: {annual_benchmark_return}")
             beta_value = self.beta()
             alpha = (portfolio_performance.annualized_average_return() - self.RISK_FREE_RATE) - beta_value * (annual_benchmark_return - self.RISK_FREE_RATE)
             return alpha
         except Exception as e:
-            print(f"Warning: Could not calculate alpha: {e}")
+            logger.exception(f"Could not calculate alpha: {e}")
             return 0.0
         
     def portfolio_risk_premium(self):
@@ -75,14 +79,14 @@ class MarketComparison:
             portfolio_performance = ReturnsCalculator(self.df)
             return portfolio_performance.annualized_average_return() - self.RISK_FREE_RATE
         except Exception as e:
-            print(f"Warning: Could not calculate portfolio risk premium: {e}")
+            logger.exception(f"Could not calculate portfolio risk premium: {e}")
             return 0.0
 
     def treynor_ratio(self):
         try:
             return self.portfolio_risk_premium() / self.beta()
         except Exception as e:
-            print(f"Warning: Could not calculate treynor ratio: {e}")
+            logger.exception(f"Could not calculate treynor ratio: {e}")
             return 0.0
 
     def information_ratio(self):
@@ -103,7 +107,7 @@ class MarketComparison:
             annualized_information_ratio = daily_information_ratio * (252 ** 0.5)
             return daily_information_ratio, annualized_information_ratio
         except Exception as e:
-            print(f"Warning: Could not calculate information ratio: {e}")
+            logger.exception(f"Could not calculate information ratio: {e}")
             return 0.0, 0.0
 
     def risk_adjusted_return(self):
@@ -116,5 +120,5 @@ class MarketComparison:
             
             return risk_adjusted_return
         except Exception as e:
-            print(f"Warning: Could not calculate risk adjusted return: {e}")
+            logger.exception(f"Could not calculate risk adjusted return: {e}")
             return 0.0

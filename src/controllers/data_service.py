@@ -13,6 +13,10 @@ import pandas as pd
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
 import hashlib
+from ..config.logging_config import get_logger
+
+# Set up logger for this module
+logger = get_logger(__name__)
 
 class DataService:
     """Centralized data service for portfolio data management"""
@@ -130,7 +134,7 @@ class DataService:
         # Check if source files exist
         for file_path in source_files:
             if not os.path.exists(file_path):
-                print(f"Warning: Source file not found: {file_path}")
+                logger.error(f"Source file not found: {file_path}")
                 return pd.DataFrame()
         
         if self._is_cache_valid(cache_key, source_files):
@@ -152,7 +156,7 @@ class DataService:
             if as_of_date:
                 latest_date = pd.to_datetime(as_of_date)
         except Exception as e:
-            print(f"Error loading holdings data: {e}")
+            logger.exception(f"Error loading holdings data: {e}")
             return pd.DataFrame()
         
         try:
@@ -181,7 +185,7 @@ class DataService:
             result = pd.DataFrame(holdings_list)
             result = result.sort_values('market_value', ascending=False)
         except Exception as e:
-            print(f"Error processing holdings data: {e}")
+            logger.exception(f"Error processing holdings data: {e}")
             return pd.DataFrame()
         
         self._update_cache(cache_key, result, source_files)

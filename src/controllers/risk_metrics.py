@@ -11,6 +11,10 @@ It provides methods for:
 This module focuses solely on risk metric calculations and assumes input data is already processed.
 """
 
+from ..config.logging_config import get_logger
+
+# Set up logger for this module
+logger = get_logger(__name__)
 
 class RiskMetrics:
     def __init__(self, df, risk_free_rate: float = 0.02):
@@ -25,12 +29,12 @@ class RiskMetrics:
 
     def annualized_variance(self):
         annualized_variance = self.daily_variance() * 252
-        # print(f"Annualized Variance: {annualized_variance:.4f}")
+        logger.debug(f"Annualized Variance: {annualized_variance:.4f}")
         return annualized_variance
 
     def annualized_volatility(self):
         annualized_volatility = self.annualized_variance() ** 0.5
-        # print(f"Annualized Volatility: {annualized_volatility:.4f}")
+        logger.debug(f"Annualized Volatility: {annualized_volatility:.4f}")
         return annualized_volatility
 
     def daily_volatility(self):
@@ -39,29 +43,29 @@ class RiskMetrics:
         daily_return = self.df['pct_change'].dropna()
         daily_volatility = daily_return.std()
 
-        # print(f"Daily Volatility: {daily_volatility:.4f}")
+        logger.debug(f"Daily Volatility: {daily_volatility:.4f}")
         return daily_volatility
 
     def daily_downside_variance(self):
         daily_return = self.df['pct_change'].dropna()
         downside_returns = daily_return[daily_return < 0]
         downside_variance = downside_returns.var()
-        # print(f"Daily Downside Variance: {downside_variance:.4f}")
+        logger.debug(f"Daily Downside Variance: {downside_variance:.4f}")
         return downside_variance
 
     def annualized_downside_variance(self):
         annualized_downside_variance = self.daily_downside_variance() * 252
-        # print(f"Annualized Downside Variance: {annualized_downside_variance:.4f}")
+        logger.debug(f"Annualized Downside Variance: {annualized_downside_variance:.4f}")
         return annualized_downside_variance
 
     def daily_downside_volatility(self):
         daily_downside_volatility = self.daily_downside_variance() ** 0.5
-        # print(f"Daily Downside Volatility: {daily_downside_volatility:.4f}")
+        logger.debug(f"Daily Downside Volatility: {daily_downside_volatility:.4f}")
         return daily_downside_volatility
 
     def annualized_downside_volatility(self):
         annualized_downside_volatility = self.annualized_downside_variance() ** 0.5
-        # print(f"Annualized Downside Volatility: {annualized_downside_volatility:.4f}")
+        logger.debug(f"Annualized Downside Volatility: {annualized_downside_volatility:.4f}")
         return annualized_downside_volatility
 
     def maximum_drawdown(self):
