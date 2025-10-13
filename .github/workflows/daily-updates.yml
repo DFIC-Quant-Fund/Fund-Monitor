@@ -25,9 +25,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: main
           fetch-depth: 0
-      - name: Ensure latest main (fast-forward only)
+      - name: Ensure latest changes (fast-forward only)
+        if: github.event_name != 'pull_request'
         run: git pull --ff-only origin main
       - name: Set up Python
         uses: actions/setup-python@v5
