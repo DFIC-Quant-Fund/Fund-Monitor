@@ -38,6 +38,12 @@ def setup_logging():
     )
     console_handler.setFormatter(console_formatter)
     root_logger.addHandler(console_handler)
+    
+    # Suppress verbose third-party library logs
+    logging.getLogger('yfinance').setLevel(logging.WARNING)
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
+    logging.getLogger('requests').setLevel(logging.WARNING)
+    logging.getLogger('peewee').setLevel(logging.WARNING)
 
 
 def get_logger(name: str) -> logging.Logger: 
