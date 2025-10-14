@@ -50,3 +50,7 @@ Edit `config/portfolio_definitions/core.yaml` to:
 - Add new securities
 - Update fund classifications
 - Modify sector mappings
+
+### Live Deployed Website
+https://dfic-fund.streamlit.app/
+This will update automatically on main pushes
