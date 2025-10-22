@@ -128,7 +128,8 @@ class Portfolio:
         self.prices = pd.DataFrame(index=self.valid_dates)
 
         for ticker in self.tickers:
-            prices = yf.Ticker(ticker).history(start=self.start_date, end=self.end_date)['Close']
+            # This is getting close price adjusted for stock splits but NOT dividends
+            prices = yf.Ticker(ticker).history(start=self.start_date, end=self.end_date, actions=True, auto_adjust=False)['Close']
             prices.index = pd.to_datetime(prices.index).tz_localize(None)
             self.prices[ticker] = self.prices.index.map(lambda x: prices.get(x, None))
 
@@ -138,6 +139,28 @@ class Portfolio:
         pd.DataFrame(self.prices).to_csv(os.path.join(self.output_folder, prices_file), index_label='Date')
 
 
+    def _fetch_split_events(self):
+        """Fetch stock split events for tickers within the date range.
+
+        Returns a nested dict: {ticker: {date: factor}} where factor is the split
+        ratio (e.g., 2.0 for 2-for-1, 0.5 for 1-for-2). Dates are timezone-naive
+        to match self.valid_dates.
+        """
+        split_events = {}
+        for ticker in self.tickers:
+            try:
+                splits_series = yf.Ticker(ticker).splits
+                if splits_series is None or len(splits_series) == 0:
+                    split_events[ticker] = {}
+                    continue
+                splits_series.index = pd.to_datetime(splits_series.index).tz_localize(None)
+                splits_series = splits_series.loc[self.start_date:self.end_date]
+                splits_series = splits_series[splits_series != 0]
+                split_events[ticker] = {idx: float(val) for idx, val in splits_series.items()}
+            except Exception as e:
+                logger.warning(f"Could not fetch splits for {ticker}: {e}")
+                split_events[ticker] = {}
+        return split_events
 
     def create_table_holdings(self):
         # function: amount of stocks we are holding on a certain date 
@@ -146,9 +169,25 @@ class Portfolio:
         for ticker in self.tickers: 
             self.holdings[ticker] = 0.0
 
+        # Pre-fetch split events once for all tickers
+        split_events = self._fetch_split_events()
+
         for i, date in enumerate(self.valid_dates):
             if i != 0:
                 self.holdings.loc[date] = self.holdings.loc[self.valid_dates[i - 1]]
+
+            # Apply stock splits before processing any trades of the day
+            for ticker in self.tickers:
+                factor = split_events.get(ticker, {}).get(date, None)
+                if factor is not None:
+                    shares_before = self.holdings.loc[date, ticker]
+                    if pd.notna(shares_before) and shares_before != 0.0:
+                        shares_after = shares_before * factor
+                        self.holdings.at[date, ticker] = shares_after
+                        logger.info(
+                            f"Applied stock split for {ticker} on {date.strftime('%Y-%m-%d')} "
+                            f"factor {factor:.6g}: {shares_before} -> {shares_after}"
+                        )
 
             if date in self.trades.index:
                 logger.debug(f"Trades on {date}")
