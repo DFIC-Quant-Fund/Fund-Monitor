@@ -3,6 +3,7 @@ import sys
 import pandas as pd
 import yfinance as yf
 from datetime import timedelta
+import math
 
 # Add project root to Python path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -59,6 +60,7 @@ class Portfolio:
         self.valid_dates = None
 
         self.trades = None
+        self.conversions = None
         self.prices = None
         self.holdings = None
         self.cash = None
@@ -76,6 +78,7 @@ class Portfolio:
         self.get_valid_dates()
         # all tickers invested in from trades csv 
         self.load_trades()
+        self.load_conversions()
 
     def cleanup_existing_csv_files(self):
         """Clean up existing CSV files before building new ones to ensure fresh data"""
@@ -123,6 +126,26 @@ class Portfolio:
         self.trades['Date'] = pd.to_datetime(self.trades['Date'])
         self.trades.set_index('Date', inplace=True)
         self.tickers = sorted(self.trades['Ticker'].unique())
+
+    def load_conversions(self):
+        conversions_path = os.path.join(self.input_folder, 'conversions.csv')
+        if os.path.exists(conversions_path):
+            df = pd.read_csv(conversions_path)
+            if not df.empty:
+                df['Date'] = pd.to_datetime(df['Date'])
+                df.set_index('Date', inplace=True)
+                # Normalize column names exactly as expected
+                expected_cols = ['Currency_From', 'Currency_To', 'Amount', 'Rate']
+                missing = [c for c in expected_cols if c not in df.columns]
+                if missing:
+                    raise ValueError(f"Missing columns in conversions.csv: {missing}")
+                self.conversions = df
+                logger.info(f"Loaded conversions.csv with {len(df)} rows")
+            else:
+                self.conversions = pd.DataFrame(columns=['Currency_From', 'Currency_To', 'Amount', 'Rate'])
+        else:
+            # No conversions provided
+            self.conversions = pd.DataFrame(columns=['Currency_From', 'Currency_To', 'Amount', 'Rate'])
 
     def create_table_prices(self):
         self.prices = pd.DataFrame(index=self.valid_dates)
@@ -236,6 +259,49 @@ class Portfolio:
                 self.cash.loc[date] = self.cash.loc[self.valid_dates[i - 1]]
                 current_cad_cash = self.cash.loc[date, 'CAD_Cash']
                 current_usd_cash = self.cash.loc[date, 'USD_Cash']
+
+            # First, process explicit currency conversions for this date
+            if self.conversions is not None and not self.conversions.empty and date in self.conversions.index:
+                rows_for_date = self.conversions.loc[date]
+                if isinstance(rows_for_date, pd.Series):
+                    rows_for_date = rows_for_date.to_frame().T
+                for _, row in rows_for_date.iterrows():
+                    c_from = row['Currency_From']
+                    c_to = row['Currency_To']
+                    amount = float(row['Amount'])
+                    rate = float(row['Rate']) if not (isinstance(row['Rate'], float) and math.isnan(row['Rate'])) else None
+                    # Fallback to exchange rate table if Rate is NaN
+                    if rate is None:
+                        # Rate defined as units of To per 1 unit of From
+                        if c_from == 'USD' and c_to == 'CAD':
+                            rate = float(self.exchange_rates.loc[date, 'USD'])
+                        elif c_from == 'CAD' and c_to == 'USD':
+                            usd_rate = float(self.exchange_rates.loc[date, 'USD'])
+                            rate = (1.0 / usd_rate) if usd_rate != 0 else 0.0
+                        else:
+                            raise ValueError(f"Unsupported conversion pair without explicit rate: {c_from}->{c_to}")
+
+                    logger.info(f"Applying conversion on {date.strftime('%Y-%m-%d')}: {amount:.2f} {c_from} -> {c_to} at {rate:.6g}")
+
+                    if c_from == 'CAD' and c_to == 'USD':
+                        cad_delta = -amount
+                        usd_delta = amount * rate
+                        current_cad_cash += cad_delta
+                        current_usd_cash += usd_delta
+                    elif c_from == 'USD' and c_to == 'CAD':
+                        usd_delta = -amount
+                        cad_delta = amount * rate
+                        current_usd_cash += usd_delta
+                        current_cad_cash += cad_delta
+                    else:
+                        # Future currencies can be added here
+                        raise ValueError(f"Unsupported currency conversion: {c_from}->{c_to}")
+
+                    # Update balances after each conversion
+                    self.cash.at[date, 'CAD_Cash'] = current_cad_cash
+                    self.cash.at[date, 'USD_Cash'] = current_usd_cash
+                    total_cad = current_cad_cash + (current_usd_cash * self.exchange_rates.loc[date, 'USD'])
+                    self.cash.at[date, 'Total_CAD'] = total_cad
 
             # Process trades for this date
             if date in self.trades.index:

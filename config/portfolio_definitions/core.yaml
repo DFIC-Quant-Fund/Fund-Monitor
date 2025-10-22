@@ -535,3 +535,13 @@ transactions:
     price: 89.11
     quantity: 225
     currency: USD
+  
+  # Conversion rate must be rate for 'from' currency to 'to' currency
+  # Currently only USD<->CAD is supported
+  # Conversions must be made on valid trading dates
+  - type: Conversion
+    date: 2025-10-14
+    amount: 2166.75
+    currency_from: USD
+    currency_to: CAD
+    conversion_rate: 1.3821
