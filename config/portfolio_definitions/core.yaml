@@ -16,6 +16,7 @@ funds:
   - name: Financials Fund
     thesis: We are a very good fund, make lots of money, and are very good at it.
 
+# Dates are in YYYY-MM-DD format and are settlement dates
 # [SECURITIES]
 securities:
   # NSR removed since null in yfinance
@@ -181,8 +182,8 @@ securities:
 currencies:
   - currency: USD
     ticker: CAD=X
-  - currency: EUR
-    ticker: EURCAD=X
+  # - currency: EUR
+  #   ticker: EURCAD=X
 
 # [TRANSACTIONS]
 transactions:
@@ -535,3 +536,34 @@ transactions:
     price: 89.11
     quantity: 225
     currency: USD
+  
+  # Conversion rate must be rate for 'from' currency to 'to' currency
+  # Currently only USD<->CAD is supported
+  # Conversions must be made on valid trading dates
+  - type: Conversion
+    date: 2025-10-14
+    amount: 2166.75
+    currency_from: USD
+    currency_to: CAD
+    conversion_rate: 1.3821
+
+  - type: Buy
+    date: 2025-10-15
+    ticker: IAU
+    price: 77.7999
+    quantity: 70
+    currency: USD
+
+  - type: Buy
+    date: 2025-10-15
+    ticker: LUNR
+    price: 12.48
+    quantity: 160
+    currency: USD
+  
+  - type: Buy
+    date: 2025-10-15
+    ticker: CGY
+    price: 52.89
+    quantity: 60
+    currency: CAD

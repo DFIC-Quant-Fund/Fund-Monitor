@@ -17,7 +17,6 @@ from typing import List, Dict, Any
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-
 # Import performance modules
 from .returns_calculator import ReturnsCalculator
 from .risk_metrics import RiskMetrics
@@ -27,6 +26,12 @@ from .data_service import DataService
 
 # Import config
 from src.config.securities_config import securities_config
+
+# Import logging
+from ..config.logging_config import get_logger
+
+# Set up logger for this module
+logger = get_logger(__name__)
 
 class PortfolioController:
     """Main controller for portfolio operations"""
@@ -140,7 +145,7 @@ class PortfolioController:
         # Calculate returns for different periods
         returns_calc = ReturnsCalculator(portfolio_total_df, date)
         if not returns_calc.valid_date():
-            print(f"Warning: Date {date} not available in data, using latest available date")
+            logger.warning(f"Date {date} not available in data, using latest available date")
             date = portfolio_total_df['Date'].max()
             returns_calc = ReturnsCalculator(portfolio_total_df, date)
         
@@ -171,7 +176,7 @@ class PortfolioController:
                 'annualized_information_ratio': annualized_info
             }
         except Exception as e:
-            print(f"Warning: Could not calculate ratios: {e}")
+            logger.exception(f"Could not calculate ratios: {e}")
             ratios = {}
         
         # Add market comparison metrics - use in-memory portfolio data
@@ -187,7 +192,7 @@ class PortfolioController:
                 'risk_premium': risk_premium
             }
         except Exception as e:
-            print(f"Warning: Could not calculate market metrics: {e}")
+            logger.exception(f"Could not calculate market metrics: {e}")
             market_metrics = {}
         
         return {
