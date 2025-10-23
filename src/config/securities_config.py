@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 class Fund(Enum):
     """Fund classifications from core.yaml"""
-    MACRO_FUND = "Macro Fund"
+    FIXED_INCOME = "Fixed Income"
     INDUSTRIALS_FUND = "Industrials Fund"
     RESOURCES_FUND = "Resources Fund"
     C_AND_H_FUND = "C&H Fund"

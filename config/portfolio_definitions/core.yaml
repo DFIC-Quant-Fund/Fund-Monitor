@@ -3,7 +3,7 @@ portfolio:
 
 # [FUNDS]
 funds:
-  - name: Macro Fund
+  - name: Fixed Income
     thesis: We generate alpha primarily through strategic duration positioning, while also capitalizing on short-term macro opportunities in commodities.
   - name: Industrials Fund
     thesis: We invest in high-quality industrial companies with strong competitive advantages, stable cash flows, and attractive valuations. Our strategy focuses on businesses benefiting from strong economic MOATS and long-term trends aiming to drive value creation for the fund.
@@ -21,29 +21,29 @@ funds:
 securities:
   # NSR removed since null in yfinance
   
-  # Macro fund
+  # Fixed Income
 - ticker: XBB.TO
-  fund: Macro Fund
+  fund: Fixed Income
   sector: Fixed Income
   geography: CAN
 - ticker: AGG
-  fund: Macro Fund
+  fund: Fixed Income
   sector: Fixed Income
   geography: US
 - ticker: SPY
-  fund: Macro Fund
+  fund: Fixed Income
   sector: Equity
   geography: US
 - ticker: SPSB
-  fund: Macro Fund
+  fund: Fixed Income
   sector: Fixed Income
   geography: US
 - ticker: SCHP
-  fund: Macro Fund
+  fund: Fixed Income
   sector: Fixed Income
   geography: US
 - ticker: TLT
-  fund: Macro Fund
+  fund: Fixed Income
   sector: Fixed Income
   geography: US
 
@@ -170,11 +170,11 @@ securities:
 
   # No longer in portfolio
 - ticker: RSP
-  fund: Macro Fund
+  fund: Fixed Income
   sector: Equity
   geography: US
 - ticker: XIU.TO
-  fund: Macro Fund
+  fund: Fixed Income
   sector: Equity
   geography: CAN
 
