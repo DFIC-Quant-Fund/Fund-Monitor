@@ -155,7 +155,7 @@ class Portfolio:
             prices = yf.Ticker(ticker).history(start=self.start_date, end=self.end_date, actions=True, auto_adjust=False)['Close']
 
             if prices.empty:
-                logger.error(f"No data found for {ticker}. Trying ticker variants...")
+                logger.error(f"No data found for {ticker}. Trying ticker variants.")
                 ticker_variants = [f"{ticker}.TO"]
 
                 for variant in ticker_variants:
