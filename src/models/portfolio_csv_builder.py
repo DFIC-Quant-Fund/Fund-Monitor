@@ -173,7 +173,6 @@ class Portfolio:
                     "Please update core.yaml or double-check ticker spelling."
                 )
 
-
             prices.index = pd.to_datetime(prices.index).tz_localize(None)
             self.prices[ticker] = self.prices.index.map(lambda x: prices.get(x, None))
 
