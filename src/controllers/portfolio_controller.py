@@ -113,7 +113,7 @@ class PortfolioController:
         }
     
     def get_holdings_data(self, as_of_date: str = None) -> pd.DataFrame:
-        """Get holdings data as DataFrame"""
+        """Get holdings data as DataFrame, ensuring currency and market_value_local exist for UI"""
         holdings_df = self._data_service.get_holdings_data(as_of_date)
         
         if holdings_df.empty:
@@ -124,7 +124,22 @@ class PortfolioController:
         holdings_df['fund'] = holdings_df['ticker'].apply(self._get_fund)
         holdings_df['geography'] = holdings_df['ticker'].apply(self._get_geography)
         
-        # Calculate weights
+        # Ensure a currency column exists (prefer explicit, otherwise map from geography)
+        if 'currency' not in holdings_df.columns:
+            holdings_df['currency'] = holdings_df['geography'].apply(lambda g: 'CAD' if str(g).lower().find('canada') >= 0 else 'USD')
+
+        # Ensure market_value_local exists. If not, try to compute from price * shares.
+        # Note: this only produces correct native values when price is in the security's native currency.
+        if 'market_value_local' not in holdings_df.columns:
+            if 'price' in holdings_df.columns and 'shares' in holdings_df.columns:
+                try:
+                    holdings_df['market_value_local'] = holdings_df['price'] * holdings_df['shares']
+                except Exception:
+                    holdings_df['market_value_local'] = holdings_df.get('market_value', 0)
+            else:
+                holdings_df['market_value_local'] = holdings_df.get('market_value', 0)
+        
+        # Calculate weights (legacy behavior uses market_value)
         total_value = holdings_df['market_value'].sum()
         holdings_df['weight_percent'] = (holdings_df['market_value'] / total_value * 100) if total_value > 0 else 0
         
@@ -281,3 +296,15 @@ class PortfolioController:
         
         # Fallback to ticker-based logic
         return 'Canada' if '.TO' in ticker else 'US'
+
+    def get_equity_value(self, as_of_date: str = None) -> float:
+        """Return total equity value (legacy - uses market_value if available, otherwise sum of market_value_local)"""
+        holdings = self._data_service.get_holdings_data(as_of_date)
+        if holdings.empty:
+            return 0.0
+        if 'market_value' in holdings.columns and holdings['market_value'].notnull().any():
+            return float(holdings['market_value'].sum())
+        if 'market_value_local' in holdings.columns:
+            return float(holdings['market_value_local'].sum())
+        # fallback
+        return float(0.0)
