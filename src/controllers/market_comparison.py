@@ -7,15 +7,18 @@ It provides methods for:
 - Alpha calculation: Excess return relative to benchmark
 - Risk premium calculations
 - Risk-adjusted return metrics
+- Fama-French 3-factor model analysis
 
 This module focuses on comparative analysis and assumes benchmark data is available.
 """
 
+import pandas as pd
+import getFamaFrenchFactors as gff
 from .benchmark import Benchmark
 from .returns_calculator import ReturnsCalculator
 from .risk_metrics import RiskMetrics
 from ..config.logging_config import get_logger
-
+from functools import lru_cache
 # Set up logger for this module
 logger = get_logger(__name__)
 
@@ -121,4 +124,169 @@ class MarketComparison:
             return risk_adjusted_return
         except Exception as e:
             logger.exception(f"Could not calculate risk adjusted return: {e}")
+            return 0.0
+
+    @lru_cache(maxsize=1)
+    def _get_monthly_returns_aligned_with_ff3(self):
+        """
+        Helper method to convert daily portfolio data to monthly returns 
+        and align with Fama-French 3-factor data.
+        
+        Returns:
+            DataFrame with columns: Date, portfolio_return, Mkt-RF, SMB, HML, RF
+        """
+        try:
+            # Get Fama-French 3-factor monthly data
+            ff3_df = gff.famaFrench3Factor(frequency='m')
+            ff3_df.rename(columns={'date_ff_factors': 'Date'}, inplace=True)
+            ff3_df['Date'] = pd.to_datetime(ff3_df['Date'])
+            
+            # Convert daily portfolio data to monthly
+            portfolio_df = self.df.copy()
+            if 'Date' not in portfolio_df.columns:
+                portfolio_df.reset_index(inplace=True)
+            
+            portfolio_df['Date'] = pd.to_datetime(portfolio_df['Date'])
+            portfolio_df.set_index('Date', inplace=True)
+            
+            # Resample to month-end and calculate monthly returns
+            # Use the portfolio value column (adjust based on your column name)
+            value_col = 'Total_Portfolio_Value' if 'Total_Portfolio_Value' in portfolio_df.columns else 'Total Mkt Val'
+            monthly_values = portfolio_df[value_col].resample('ME').last()
+            monthly_returns = monthly_values.pct_change().dropna()
+            
+            # Create DataFrame with monthly returns
+            monthly_portfolio_df = pd.DataFrame({
+                'Date': monthly_returns.index,
+                'portfolio_return': monthly_returns.values
+            })
+            
+            # Merge with FF3 factors on Date
+            merged_df = pd.merge(monthly_portfolio_df, ff3_df, on='Date', how='inner')
+            
+            logger.debug(f"Aligned {len(merged_df)} months of data for FF3 analysis")
+            return merged_df
+            
+        except Exception as e:
+            logger.exception(f"Could not align monthly returns with FF3 factors: {e}")
+            return pd.DataFrame()
+
+    def market_factor(self):
+        """
+        Calculate the market factor (beta) using Fama-French methodology.
+        
+        This measures the portfolio's sensitivity to overall market movements.
+        
+        Returns:
+            float: Market factor (beta_market)
+                  > 1.0 = More volatile than market
+                  < 1.0 = Less volatile than market
+                  = 1.0 = Moves with market
+        """
+        try:
+            # Get aligned monthly data
+            merged_df = self._get_monthly_returns_aligned_with_ff3()
+            
+            if merged_df.empty or len(merged_df) < 12:
+                logger.warning("Insufficient data for market factor calculation")
+                return 0.0
+            
+            # Calculate portfolio excess return
+            merged_df['excess_return'] = merged_df['portfolio_return'] - merged_df['RF']
+            
+            # Calculate covariance and variance
+            covariance = merged_df['excess_return'].cov(merged_df['Mkt-RF'])
+            market_variance = merged_df['Mkt-RF'].var()
+            
+            if market_variance == 0:
+                logger.warning("Market variance is zero, cannot calculate market factor")
+                return 0.0
+            
+            beta_market = covariance / market_variance
+            
+            logger.info(f"Market factor (beta): {beta_market:.4f}")
+            return beta_market
+            
+        except Exception as e:
+            logger.exception(f"Could not calculate market factor: {e}")
+            return 0.0
+
+    def size_factor(self):
+        """
+        Calculate the size factor (SMB - Small Minus Big).
+        
+        This measures the portfolio's tilt toward small-cap or large-cap stocks.
+        
+        Returns:
+            float: Size factor (beta_SMB)
+                  > 0 = Small-cap tilt (outperforms when small caps beat large caps)
+                  < 0 = Large-cap tilt (outperforms when large caps beat small caps)
+                  ≈ 0 = Neutral to size
+        """
+        try:
+            # Get aligned monthly data
+            merged_df = self._get_monthly_returns_aligned_with_ff3()
+            
+            if merged_df.empty or len(merged_df) < 12:
+                logger.warning("Insufficient data for size factor calculation")
+                return 0.0
+            
+            # Calculate portfolio excess return
+            merged_df['excess_return'] = merged_df['portfolio_return'] - merged_df['RF']
+            
+            # Calculate covariance and variance
+            covariance = merged_df['excess_return'].cov(merged_df['SMB'])
+            smb_variance = merged_df['SMB'].var()
+            
+            if smb_variance == 0:
+                logger.warning("SMB variance is zero, cannot calculate size factor")
+                return 0.0
+            
+            beta_smb = covariance / smb_variance
+            
+            logger.info(f"Size factor (SMB): {beta_smb:.4f}")
+            return beta_smb
+            
+        except Exception as e:
+            logger.exception(f"Could not calculate size factor: {e}")
+            return 0.0
+
+    def value_factor(self):
+        """
+        Calculate the value factor (HML - High Minus Low).
+        
+        This measures the portfolio's tilt toward value or growth stocks.
+        
+        Returns:
+            float: Value factor (beta_HML)
+                  > 0 = Value tilt (outperforms when value beats growth)
+                  < 0 = Growth tilt (outperforms when growth beats value)
+                  ≈ 0 = Neutral to value/growth
+        """
+        try:
+            # Get aligned monthly data
+            merged_df = self._get_monthly_returns_aligned_with_ff3()
+            
+            if merged_df.empty or len(merged_df) < 12:
+                logger.warning("Insufficient data for value factor calculation")
+                return 0.0
+            
+            # Calculate portfolio excess return
+            merged_df['excess_return'] = merged_df['portfolio_return'] - merged_df['RF']
+            
+            # Calculate covariance and variance
+            covariance = merged_df['excess_return'].cov(merged_df['HML'])
+            hml_variance = merged_df['HML'].var()
+            
+            if hml_variance == 0:
+                logger.warning("HML variance is zero, cannot calculate value factor")
+                return 0.0
+            
+            beta_hml = covariance / hml_variance
+            
+            logger.info(f"Value factor (HML): {beta_hml:.4f}")
+            return beta_hml
+            
+        except Exception as e:
+            logger.exception(f"Could not calculate value factor: {e}")
             return 0.0
