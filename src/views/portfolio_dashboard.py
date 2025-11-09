@@ -13,11 +13,13 @@ import plotly.express as px
 from datetime import datetime
 import sys
 import os
+import pandas as pd
 
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from src.controllers.portfolio_controller import PortfolioController
+from src.views.holdings_table import render_holdings_table  # new import
 
 class PortfolioDashboard:
     """Main dashboard view for portfolio analysis"""
@@ -25,6 +27,7 @@ class PortfolioDashboard:
     def __init__(self):
         self.portfolio_controller = None
         self.portfolio_name = None
+        self.split_by_currency = False  # new flag to control split view
     
     def setup_page(self):
         """Setup Streamlit page configuration"""
@@ -66,6 +69,14 @@ class PortfolioDashboard:
             "As of Date",
             value=datetime.now().date(),
             max_value=datetime.now().date()
+        )
+        
+        # View option: split by currency
+        st.sidebar.header("View Options")
+        self.split_by_currency = st.sidebar.checkbox(
+            "Split US & Canadian holdings (native currencies)",
+            value=True,
+            help="Show holdings separated into CAD and USD tables formatted in native currency."
         )
         
         # Cache controls
@@ -136,30 +147,21 @@ class PortfolioDashboard:
                 st.warning("No holdings data available for the selected date.")
                 return
             
-            # Format the DataFrame for display
-            display_df = holdings_df.copy()
-            display_df['market_value'] = display_df['market_value'].apply(lambda x: f"${x:,.2f}")
-            display_df['price'] = display_df['price'].apply(lambda x: f"${x:.2f}")
-            display_df['shares'] = display_df['shares'].apply(lambda x: f"{x:,.0f}")
-            display_df['weight_percent'] = display_df['weight_percent'].apply(lambda x: f"{x:.1f}%")
+            # Determine equity_value for legacy single-table mode.
+            try:
+                # Prefer controller helper if available
+                equity_value = self.portfolio_controller.get_equity_value(as_of_date)
+            except Exception:
+                # Fallback: sum market_value or market_value_local
+                if 'market_value' in holdings_df.columns and holdings_df['market_value'].notnull().any():
+                    equity_value = float(holdings_df['market_value'].sum())
+                elif 'market_value_local' in holdings_df.columns and holdings_df['market_value_local'].notnull().any():
+                    equity_value = float(holdings_df['market_value_local'].sum())
+                else:
+                    equity_value = 0.0
             
-            # Rename columns for display
-            display_df = display_df.rename(columns={
-                'ticker': 'Ticker',
-                'shares': 'Shares',
-                'price': 'Price',
-                'market_value': 'Market Value',
-                'weight_percent': 'Weight %',
-                'sector': 'Sector',
-                'fund': 'Fund',
-                'geography': 'Geography'
-            })
-            
-            st.dataframe(
-                display_df,
-                use_container_width=True,
-                hide_index=True
-            )
+            # Use the new holdings renderer and pass split flag
+            render_holdings_table(holdings_df, equity_value, split_by_currency=self.split_by_currency)
             
         except Exception as e:
             st.error(f"Error loading holdings data: {e}")
