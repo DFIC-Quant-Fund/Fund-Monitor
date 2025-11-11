@@ -148,6 +148,23 @@ class PortfolioController:
         
         return holdings_df
     
+    def get_holdings_summary_data(self) -> pd.DataFrame:
+        """Get per-ticker holdings summary data as DataFrame"""
+        summary_df = self._data_service.get_holdings_summary()
+        if summary_df.empty:
+            return pd.DataFrame()
+        
+        # Add sector, fund, and geography information
+        summary_df['sector'] = summary_df['ticker'].apply(self._get_sector)
+        summary_df['fund'] = summary_df['ticker'].apply(self._get_fund)
+        summary_df['geography'] = summary_df['ticker'].apply(self._get_geography)
+        
+        # Calculate weights
+        total_value = float(summary_df['market_value'].sum()) if 'market_value' in summary_df.columns else 0.0
+        summary_df['weight_percent'] = (summary_df['market_value'] / total_value * 100) if total_value > 0 else 0
+        
+        return summary_df
+    
     def get_performance_metrics(self, date: str = None, risk_free_rate: float = 0.02) -> Dict[str, Any]:
         """Get comprehensive performance metrics"""
         portfolio_total_df = self._data_service.get_portfolio_total_data()

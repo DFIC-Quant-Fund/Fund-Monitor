@@ -103,6 +103,32 @@ class DataService:
         self._update_cache(cache_key, result, [source_file])
         return result
     
+    def get_holdings_summary(self) -> pd.DataFrame:
+        """Get per-ticker holdings summary from holdings.csv"""
+        cache_key = "holdings_summary"
+        source_file = os.path.join(self.output_folder, "holdings.csv")
+
+        if not os.path.exists(source_file):
+            logger.error(f"Holdings summary file not found: {source_file}")
+            return pd.DataFrame()
+
+        if self._is_cache_valid(cache_key, [source_file]):
+            return self._data_cache[cache_key][0]
+
+        try:
+            df = pd.read_csv(source_file)
+            # Ensure expected columns and dtypes
+            for col in ['shares','avg_purchase_price','current_price','market_value','book_value','pnl','pnl_percent']:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+            df = df.sort_values('market_value', ascending=False)
+        except Exception as e:
+            logger.exception(f"Error loading holdings summary: {e}")
+            return pd.DataFrame()
+
+        self._update_cache(cache_key, df, [source_file])
+        return df
+    
     def get_holdings_data(self, as_of_date: Optional[str] = None) -> pd.DataFrame:
         """Get current holdings data"""
         cache_key = "holdings"

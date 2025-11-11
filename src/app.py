@@ -106,7 +106,8 @@ def main():
     # Load data for selected date
     try:
         portfolio_summary = portfolio_controller.get_portfolio_summary(selected_date.strftime('%Y-%m-%d'))
-        holdings_data = portfolio_controller.get_holdings_data(selected_date.strftime('%Y-%m-%d'))
+        # Use new holdings summary table
+        holdings_data = portfolio_controller.get_holdings_summary_data()
         performance_data = portfolio_controller.get_performance_metrics(selected_date.strftime('%Y-%m-%d'))
         # Use cash breakdown from cash.csv and totals from portfolio_total.csv
         cash_data = portfolio_controller.get_cash_data(selected_date.strftime('%Y-%m-%d'))

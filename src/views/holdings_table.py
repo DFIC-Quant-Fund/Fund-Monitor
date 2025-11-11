@@ -10,12 +10,46 @@ def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
     if not holdings_data.empty:
         holdings_data['equity_weight_percent'] = (holdings_data['market_value'] / equity_value * 100) if equity_value > 0 else 0
         display_data = holdings_data.copy()
-        display_data['Shares'] = display_data['shares'].apply(lambda x: f"{x:,.0f}")
-        display_data['Price ($)'] = display_data['price'].apply(lambda x: f"${x:.2f}")
-        display_data['Market Value ($)'] = display_data['market_value'].apply(lambda x: f"${x:,.0f}")
-        display_data['Weight (%)'] = display_data['equity_weight_percent'].apply(lambda x: f"{x:.2f}%")
-        display_columns = ['ticker', 'Shares', 'Price ($)', 'Market Value ($)', 'Weight (%)', 'sector', 'fund']
-        st.dataframe(display_data[display_columns].rename(columns={'ticker': 'Ticker','sector': 'Sector','fund': 'Fund'}), use_container_width=True)
+        # Ensure numeric current_price column exists (fallback to price if needed)
+        if 'current_price' not in display_data.columns and 'price' in display_data.columns:
+            display_data['current_price'] = display_data['price']
+        # Select columns to show (keep numeric types for proper sorting)
+        cols = ['ticker', 'shares', 'current_price', 'avg_purchase_price', 'market_value', 'book_value', 'pnl', 'pnl_percent', 'equity_weight_percent']
+        if 'sector' in display_data.columns: cols.append('sector')
+        if 'fund' in display_data.columns: cols.append('fund')
+        # Filter to available columns
+        cols = [c for c in cols if c in display_data.columns]
+        df_show = display_data[cols].rename(columns={
+            'ticker': 'Ticker',
+            'shares': 'Shares',
+            'current_price': 'Current Price ($)',
+            'avg_purchase_price': 'Avg Purchase ($)',
+            'market_value': 'Market Value ($)',
+            'book_value': 'Book Value ($)',
+            'pnl': 'PnL ($)',
+            'pnl_percent': 'PnL (%)',
+            'equity_weight_percent': 'Weight (%)',
+            'sector': 'Sector',
+            'fund': 'Fund'
+        })
+        # Scale percentage columns for display while retaining numeric types
+        if 'PnL (%)' in df_show.columns:
+            df_show['PnL (%)'] = df_show['PnL (%)'] * 100.0
+        # Use column_config to format while retaining numeric dtype for correct sorting
+        st.dataframe(
+            df_show,
+            use_container_width=True,
+            column_config={
+                'Shares': st.column_config.NumberColumn('Shares', format='%d'),
+                'Current Price ($)': st.column_config.NumberColumn('Current Price ($)', format='$%.2f'),
+                'Avg Purchase ($)': st.column_config.NumberColumn('Avg Purchase ($)', format='$%.2f'),
+                'Market Value ($)': st.column_config.NumberColumn('Market Value ($)', format='$%d'),
+                'Book Value ($)': st.column_config.NumberColumn('Book Value ($)', format='$%d'),
+                'PnL ($)': st.column_config.NumberColumn('PnL ($)', format='$%d'),
+                'PnL (%)': st.column_config.NumberColumn('PnL (%)', format='%.2f%%'),
+                'Weight (%)': st.column_config.NumberColumn('Weight (%)', format='%.2f%%'),
+            }
+        )
         st.info("💡 **Note**: Weights shown are relative to equity holdings only (excluding cash).")
     else:
         st.info("No holdings data available")
