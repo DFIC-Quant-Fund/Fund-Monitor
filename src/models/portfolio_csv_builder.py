@@ -35,7 +35,7 @@ end_date = (pd.Timestamp.now() + timedelta(days=1)).strftime('%Y-%m-%d') # yfina
 # file names as variables 
 trades_file = 'trades.csv'
 prices_file = 'prices.csv'
-holdings_file = 'holdings.csv'
+holdings_file = 'daily_holdings.csv'
 cash_file = 'cash.csv'
 portfolio_total_file = 'portfolio_total.csv'
 

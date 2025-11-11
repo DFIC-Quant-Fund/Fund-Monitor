@@ -107,7 +107,7 @@ class DataService:
         """Get current holdings data"""
         cache_key = "holdings"
         source_files = [
-            os.path.join(self.output_folder, "holdings.csv"),
+            os.path.join(self.output_folder, "daily_holdings.csv"),
             os.path.join(self.output_folder, "market_values.csv"),
             os.path.join(self.output_folder, "prices.csv")
         ]

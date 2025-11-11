@@ -69,7 +69,7 @@ def main():
     
     # Check if data files exist
     output_folder = os.path.join("data", selected_portfolio, "output")
-    required_files = ['holdings.csv', 'cad_market_values.csv', 'prices.csv']
+    required_files = ['daily_holdings.csv', 'market_values.csv', 'prices.csv']
     missing_files = [f for f in required_files if not os.path.exists(os.path.join(output_folder, f))]
     
     if missing_files:
