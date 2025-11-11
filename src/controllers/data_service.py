@@ -87,33 +87,14 @@ class DataService:
         if self._is_cache_valid(cache_key, [source_file]):
             return self._data_cache[cache_key][0]
         
-        # Load directly from portfolio_total.csv for authoritative values
+        # Load directly from portfolio_total.csv using concrete column names from the builder
         if not os.path.exists(source_file):
-            # Fallback to previous method if file missing
-            fallback_mv = os.path.join(self.output_folder, "cad_market_values.csv")
-            fallback_cash = os.path.join(self.output_folder, "cash.csv")
-            if not (os.path.exists(fallback_mv) and os.path.exists(fallback_cash)):
-                return pd.DataFrame()
-            market_values = pd.read_csv(fallback_mv)
-            cash_data = pd.read_csv(fallback_cash)
-            market_values['Date'] = pd.to_datetime(market_values['Date'])
-            cash_data['Date'] = pd.to_datetime(cash_data['Date'])
-            numeric_columns = market_values.columns.drop('Date')
-            market_values[numeric_columns] = market_values[numeric_columns].apply(pd.to_numeric, errors='coerce')
-            cash_data['Total_CAD'] = cash_data['Total_CAD'].apply(pd.to_numeric, errors='coerce')
-            market_values['Total_Market_Value'] = market_values[numeric_columns].sum(axis=1)
-            market_values['Total_Portfolio_Value'] = market_values['Total_Market_Value'] + cash_data['Total_CAD']
-            result = market_values[['Date', 'Total_Market_Value', 'Total_Portfolio_Value']].copy()
-        else:
-            result = pd.read_csv(source_file)
-            # Ensure proper dtypes and columns
-            if 'Date' in result.columns:
-                result['Date'] = pd.to_datetime(result['Date'])
-            result = result.sort_values('Date')
-            # Ensure both columns exist
-            if 'Total_Portfolio_Value' not in result.columns or 'Total_Market_Value' not in result.columns:
-                # Attempt to infer if different naming used
-                raise ValueError("portfolio_total.csv must contain 'Total_Market_Value' and 'Total_Portfolio_Value' columns")
+            raise FileNotFoundError(f"Expected portfolio_total.csv at {source_file}. Please build the portfolio outputs first.")
+
+        result = pd.read_csv(source_file)
+        # Ensure proper dtypes and ordering
+        result['Date'] = pd.to_datetime(result['Date'])
+        result = result.sort_values('Date')
         
         # Compute pct_change if not present
         if 'pct_change' not in result.columns:
@@ -127,7 +108,7 @@ class DataService:
         cache_key = "holdings"
         source_files = [
             os.path.join(self.output_folder, "holdings.csv"),
-            os.path.join(self.output_folder, "cad_market_values.csv"),
+            os.path.join(self.output_folder, "market_values.csv"),
             os.path.join(self.output_folder, "prices.csv")
         ]
         

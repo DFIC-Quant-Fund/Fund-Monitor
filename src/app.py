@@ -115,8 +115,8 @@ def main():
         st.error(f"Error loading data for selected date: {e}")
         return
     
-    # Equity value from authoritative totals
-    equity_value = portfolio_summary['total_value']
+    # Holdings value from authoritative totals
+    holdings_value = portfolio_summary['total_holdings_value']
     
     # Render portfolio summary using components
     render_portfolio_summary(portfolio_summary, total_portfolio_value)
@@ -128,7 +128,7 @@ def main():
     
     with tab1:
         # Render holdings table using component
-        render_holdings_table(holdings_data, equity_value)
+        render_holdings_table(holdings_data, holdings_value)
     
     with tab2:
         # Render allocation charts using component
