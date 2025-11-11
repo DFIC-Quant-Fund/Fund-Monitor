@@ -36,6 +36,7 @@ end_date = (pd.Timestamp.now() + timedelta(days=1)).strftime('%Y-%m-%d') # yfina
 trades_file = 'trades.csv'
 prices_file = 'prices.csv'
 holdings_file = 'daily_holdings.csv'
+holdings_summary_file = 'holdings.csv'
 cash_file = 'cash.csv'
 portfolio_total_file = 'portfolio_total.csv'
 
@@ -93,6 +94,7 @@ class Portfolio:
             exchange_rates_file,
             prices_file,
             holdings_file,
+            holdings_summary_file,
             cash_file,
             market_values_file,
             dividend_per_share_file,
@@ -468,6 +470,94 @@ class Portfolio:
         self.market_values = market_values
         pd.DataFrame(self.market_values).to_csv(os.path.join(self.output_folder, market_values_file), index_label='Date')
 
+    def create_table_holdings_summary(self):
+        """
+        Build per-ticker holdings summary with:
+        - shares
+        - avg_purchase_price (weighted by split-adjusted share quantity across all buy trades)
+        - market_value (current price * shares)
+        - book_value (avg_purchase_price * shares)
+        - pnl (market_value - book_value)
+        - pnl_percent (pnl / book_value)
+        - current_price (latest price)
+        """
+        if self.holdings is None or self.holdings.empty:
+            raise ValueError("Holdings are not computed. Call create_table_holdings() first.")
+        if self.prices is None or self.prices.empty:
+            raise ValueError("Prices are not computed. Call create_table_prices() first.")
+
+        latest_date = self.holdings.index.max()
+        shares_series = self.holdings.loc[latest_date].copy()
+        # Keep only tickers we currently hold (> 0 shares)
+        shares_series = shares_series[shares_series > 0]
+        if shares_series.empty:
+            # Nothing to write; create empty file with headers
+            empty_df = pd.DataFrame(columns=['ticker','shares','avg_purchase_price','market_value','book_value','pnl','pnl_percent'])
+            empty_df.to_csv(os.path.join(self.output_folder, holdings_summary_file), index=False)
+            return
+
+        # Weighted average purchase price from buy trades (Quantity > 0), adjusted for stock splits
+        buys = self.trades[self.trades['Quantity'] > 0].copy() if self.trades is not None else pd.DataFrame(columns=['Ticker','Quantity','Price'])
+        if not buys.empty:
+            # Reset index to access trade dates
+            buys = buys.reset_index()  # 'Date' column appears
+            # Fetch split events once and compute cumulative factor from trade date to latest_date
+            split_events = self._fetch_split_events()
+
+            def cumulative_split_factor(ticker, buy_date, end_date):
+                events = split_events.get(ticker, {})
+                if not events:
+                    return 1.0
+                factor = 1.0
+                for event_date, event_factor in events.items():
+                    # Apply splits strictly after the buy date up to and including end_date
+                    if buy_date < event_date <= end_date:
+                        try:
+                            factor *= float(event_factor)
+                        except Exception:
+                            continue
+                return factor
+
+            buys['adj_factor'] = buys.apply(lambda r: cumulative_split_factor(r['Ticker'], r['Date'], latest_date), axis=1)
+            buys['weighted_cost'] = buys['Quantity'] * buys['Price']
+            buys['adj_shares'] = buys['Quantity'] * buys['adj_factor']
+
+            grouped = buys.groupby('Ticker').agg(weighted_cost=('weighted_cost', 'sum'),
+                                                 adj_shares=('adj_shares', 'sum'))
+            # Avoid division by zero
+            grouped['avg_purchase_price'] = grouped.apply(lambda r: (r['weighted_cost'] / r['adj_shares']) if r['adj_shares'] not in (0, 0.0) else float('nan'), axis=1)
+            avg_price_by_ticker = grouped[['avg_purchase_price']]
+        else:
+            avg_price_by_ticker = pd.DataFrame(columns=['avg_purchase_price'])
+
+        # Current prices and market values at latest_date
+        latest_prices = self.prices.loc[latest_date].copy()
+        # Align price series to held tickers
+        latest_prices = latest_prices.reindex(shares_series.index)
+
+        result = pd.DataFrame({
+            'ticker': shares_series.index,
+            'shares': shares_series.values
+        })
+
+        result = result.merge(avg_price_by_ticker, left_on='ticker', right_index=True, how='left')
+        result['avg_purchase_price'] = result['avg_purchase_price'].astype(float)
+
+        # Current price, market value and book value
+        result['current_price'] = result['ticker'].map(lambda t: float(latest_prices.get(t, float('nan'))))
+        result['market_value'] = result['current_price'] * result['shares']
+        result['book_value'] = result['avg_purchase_price'].fillna(0.0) * result['shares']
+
+        # PnL metrics
+        result['pnl'] = result['market_value'] - result['book_value']
+        result['pnl_percent'] = result.apply(lambda r: (r['pnl'] / r['book_value']) if r['book_value'] not in (0, 0.0) else 0.0, axis=1)
+
+        # Sort by market value descending
+        result = result.sort_values('market_value', ascending=False)
+
+        # Persist
+        result.to_csv(os.path.join(self.output_folder, holdings_summary_file), index=False)
+
     def _build_currency_holdings(self):
         """
         Build CAD- and USD-only holdings DataFrames using precomputed ticker lists.
@@ -627,6 +717,7 @@ if __name__ == '__main__':
     portfolio.create_table_prices()
     portfolio.create_table_holdings()
     portfolio.create_table_market_values()
+    portfolio.create_table_holdings_summary()
     portfolio.create_table_dividend_per_share()
     portfolio.create_table_dividend_income()
     portfolio.create_table_cash()
