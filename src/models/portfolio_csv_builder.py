@@ -163,15 +163,13 @@ class Portfolio:
 
                     if not prices.empty:
                         print(f"Found valid variant: {variant}")
-                        raise Exception(
-                            f"Please update core.yaml to use this working variant.\n"
-                            f"Ticker variant '{variant}' found for '{ticker}'."
-                        )
+                        break
 
-                raise Exception(
-                    f"Ticker '{ticker}' could not be found (including variants: {', '.join(ticker_variants)}). "
-                    "Please update core.yaml or double-check ticker spelling."
-                )
+                if prices.empty:
+                    raise Exception(
+                        f"Ticker '{ticker}' could not be found (including variants: {', '.join(ticker_variants)}). "
+                        "Please update core.yaml or double-check ticker spelling."
+                    )
 
             prices.index = pd.to_datetime(prices.index).tz_localize(None)
             self.prices[ticker] = self.prices.index.map(lambda x: prices.get(x, None))
