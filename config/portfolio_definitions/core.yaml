@@ -563,7 +563,7 @@ transactions:
   
   - type: Buy
     date: 2025-10-15
-    ticker: CGY
+    ticker: CGY.TO
     price: 52.89
     quantity: 60
     currency: CAD

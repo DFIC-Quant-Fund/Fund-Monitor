@@ -153,6 +153,24 @@ class Portfolio:
         for ticker in self.tickers:
             # This is getting close price adjusted for stock splits but NOT dividends
             prices = yf.Ticker(ticker).history(start=self.start_date, end=self.end_date, actions=True, auto_adjust=False)['Close']
+
+            if prices.empty:
+                logger.error(f"No data found for {ticker}. Trying ticker variants.")
+                ticker_variants = [f"{ticker}.TO"]
+
+                for variant in ticker_variants:
+                    prices = yf.Ticker(variant).history(start=self.start_date, end=self.end_date, actions=True, auto_adjust=False)['Close']
+
+                    if not prices.empty:
+                        print(f"Found valid variant: {variant}")
+                        break
+
+                if prices.empty:
+                    raise Exception(
+                        f"Ticker '{ticker}' could not be found (including variants: {', '.join(ticker_variants)}). "
+                        "Please update core.yaml or double-check ticker spelling."
+                    )
+
             prices.index = pd.to_datetime(prices.index).tz_localize(None)
             self.prices[ticker] = self.prices.index.map(lambda x: prices.get(x, None))
 
