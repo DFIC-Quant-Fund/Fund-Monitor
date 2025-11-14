@@ -35,11 +35,12 @@ end_date = (pd.Timestamp.now() + timedelta(days=1)).strftime('%Y-%m-%d') # yfina
 # file names as variables 
 trades_file = 'trades.csv'
 prices_file = 'prices.csv'
-holdings_file = 'holdings.csv'
+holdings_file = 'daily_holdings.csv'
+holdings_summary_file = 'holdings.csv'
 cash_file = 'cash.csv'
 portfolio_total_file = 'portfolio_total.csv'
 
-market_values_file = 'cad_market_values.csv'
+market_values_file = 'market_values.csv'
 exchange_rates_file = 'exchange_rates.csv'
 
 dividend_per_share_file = 'dividend_per_share.csv'
@@ -65,11 +66,18 @@ class Portfolio:
         self.holdings = None
         self.cash = None
 
-        self.cad_market_values = None
+        self.market_values = None
         self.exchange_rates = None
 
         self.dividend_per_share = None
         self.dividend_income = None
+
+        # Currency-classified data structures (populated by private helper)
+        self.cad_tickers = []
+        self.usd_tickers = []
+        self.ticker_currency = {}
+        self.holdings_cad = None
+        self.holdings_usd = None
 
         # Clean up existing CSV files before building new ones
         self.cleanup_existing_csv_files()
@@ -86,6 +94,7 @@ class Portfolio:
             exchange_rates_file,
             prices_file,
             holdings_file,
+            holdings_summary_file,
             cash_file,
             market_values_file,
             dividend_per_share_file,
@@ -126,6 +135,21 @@ class Portfolio:
         self.trades['Date'] = pd.to_datetime(self.trades['Date'])
         self.trades.set_index('Date', inplace=True)
         self.tickers = sorted(self.trades['Ticker'].unique())
+
+        # Build and cache ticker -> currency map and precompute CAD/USD lists
+        self.ticker_currency = {}
+        cad_tickers = []
+        usd_tickers = []
+        for ticker in self.tickers:
+            currency = yf.Ticker(ticker).info.get('currency', 'CAD')
+
+            self.ticker_currency[ticker] = currency
+            if currency == 'USD':
+                usd_tickers.append(ticker)
+            else:
+                cad_tickers.append(ticker)
+        self.cad_tickers = cad_tickers
+        self.usd_tickers = usd_tickers
 
     def load_conversions(self):
         conversions_path = os.path.join(self.input_folder, 'conversions.csv')
@@ -203,7 +227,7 @@ class Portfolio:
                 split_events[ticker] = {}
         return split_events
 
-    def create_table_holdings(self):
+    def create_table_daily_holdings(self):
         # function: amount of stocks we are holding on a certain date 
 
         self.holdings = pd.DataFrame(index=self.valid_dates)
@@ -244,8 +268,6 @@ class Portfolio:
                     quantity = row['Quantity']
                     ticker = row['Ticker']
                     self.holdings.at[date, ticker] = self.holdings.loc[date, ticker] + quantity
-            else:
-                logger.debug(f"No trades on {date}")
 
         pd.DataFrame(self.holdings).to_csv(os.path.join(self.output_folder, holdings_file), index_label='Date')
 
@@ -253,10 +275,7 @@ class Portfolio:
         # TODO: Make this currency cache a class variable potentially
         ticker_currency = {}
         for ticker in self.tickers:
-            try:
-                ticker_currency[ticker] = yf.Ticker(ticker).info.get('currency', 'CAD')
-            except Exception:
-                ticker_currency[ticker] = 'CAD'
+            ticker_currency[ticker] = yf.Ticker(ticker).info.get('currency')
 
         self.cash = pd.DataFrame(index=self.valid_dates)
         self.cash['CAD_Cash'] = 0.0
@@ -453,21 +472,183 @@ class Portfolio:
                 new_usd_cash = 0
                 return new_cad_cash, new_usd_cash, "converted_cad_to_usd"
 
-    def create_table_cad_market_values(self):
+    def create_table_market_values(self):
         holdings = self.holdings[self.tickers]
         prices = self.prices[self.tickers]
         
         # Convert to CAD directly using exchange rates
-        market_values_cad = pd.DataFrame(index=self.valid_dates)
+        market_values = pd.DataFrame(index=self.valid_dates)
         for ticker in self.tickers:
-            try:
-                currency = yf.Ticker(ticker).info['currency']
-            except (KeyError, AttributeError, Exception):
-                currency = 'CAD'
-            market_values_cad[ticker] = prices[ticker] * holdings[ticker] * self.exchange_rates[currency]
+            # try:
+            #     currency = yf.Ticker(ticker).info['currency']
+            # except (KeyError, AttributeError, Exception):
+            #     currency = 'CAD'
+            market_values[ticker] = prices[ticker] * holdings[ticker]
 
-        self.cad_market_values = market_values_cad
-        pd.DataFrame(self.cad_market_values).to_csv(os.path.join(self.output_folder, market_values_file), index_label='Date')
+        self.market_values = market_values
+        pd.DataFrame(self.market_values).to_csv(os.path.join(self.output_folder, market_values_file), index_label='Date')
+
+    def create_table_holdings(self):
+        """
+        Build per-ticker holdings summary with:
+        - shares
+        - avg_purchase_price (weighted by split-adjusted share quantity across all buy trades)
+        - market_value (current price * shares)
+        - market_value_cad (converted to CAD using latest USD rate when needed)
+        - book_value (avg_purchase_price * shares)
+        - pnl (market_value - book_value)
+        - pnl_percent (pnl / book_value)
+        - current_price (latest price)
+        - holding_weight (market_value_cad / latest Total_Holdings_CAD from portfolio_total.csv)
+        """
+        if self.holdings is None or self.holdings.empty:
+            raise ValueError("Holdings are not computed. Call create_table_holdings() first.")
+        if self.prices is None or self.prices.empty:
+            raise ValueError("Prices are not computed. Call create_table_prices() first.")
+
+        latest_date = self.holdings.index.max()
+        shares_series = self.holdings.loc[latest_date].copy()
+        # Keep only tickers we currently hold (> 0 shares)
+        shares_series = shares_series[shares_series > 0]
+        if shares_series.empty:
+            # Nothing to write; create empty file with headers
+            empty_df = pd.DataFrame(columns=['ticker','shares','avg_purchase_price','market_value','book_value','pnl','pnl_percent'])
+            empty_df.to_csv(os.path.join(self.output_folder, holdings_summary_file), index=False)
+            return
+
+        # Weighted average purchase price from buy trades (Quantity > 0), adjusted for stock splits
+        buys = self.trades[self.trades['Quantity'] > 0].copy() if self.trades is not None else pd.DataFrame(columns=['Ticker','Quantity','Price'])
+        if not buys.empty:
+            # Reset index to access trade dates
+            buys = buys.reset_index()  # 'Date' column appears
+            # Fetch split events once and compute cumulative factor from trade date to latest_date
+            split_events = self._fetch_split_events()
+
+            def cumulative_split_factor(ticker, buy_date, end_date):
+                events = split_events.get(ticker, {})
+                if not events:
+                    return 1.0
+                factor = 1.0
+                for event_date, event_factor in events.items():
+                    # Apply splits strictly after the buy date up to and including end_date
+                    if buy_date < event_date <= end_date:
+                        try:
+                            factor *= float(event_factor)
+                        except Exception:
+                            continue
+                return factor
+
+            buys['adj_factor'] = buys.apply(lambda r: cumulative_split_factor(r['Ticker'], r['Date'], latest_date), axis=1)
+            buys['weighted_cost'] = buys['Quantity'] * buys['Price']
+            buys['adj_shares'] = buys['Quantity'] * buys['adj_factor']
+
+            grouped = buys.groupby('Ticker').agg(weighted_cost=('weighted_cost', 'sum'),
+                                                 adj_shares=('adj_shares', 'sum'))
+            # Avoid division by zero
+            grouped['avg_purchase_price'] = grouped.apply(lambda r: (r['weighted_cost'] / r['adj_shares']) if r['adj_shares'] not in (0, 0.0) else float('nan'), axis=1)
+            avg_price_by_ticker = grouped[['avg_purchase_price']]
+        else:
+            avg_price_by_ticker = pd.DataFrame(columns=['avg_purchase_price'])
+
+        # Current prices and market values at latest_date
+        latest_prices = self.prices.loc[latest_date].copy()
+        # Align price series to held tickers
+        latest_prices = latest_prices.reindex(shares_series.index)
+
+        result = pd.DataFrame({
+            'ticker': shares_series.index,
+            'shares': shares_series.values
+        })
+
+        result = result.merge(avg_price_by_ticker, left_on='ticker', right_index=True, how='left')
+        result['avg_purchase_price'] = result['avg_purchase_price'].astype(float)
+
+        # Current price, market value and book value
+        result['current_price'] = result['ticker'].map(lambda t: float(latest_prices.get(t, float('nan'))))
+        result['market_value'] = result['current_price'] * result['shares']
+        result['book_value'] = result['avg_purchase_price'].fillna(0.0) * result['shares']
+
+        # PnL metrics
+        result['pnl'] = result['market_value'] - result['book_value']
+        result['pnl_percent'] = result.apply(lambda r: (r['pnl'] / r['book_value']) if r['book_value'] not in (0, 0.0) else 0.0, axis=1)
+
+        # Sort by market value descending
+        result = result.sort_values('market_value', ascending=False)
+
+        # Add currency per ticker using existing map (fallback to CAD)
+        # Ensure ticker_currency is populated
+        self._ensure_ticker_currency_map()
+        result['currency'] = result['ticker'].map(lambda t: self.ticker_currency.get(t))
+
+        # Compute CAD market value and precomputed weight using portfolio_total.csv latest Total_Holdings_CAD
+        latest_usd_rate = float(self.exchange_rates['USD'].dropna().iloc[-1])
+        result['market_value_cad'] = result.apply(
+            lambda r: float(r['market_value']) * latest_usd_rate if r.get('currency') == 'USD' else float(r['market_value']),
+            axis=1
+        )
+        # Load latest Total_Holdings_CAD from portfolio_total.csv
+        total_path = os.path.join(self.output_folder, portfolio_total_file)
+
+        if os.path.exists(total_path):
+            totals_df = pd.read_csv(total_path)
+            totals_df['Date'] = pd.to_datetime(totals_df['Date'])
+            latest_row = totals_df.sort_values('Date').iloc[-1]
+            denom_total_holdings_cad = float(latest_row['Total_Holdings_CAD'])
+
+        result['holding_weight'] = result.apply(
+            lambda r: (float(r['market_value_cad']) / denom_total_holdings_cad * 100.0) if denom_total_holdings_cad > 0 else 0.0,
+            axis=1
+        )
+
+        # Add cumulative dividends to date per ticker (native currency of the ticker)
+        if self.dividend_income is not None and not self.dividend_income.empty:
+            # Ensure datetime index
+            div_df = self.dividend_income.copy()
+            div_df.index = pd.to_datetime(div_df.index)
+            # Sum up to latest_date across all rows for each ticker
+            div_upto = div_df.loc[div_df.index <= latest_date]
+            dividends_cumulative = div_upto.sum(numeric_only=True)
+            result['dividends_to_date'] = result['ticker'].map(lambda t: float(dividends_cumulative.get(t, 0.0)))
+        else:
+            result['dividends_to_date'] = 0.0
+
+        # Persist
+        result.to_csv(os.path.join(self.output_folder, holdings_summary_file), index=False)
+
+    def _build_currency_holdings(self):
+        """
+        Build CAD- and USD-only holdings DataFrames using precomputed ticker lists.
+
+        Relies on:
+        - self.cad_tickers / self.usd_tickers (populated in load_trades)
+        - self.holdings (constructed in create_table_holdings)
+
+        Produces:
+        - self.holdings_cad, self.holdings_usd
+        """
+        cad_tickers = self.cad_tickers or []
+        usd_tickers = self.usd_tickers or []
+
+        if self.holdings is not None and not self.holdings.empty:
+            self.holdings_cad = self.holdings[cad_tickers] if len(cad_tickers) > 0 else pd.DataFrame(index=self.valid_dates)
+            self.holdings_usd = self.holdings[usd_tickers] if len(usd_tickers) > 0 else pd.DataFrame(index=self.valid_dates)
+        else:
+            self.holdings_cad = pd.DataFrame(index=self.valid_dates)
+            self.holdings_usd = pd.DataFrame(index=self.valid_dates)
+
+    def _ensure_ticker_currency_map(self):
+        """
+        Build a cached map of ticker -> currency using yfinance.
+        """
+        if self.ticker_currency and all(t in self.ticker_currency for t in (self.tickers or [])):
+            return
+        ticker_currency = {}
+        for ticker in (self.tickers or []):
+            try:
+                ticker_currency[ticker] = yf.Ticker(ticker).info.get('currency', 'CAD')
+            except Exception:
+                ticker_currency[ticker] = 'CAD'
+        self.ticker_currency = ticker_currency
 
     def create_table_dividend_per_share(self):
         self.dividend_per_share = pd.DataFrame(index=self.valid_dates)
@@ -492,14 +673,42 @@ class Portfolio:
 
     def create_table_portfolio_total(self):
         self.portfolio_total = pd.DataFrame(index=self.valid_dates)
-        self.portfolio_total['Total_Market_Value'] = self.cad_market_values.sum(axis=1)
-        self.portfolio_total['Total_Portfolio_Value'] = self.portfolio_total['Total_Market_Value'] + self.cash['Total_CAD']
-        # self.portfolio_total['pct_change'] = self.portfolio_total['Total_Portfolio_Value'].pct_change()
+
+        # Ensure currency map (CAD vs USD tickers)
+        self._ensure_ticker_currency_map()
+        cad_tickers = [t for t in (self.tickers or []) if self.ticker_currency.get(t, 'CAD') != 'USD']
+        usd_tickers = [t for t in (self.tickers or []) if self.ticker_currency.get(t, 'CAD') == 'USD']
+
+        # Totals by currency (native units)
+        cad_holdings_mv = self.market_values[cad_tickers].sum(axis=1) if len(cad_tickers) > 0 else pd.Series(0.0, index=self.valid_dates)
+        usd_holdings_mv = self.market_values[usd_tickers].sum(axis=1) if len(usd_tickers) > 0 else pd.Series(0.0, index=self.valid_dates)
+
+        # Use the most recent USD→CAD exchange rate for all conversions
+        latest_usd_rate = float(self.exchange_rates['USD'].dropna().iloc[-1]) if self.exchange_rates is not None else 1.0
+
+        # Cash breakdown
+        cad_cash = self.cash['CAD_Cash']
+        usd_cash = self.cash['USD_Cash']
+        total_cash_cad = cad_cash + (usd_cash * latest_usd_rate)
+
+        # Holdings and portfolio totals in CAD using the most recent FX rate
+        total_holdings_cad = cad_holdings_mv + (usd_holdings_mv * latest_usd_rate)
+        total_portfolio_value = total_cash_cad + total_holdings_cad
+
+        # Assign requested columns
+        self.portfolio_total['CAD_Holdings_MV'] = cad_holdings_mv
+        self.portfolio_total['USD_Holdings_MV'] = usd_holdings_mv
+        self.portfolio_total['CAD_Cash'] = cad_cash
+        self.portfolio_total['USD_Cash'] = usd_cash
+        self.portfolio_total['Total_Cash_CAD'] = total_cash_cad
+        self.portfolio_total['Total_Holdings_CAD'] = total_holdings_cad
+        self.portfolio_total['Total_Portfolio_Value'] = total_portfolio_value
+
         pd.DataFrame(self.portfolio_total).to_csv(os.path.join(self.output_folder, portfolio_total_file), index_label='Date')
 
     # TODO: to remove this because this should be done by a dedicated calculator class/file
     def print_final_values(self):
-        market_values_total = self.cad_market_values.loc[self.valid_dates[-1]].sum()
+        market_values_total = self.market_values.loc[self.valid_dates[-1]].sum()
         cash_total_cad = self.cash.loc[self.valid_dates[-1], 'Total_CAD']
         
         # Calculate dividends by currency
@@ -563,10 +772,11 @@ if __name__ == '__main__':
     portfolio.load_trades()
 
     portfolio.create_table_prices()
-    portfolio.create_table_holdings()
-    portfolio.create_table_cad_market_values()
+    portfolio.create_table_daily_holdings()
+    portfolio.create_table_market_values()
     portfolio.create_table_dividend_per_share()
     portfolio.create_table_dividend_income()
     portfolio.create_table_cash()
     portfolio.create_table_portfolio_total()
+    portfolio.create_table_holdings()
     portfolio.print_final_values()

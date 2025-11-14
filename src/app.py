@@ -69,7 +69,7 @@ def main():
     
     # Check if data files exist
     output_folder = os.path.join("data", selected_portfolio, "output")
-    required_files = ['holdings.csv', 'cad_market_values.csv', 'prices.csv']
+    required_files = ['daily_holdings.csv', 'market_values.csv', 'prices.csv']
     missing_files = [f for f in required_files if not os.path.exists(os.path.join(output_folder, f))]
     
     if missing_files:
@@ -106,7 +106,8 @@ def main():
     # Load data for selected date
     try:
         portfolio_summary = portfolio_controller.get_portfolio_summary(selected_date.strftime('%Y-%m-%d'))
-        holdings_data = portfolio_controller.get_holdings_data(selected_date.strftime('%Y-%m-%d'))
+        # Use new holdings summary table
+        holdings_data = portfolio_controller.get_holdings_summary_data()
         performance_data = portfolio_controller.get_performance_metrics(selected_date.strftime('%Y-%m-%d'))
         # Use cash breakdown from cash.csv and totals from portfolio_total.csv
         cash_data = portfolio_controller.get_cash_data(selected_date.strftime('%Y-%m-%d'))
@@ -115,8 +116,8 @@ def main():
         st.error(f"Error loading data for selected date: {e}")
         return
     
-    # Equity value from authoritative totals
-    equity_value = portfolio_summary['total_value']
+    # Holdings value from authoritative totals
+    holdings_value = portfolio_summary['total_holdings_value']
     
     # Render portfolio summary using components
     render_portfolio_summary(portfolio_summary, total_portfolio_value)
@@ -128,7 +129,7 @@ def main():
     
     with tab1:
         # Render holdings table using component
-        render_holdings_table(holdings_data, equity_value)
+        render_holdings_table(holdings_data, holdings_value)
     
     with tab2:
         # Render allocation charts using component

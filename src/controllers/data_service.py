@@ -87,33 +87,14 @@ class DataService:
         if self._is_cache_valid(cache_key, [source_file]):
             return self._data_cache[cache_key][0]
         
-        # Load directly from portfolio_total.csv for authoritative values
+        # Load directly from portfolio_total.csv using concrete column names from the builder
         if not os.path.exists(source_file):
-            # Fallback to previous method if file missing
-            fallback_mv = os.path.join(self.output_folder, "cad_market_values.csv")
-            fallback_cash = os.path.join(self.output_folder, "cash.csv")
-            if not (os.path.exists(fallback_mv) and os.path.exists(fallback_cash)):
-                return pd.DataFrame()
-            market_values = pd.read_csv(fallback_mv)
-            cash_data = pd.read_csv(fallback_cash)
-            market_values['Date'] = pd.to_datetime(market_values['Date'])
-            cash_data['Date'] = pd.to_datetime(cash_data['Date'])
-            numeric_columns = market_values.columns.drop('Date')
-            market_values[numeric_columns] = market_values[numeric_columns].apply(pd.to_numeric, errors='coerce')
-            cash_data['Total_CAD'] = cash_data['Total_CAD'].apply(pd.to_numeric, errors='coerce')
-            market_values['Total_Market_Value'] = market_values[numeric_columns].sum(axis=1)
-            market_values['Total_Portfolio_Value'] = market_values['Total_Market_Value'] + cash_data['Total_CAD']
-            result = market_values[['Date', 'Total_Market_Value', 'Total_Portfolio_Value']].copy()
-        else:
-            result = pd.read_csv(source_file)
-            # Ensure proper dtypes and columns
-            if 'Date' in result.columns:
-                result['Date'] = pd.to_datetime(result['Date'])
-            result = result.sort_values('Date')
-            # Ensure both columns exist
-            if 'Total_Portfolio_Value' not in result.columns or 'Total_Market_Value' not in result.columns:
-                # Attempt to infer if different naming used
-                raise ValueError("portfolio_total.csv must contain 'Total_Market_Value' and 'Total_Portfolio_Value' columns")
+            raise FileNotFoundError(f"Expected portfolio_total.csv at {source_file}. Please build the portfolio outputs first.")
+
+        result = pd.read_csv(source_file)
+        # Ensure proper dtypes and ordering
+        result['Date'] = pd.to_datetime(result['Date'])
+        result = result.sort_values('Date')
         
         # Compute pct_change if not present
         if 'pct_change' not in result.columns:
@@ -122,72 +103,98 @@ class DataService:
         self._update_cache(cache_key, result, [source_file])
         return result
     
+    def get_holdings_summary(self) -> pd.DataFrame:
+        """Get per-ticker holdings summary from holdings.csv"""
+        cache_key = "holdings_summary"
+        source_file = os.path.join(self.output_folder, "holdings.csv")
+
+        if not os.path.exists(source_file):
+            logger.error(f"Holdings summary file not found: {source_file}")
+            return pd.DataFrame()
+
+        if self._is_cache_valid(cache_key, [source_file]):
+            return self._data_cache[cache_key][0]
+
+        try:
+            df = pd.read_csv(source_file)
+            # Ensure expected columns and dtypes
+            for col in ['shares','holding_weight','dividends_to_date','avg_purchase_price','current_price','market_value','book_value','pnl','pnl_percent']:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+            df = df.sort_values('market_value', ascending=False)
+        except Exception as e:
+            logger.exception(f"Error loading holdings summary: {e}")
+            return pd.DataFrame()
+
+        self._update_cache(cache_key, df, [source_file])
+        return df
+    
     def get_holdings_data(self, as_of_date: Optional[str] = None) -> pd.DataFrame:
-        """Get current holdings data"""
+        """Get current holdings data for a specific date from the time-series CSVs"""
         cache_key = "holdings"
         source_files = [
-            os.path.join(self.output_folder, "holdings.csv"),
-            os.path.join(self.output_folder, "cad_market_values.csv"),
+            os.path.join(self.output_folder, "daily_holdings.csv"),
+            os.path.join(self.output_folder, "market_values.csv"),
             os.path.join(self.output_folder, "prices.csv")
         ]
-        
+
         # Check if source files exist
         for file_path in source_files:
             if not os.path.exists(file_path):
                 logger.error(f"Source file not found: {file_path}")
                 return pd.DataFrame()
-        
+
         if self._is_cache_valid(cache_key, source_files):
             return self._data_cache[cache_key][0]
-        
+
         # Load data
         try:
             holdings_df = pd.read_csv(source_files[0])
             market_values_df = pd.read_csv(source_files[1])
             prices_df = pd.read_csv(source_files[2])
-            
-            # Process holdings data (simplified version)
+
+            # Process holdings data
             holdings_df['Date'] = pd.to_datetime(holdings_df['Date'])
             market_values_df['Date'] = pd.to_datetime(market_values_df['Date'])
             prices_df['Date'] = pd.to_datetime(prices_df['Date'])
-            
-            # Get latest data
+
+            # Determine date to use
             latest_date = holdings_df['Date'].max()
             if as_of_date:
                 latest_date = pd.to_datetime(as_of_date)
         except Exception as e:
             logger.exception(f"Error loading holdings data: {e}")
             return pd.DataFrame()
-        
+
         try:
             holdings_data = holdings_df[holdings_df['Date'] == latest_date].iloc[0]
             market_values_data = market_values_df[market_values_df['Date'] == latest_date].iloc[0]
             prices_data = prices_df[prices_df['Date'] == latest_date].iloc[0]
-            
+
             # Create holdings DataFrame
             holdings_list = []
             for ticker in holdings_data.index:
                 if ticker == 'Date':
                     continue
-                    
+
                 shares = holdings_data[ticker]
                 if shares > 0:
                     market_value = market_values_data[ticker]
                     price = prices_data[ticker]
-                    
+
                     holdings_list.append({
                         'ticker': ticker,
                         'shares': shares,
                         'price': price,
                         'market_value': market_value
                     })
-            
+
             result = pd.DataFrame(holdings_list)
             result = result.sort_values('market_value', ascending=False)
         except Exception as e:
             logger.exception(f"Error processing holdings data: {e}")
             return pd.DataFrame()
-        
+
         self._update_cache(cache_key, result, source_files)
         return result
     

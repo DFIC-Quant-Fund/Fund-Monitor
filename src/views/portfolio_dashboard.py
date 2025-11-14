@@ -95,9 +95,9 @@ class PortfolioDashboard:
             
             with col1:
                 st.metric(
-                    "Total Value",
-                    f"${summary['total_value']:,.2f}",
-                    help="Total market value of all holdings"
+                    "Holdings Value",
+                    f"${summary['total_holdings_value']:,.2f}",
+                    help="Total market value of all holdings (excluding cash)"
                 )
             
             with col2:
@@ -121,6 +121,24 @@ class PortfolioDashboard:
                     summary['as_of_date'],
                     help="Date of the data shown"
                 )
+
+            st.markdown("---")
+            st.subheader("🔎 Breakdown")
+            h1, h2, h3 = st.columns(3)
+            with h1:
+                st.metric("CAD Holdings MV", f"${summary['cad_holdings_mv']:,.0f}")
+            with h2:
+                st.metric("USD Holdings MV", f"${summary['usd_holdings_mv']:,.0f}")
+            with h3:
+                st.metric("Total Cash (CAD)", f"${summary['total_cash_cad']:,.0f}")
+
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.metric("CAD Cash", f"${summary['cad_cash']:,.0f}")
+            with c2:
+                st.metric("USD Cash", f"${summary['usd_cash']:,.0f}")
+            with c3:
+                st.metric("Holdings + Cash", f"${summary['total_portfolio_value']:,.0f}")
                 
         except Exception as e:
             st.error(f"Error loading portfolio summary: {e}")

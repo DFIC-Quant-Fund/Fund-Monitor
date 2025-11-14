@@ -82,12 +82,26 @@ class PortfolioController:
             # closest previous date
             as_of_dt = totals_df['Date'].max()
             row = totals_df[totals_df['Date'] == as_of_dt]
-        total_equity_value = float(row.iloc[0]['Total_Market_Value']) if not row.empty else holdings_df['market_value'].sum()
-        total_portfolio_value = float(row.iloc[0]['Total_Portfolio_Value']) if not row.empty else total_equity_value
-        total_cash_cad = total_portfolio_value - total_equity_value
+        # Use concrete columns emitted by the builder
+        if not row.empty:
+            total_holdings_value = float(row.iloc[0]['Total_Holdings_CAD'])
+            total_portfolio_value = float(row.iloc[0]['Total_Portfolio_Value'])
+            total_cash_cad = float(row.iloc[0]['Total_Cash_CAD'])
+            cad_holdings_mv = float(row.iloc[0]['CAD_Holdings_MV'])
+            usd_holdings_mv = float(row.iloc[0]['USD_Holdings_MV'])
+            cad_cash = float(row.iloc[0]['CAD_Cash'])
+            usd_cash = float(row.iloc[0]['USD_Cash'])
+        else:
+            logger.warning(f"No portfolio total data found for {as_of_date}. Using latest available data.")
+            total_holdings_value = float(holdings_df['market_value'].sum())
+            total_portfolio_value = total_holdings_value
+            total_cash_cad = 0.0
+            cad_holdings_mv = float(holdings_df['market_value'].sum())
+            usd_holdings_mv = 0.0
+            cad_cash = 0.0
+            usd_cash = 0.0
         
-        # Calculate summary metrics using consistent equity value
-        total_value = total_equity_value
+
         total_holdings = len(holdings_df)
         
         # Find largest position
@@ -95,27 +109,32 @@ class PortfolioController:
             largest_position = holdings_df.iloc[0]  # Already sorted by market value
             largest_position_ticker = largest_position['ticker']
             largest_position_value = largest_position['market_value']
-            largest_position_weight = (largest_position_value / total_value * 100) if total_value > 0 else 0
+            largest_position_weight = (largest_position_value / total_holdings_value * 100) if total_holdings_value > 0 else 0
         else:
             largest_position_ticker = ""
             largest_position_value = 0
             largest_position_weight = 0
         
         return {
-            'total_value': total_value,
+            'total_holdings_value': total_holdings_value,
             'total_holdings': total_holdings,
             'largest_position_ticker': largest_position_ticker,
             'largest_position_value': largest_position_value,
             'largest_position_weight': largest_position_weight,
             'as_of_date': as_of_dt,
             'total_portfolio_value': total_portfolio_value,
-            'total_cash_cad': total_cash_cad
+            'total_cash_cad': total_cash_cad,
+            'cad_holdings_mv': cad_holdings_mv,
+            'usd_holdings_mv': usd_holdings_mv,
+            'cad_cash': cad_cash,
+            'usd_cash': usd_cash
         }
     
     def get_holdings_data(self, as_of_date: str = None) -> pd.DataFrame:
         """Get holdings data as DataFrame"""
         holdings_df = self._data_service.get_holdings_data(as_of_date)
-        
+        portfolio_total_df = self._data_service.get_portfolio_total_data()
+
         if holdings_df.empty:
             return pd.DataFrame()
         
@@ -125,10 +144,23 @@ class PortfolioController:
         holdings_df['geography'] = holdings_df['ticker'].apply(self._get_geography)
         
         # Calculate weights
-        total_value = holdings_df['market_value'].sum()
-        holdings_df['weight_percent'] = (holdings_df['market_value'] / total_value * 100) if total_value > 0 else 0
+        total_value = float(portfolio_total_df['Total_Holdings_CAD'])
+        holdings_df['holdings_weight_percent'] = (holdings_df['market_value'] / total_value * 100) if total_value > 0 else 0
         
         return holdings_df
+    
+    def get_holdings_summary_data(self) -> pd.DataFrame:
+        """Get per-ticker holdings summary data as DataFrame"""
+        summary_df = self._data_service.get_holdings_summary()
+        if summary_df.empty:
+            return pd.DataFrame()
+        
+        # Add sector, fund, and geography information
+        summary_df['sector'] = summary_df['ticker'].apply(self._get_sector)
+        summary_df['fund'] = summary_df['ticker'].apply(self._get_fund)
+        summary_df['geography'] = summary_df['ticker'].apply(self._get_geography)
+                
+        return summary_df
     
     def get_performance_metrics(self, date: str = None, risk_free_rate: float = 0.02) -> Dict[str, Any]:
         """Get comprehensive performance metrics"""
