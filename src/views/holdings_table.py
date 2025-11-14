@@ -15,8 +15,10 @@ def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
 
         # Select columns to show (keep numeric types for proper sorting)
         cols = ['ticker', 'currency', 'shares', 'holding_weight', 'dividends_to_date', 'current_price', 'avg_purchase_price', 'market_value', 'book_value', 'pnl', 'pnl_percent']
-        if 'sector' in display_data.columns: cols.append('sector')
-        if 'fund' in display_data.columns: cols.append('fund')
+        if 'sector' in display_data.columns:
+            cols.append('sector')
+        if 'fund' in display_data.columns:
+            cols.append('fund')
         # Filter to available columns
         cols = [c for c in cols if c in display_data.columns]
         df_show = display_data[cols].rename(columns={
@@ -52,10 +54,9 @@ def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
                 'Book Value ($)': st.column_config.NumberColumn('Book Value ($)', format='$%d'),
                 'PnL ($)': st.column_config.NumberColumn('PnL ($)', format='$%d'),
                 'PnL (%)': st.column_config.NumberColumn('PnL (%)', format='%.2f%%'),
-                'Weight (%)': st.column_config.NumberColumn('Weight (%)', format='%.2f%%'),
             }
         )
-        st.info("💡 **Note**: Weights shown are relative to equity holdings only (excluding cash).")
+        st.info("💡 **Note**: Weights shown are relative to holdings only (excluding cash).")
     else:
         st.info("No holdings data available")
 
