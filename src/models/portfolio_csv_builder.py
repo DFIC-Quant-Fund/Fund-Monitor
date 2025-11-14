@@ -209,7 +209,7 @@ class Portfolio:
                 split_events[ticker] = {}
         return split_events
 
-    def create_table_holdings(self):
+    def create_table_daily_holdings(self):
         # function: amount of stocks we are holding on a certain date 
 
         self.holdings = pd.DataFrame(index=self.valid_dates)
@@ -470,16 +470,18 @@ class Portfolio:
         self.market_values = market_values
         pd.DataFrame(self.market_values).to_csv(os.path.join(self.output_folder, market_values_file), index_label='Date')
 
-    def create_table_holdings_summary(self):
+    def create_table_holdings(self):
         """
         Build per-ticker holdings summary with:
         - shares
         - avg_purchase_price (weighted by split-adjusted share quantity across all buy trades)
         - market_value (current price * shares)
+        - market_value_cad (converted to CAD using latest USD rate when needed)
         - book_value (avg_purchase_price * shares)
         - pnl (market_value - book_value)
         - pnl_percent (pnl / book_value)
         - current_price (latest price)
+        - holding_weight (market_value_cad / latest Total_Holdings_CAD from portfolio_total.csv)
         """
         if self.holdings is None or self.holdings.empty:
             raise ValueError("Holdings are not computed. Call create_table_holdings() first.")
@@ -554,6 +556,43 @@ class Portfolio:
 
         # Sort by market value descending
         result = result.sort_values('market_value', ascending=False)
+
+        # Add currency per ticker using existing map (fallback to CAD)
+        # Ensure ticker_currency is populated
+        self._ensure_ticker_currency_map()
+        result['currency'] = result['ticker'].map(lambda t: self.ticker_currency.get(t))
+
+        # Compute CAD market value and precomputed weight using portfolio_total.csv latest Total_Holdings_CAD
+        latest_usd_rate = float(self.exchange_rates['USD'].dropna().iloc[-1])
+        result['market_value_cad'] = result.apply(
+            lambda r: float(r['market_value']) * latest_usd_rate if r.get('currency') == 'USD' else float(r['market_value']),
+            axis=1
+        )
+        # Load latest Total_Holdings_CAD from portfolio_total.csv
+        total_path = os.path.join(self.output_folder, portfolio_total_file)
+
+        if os.path.exists(total_path):
+            totals_df = pd.read_csv(total_path)
+            totals_df['Date'] = pd.to_datetime(totals_df['Date'])
+            latest_row = totals_df.sort_values('Date').iloc[-1]
+            denom_total_holdings_cad = float(latest_row['Total_Holdings_CAD'])
+
+        result['holding_weight'] = result.apply(
+            lambda r: (float(r['market_value_cad']) / denom_total_holdings_cad * 100.0) if denom_total_holdings_cad > 0 else 0.0,
+            axis=1
+        )
+
+        # Add cumulative dividends to date per ticker (native currency of the ticker)
+        if self.dividend_income is not None and not self.dividend_income.empty:
+            # Ensure datetime index
+            div_df = self.dividend_income.copy()
+            div_df.index = pd.to_datetime(div_df.index)
+            # Sum up to latest_date across all rows for each ticker
+            div_upto = div_df.loc[div_df.index <= latest_date]
+            dividends_cumulative = div_upto.sum(numeric_only=True)
+            result['dividends_to_date'] = result['ticker'].map(lambda t: float(dividends_cumulative.get(t, 0.0)))
+        else:
+            result['dividends_to_date'] = 0.0
 
         # Persist
         result.to_csv(os.path.join(self.output_folder, holdings_summary_file), index=False)
@@ -715,11 +754,11 @@ if __name__ == '__main__':
     portfolio.load_trades()
 
     portfolio.create_table_prices()
-    portfolio.create_table_holdings()
+    portfolio.create_table_daily_holdings()
     portfolio.create_table_market_values()
-    portfolio.create_table_holdings_summary()
     portfolio.create_table_dividend_per_share()
     portfolio.create_table_dividend_income()
     portfolio.create_table_cash()
     portfolio.create_table_portfolio_total()
+    portfolio.create_table_holdings()
     portfolio.print_final_values()

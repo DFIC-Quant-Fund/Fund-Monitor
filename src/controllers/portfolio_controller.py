@@ -133,7 +133,8 @@ class PortfolioController:
     def get_holdings_data(self, as_of_date: str = None) -> pd.DataFrame:
         """Get holdings data as DataFrame"""
         holdings_df = self._data_service.get_holdings_data(as_of_date)
-        
+        portfolio_total_df = self._data_service.get_portfolio_total_data()
+
         if holdings_df.empty:
             return pd.DataFrame()
         
@@ -143,8 +144,8 @@ class PortfolioController:
         holdings_df['geography'] = holdings_df['ticker'].apply(self._get_geography)
         
         # Calculate weights
-        total_value = holdings_df['market_value'].sum()
-        holdings_df['weight_percent'] = (holdings_df['market_value'] / total_value * 100) if total_value > 0 else 0
+        total_value = float(portfolio_total_df['Total_Holdings_CAD'])
+        holdings_df['holdings_weight_percent'] = (holdings_df['market_value'] / total_value * 100) if total_value > 0 else 0
         
         return holdings_df
     
@@ -158,11 +159,7 @@ class PortfolioController:
         summary_df['sector'] = summary_df['ticker'].apply(self._get_sector)
         summary_df['fund'] = summary_df['ticker'].apply(self._get_fund)
         summary_df['geography'] = summary_df['ticker'].apply(self._get_geography)
-        
-        # Calculate weights
-        total_value = float(summary_df['market_value'].sum()) if 'market_value' in summary_df.columns else 0.0
-        summary_df['weight_percent'] = (summary_df['market_value'] / total_value * 100) if total_value > 0 else 0
-        
+                
         return summary_df
     
     def get_performance_metrics(self, date: str = None, risk_free_rate: float = 0.02) -> Dict[str, Any]:

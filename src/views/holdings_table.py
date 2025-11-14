@@ -8,13 +8,13 @@ import pandas as pd
 def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
     st.header("Portfolio Holdings")
     if not holdings_data.empty:
-        holdings_data['equity_weight_percent'] = (holdings_data['market_value'] / equity_value * 100) if equity_value > 0 else 0
         display_data = holdings_data.copy()
         # Ensure numeric current_price column exists (fallback to price if needed)
         if 'current_price' not in display_data.columns and 'price' in display_data.columns:
             display_data['current_price'] = display_data['price']
+
         # Select columns to show (keep numeric types for proper sorting)
-        cols = ['ticker', 'shares', 'current_price', 'avg_purchase_price', 'market_value', 'book_value', 'pnl', 'pnl_percent', 'equity_weight_percent']
+        cols = ['ticker', 'currency', 'shares', 'holding_weight', 'dividends_to_date', 'current_price', 'avg_purchase_price', 'market_value', 'book_value', 'pnl', 'pnl_percent']
         if 'sector' in display_data.columns: cols.append('sector')
         if 'fund' in display_data.columns: cols.append('fund')
         # Filter to available columns
@@ -22,13 +22,15 @@ def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
         df_show = display_data[cols].rename(columns={
             'ticker': 'Ticker',
             'shares': 'Shares',
+            'holding_weight': 'Weight (%)',
+            'currency': 'Currency',
+            'dividends_to_date': 'Dividends to Date ($)',
             'current_price': 'Current Price ($)',
             'avg_purchase_price': 'Avg Purchase ($)',
             'market_value': 'Market Value ($)',
             'book_value': 'Book Value ($)',
             'pnl': 'PnL ($)',
             'pnl_percent': 'PnL (%)',
-            'equity_weight_percent': 'Weight (%)',
             'sector': 'Sector',
             'fund': 'Fund'
         })
@@ -40,7 +42,10 @@ def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
             df_show,
             use_container_width=True,
             column_config={
+                'Currency': st.column_config.TextColumn('Currency'),
                 'Shares': st.column_config.NumberColumn('Shares', format='%d'),
+                'Weight (%)': st.column_config.NumberColumn('Weight (%)', format='%.2f%%'),
+                'Dividends to Date ($)': st.column_config.NumberColumn('Dividends to Date ($)', format='$%d'),
                 'Current Price ($)': st.column_config.NumberColumn('Current Price ($)', format='$%.2f'),
                 'Avg Purchase ($)': st.column_config.NumberColumn('Avg Purchase ($)', format='$%.2f'),
                 'Market Value ($)': st.column_config.NumberColumn('Market Value ($)', format='$%d'),
