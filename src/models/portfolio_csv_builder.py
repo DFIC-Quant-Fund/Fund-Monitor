@@ -52,6 +52,7 @@ class Portfolio:
         self.end_date = end_date
         self.STARTING_CASH = STARTING_CASH
         self.current_cash_balance = STARTING_CASH
+        self.folder_prefix = folder_prefix
 
         self.input_folder = os.path.join("data", folder_prefix, "input")
         self.output_folder = os.path.join("data", folder_prefix, "output")
@@ -203,6 +204,291 @@ class Portfolio:
 
         pd.DataFrame(self.prices).to_csv(os.path.join(self.output_folder, prices_file), index_label='Date')
 
+        # If benchmark portfolio rebalance quarterly
+        if self.folder_prefix == 'benchmark':
+            self._add_quarterly_rebalancing_trades()
+
+    def _calculate_ticker_value_in_cad(self, ticker, quantity, price, date):
+        """Helper to calculate ticker value in CAD for a given date.
+        
+        Args:
+            ticker: Ticker symbol
+            quantity: Number of shares
+            price: Price per share
+            date: Date for exchange rate lookup
+            
+        Returns:
+            Value in CAD
+        """
+        currency = self.ticker_currency.get(ticker, 'CAD')
+        value = quantity * price
+        
+        # Get exchange rate for the date
+        if date in self.exchange_rates.index:
+            usd_rate = float(self.exchange_rates.loc[date, 'USD'])
+        else:
+            # Fallback to first available rate
+            usd_rate = float(self.exchange_rates['USD'].dropna().iloc[0])
+        
+        # Convert to CAD
+        if currency == 'USD':
+            return value * usd_rate
+        else:
+            return value
+
+    def _calculate_original_weights(self):
+        """Calculate original portfolio weights from initial transactions.
+        """
+        if self.trades is None or self.trades.empty:
+            return {}
+        
+        first_trade_date = self.trades.index.min()
+        initial_trades = self.trades.loc[first_trade_date]
+        
+        # Handle single trade vs multiple trades
+        if isinstance(initial_trades, pd.Series):
+            initial_trades = initial_trades.to_frame().T
+        
+        initial_values = {}
+        total_value_cad = 0.0
+        
+        for _, row in initial_trades.iterrows():
+            ticker = row['Ticker']
+            quantity = abs(row['Quantity'])  # Use absolute value for buys
+            price = row['Price']
+            
+            value_cad = self._calculate_ticker_value_in_cad(ticker, quantity, price, first_trade_date)
+            initial_values[ticker] = value_cad
+            total_value_cad += value_cad
+        
+        weights = {ticker: value / total_value_cad for ticker, value in initial_values.items()}
+        logger.info(f"Original benchmark weights calculated: {weights}")
+        return weights
+
+    def _get_quarter_end_dates(self):
+        """Returns a list of quarter-end dates that fall within valid_dates.
+        """
+        start = pd.to_datetime(self.start_date)
+        end = pd.to_datetime(self.end_date)
+        
+        quarter_ends = []
+        current_year = start.year
+        current_quarter = (start.month - 1) // 3 + 1
+        
+        quarter_end_months = {1: 3, 
+                              2: 6, 
+                              3: 9, 
+                              4: 12}
+        
+        if start.month <= 3:
+            first_quarter = 1
+        elif start.month <= 6:
+            first_quarter = 2
+        elif start.month <= 9:
+            first_quarter = 3
+        else:
+            first_quarter = 4
+        
+        # Generate quarter-end dates
+        for year in range(start.year, end.year + 1):
+            start_quarter = first_quarter if year == start.year else 1
+            end_quarter = 4
+            
+            for quarter in range(start_quarter, end_quarter + 1):
+                month = quarter_end_months[quarter]
+                day = 31 if month in [3, 12] else 30
+                
+                try:
+                    qe_date = pd.Timestamp(year=year, month=month, day=day)
+                    # Only include if it's after start_date and before end_date
+                    if start <= qe_date < end:
+                        # Find the closest valid trading date (quarter-end or next trading day)
+                        valid_qe = self._find_closest_valid_date(qe_date)
+                        if valid_qe is not None:
+                            quarter_ends.append(valid_qe)
+                except ValueError:
+                    # Skip invalid dates (e.g., Feb 30)
+                    continue
+        
+        return sorted(set(quarter_ends))
+
+    def _find_closest_valid_date(self, target_date):
+        """Find the closest valid trading date to target_date (on or after).
+        """
+        if self.valid_dates is None or len(self.valid_dates) == 0:
+            return None
+        
+        # Find dates on or after target_date
+        valid_after = self.valid_dates[self.valid_dates >= target_date]
+        if len(valid_after) > 0:
+            return valid_after[0]
+        
+        return None
+
+    def _simulate_holdings_to_date(self, target_date, additional_trades=None):
+        """Simulate holdings up to a given date by processing trades. 
+        Returns a dict mapping ticker to quantity held.
+        """
+        holdings = {ticker: 0.0 for ticker in self.tickers}
+        
+        # Process all trades up to and including target_date
+        trades_up_to_date = self.trades[self.trades.index <= target_date]
+        
+        # Include additional trades if provided
+        if additional_trades is not None and not additional_trades.empty:
+            additional_up_to_date = additional_trades[additional_trades.index <= target_date]
+            trades_up_to_date = pd.concat([trades_up_to_date, additional_up_to_date]).sort_index()
+        
+        for date, trade_group in trades_up_to_date.groupby(trades_up_to_date.index):
+            if isinstance(trade_group, pd.Series):
+                trade_group = trade_group.to_frame().T
+            
+            for _, row in trade_group.iterrows():
+                ticker = row['Ticker']
+                quantity = row['Quantity']
+                holdings[ticker] = holdings.get(ticker, 0.0) + quantity
+        
+        return holdings
+
+    def _calculate_portfolio_value_at_date(self, date, holdings_dict):
+        """Calculate total portfolio value in CAD at a given date.
+        
+        Args:
+            date: Target date
+            holdings_dict: Dict mapping ticker to quantity
+            
+        Returns:
+            Total portfolio value in CAD
+        """
+        if date not in self.prices.index or date not in self.exchange_rates.index:
+            return 0.0
+        
+        total_value_cad = 0.0
+        
+        for ticker, quantity in holdings_dict.items():
+            if ticker not in self.prices.columns or quantity == 0:
+                continue
+            
+            price = float(self.prices.loc[date, ticker])
+            if pd.isna(price):
+                continue
+            
+            # Use shared helper to calculate value in CAD
+            value_cad = self._calculate_ticker_value_in_cad(ticker, quantity, price, date)
+            total_value_cad += value_cad
+        
+        return total_value_cad
+
+    def _add_quarterly_rebalancing_trades(self):
+        """ Quarterly rebalancing to maintain weighting over time
+        1. Calculates original weights from initial transactions
+        2. Finds all quarter-end dates
+        3. Calculates current weights and creates rebalancing trades
+        4. Adds these trades to self.trades
+        """
+        if self.prices is None or self.prices.empty:
+            logger.warning("Cannot add rebalancing trades: prices not yet created")
+            return
+        
+        # Calculate original weights
+        original_weights = self._calculate_original_weights()
+        if not original_weights:
+            logger.warning("Could not calculate original weights for rebalancing")
+            return
+        
+        # Get quarter-end dates
+        quarter_ends = self._get_quarter_end_dates()
+        if not quarter_ends:
+            logger.info("No quarter-end dates found for rebalancing")
+            return
+        
+        logger.info(f"Adding quarterly rebalancing trades for {len(quarter_ends)} quarter-ends")
+        
+        rebalancing_trades = []
+        prev_trades = pd.DataFrame()
+        
+        for qe_date in quarter_ends:
+            
+            current_holdings = self._simulate_holdings_to_date(
+                qe_date, 
+                additional_trades=prev_trades if not prev_trades.empty else None
+            )
+            
+            # Calculate current portfolio value
+            portfolio_value_cad = self._calculate_portfolio_value_at_date(qe_date, current_holdings)
+            
+            if portfolio_value_cad == 0:
+                logger.warning(f"Skipping rebalancing on {qe_date}: portfolio value is zero")
+                continue
+            
+            # Calculate target holdings for each ticker based on original weights
+            usd_rate = float(self.exchange_rates.loc[qe_date, 'USD'])
+            
+            for ticker, target_weight in original_weights.items():
+                if ticker not in self.prices.columns:
+                    continue
+                
+                price = float(self.prices.loc[qe_date, ticker])
+                if pd.isna(price) or price == 0:
+                    continue
+                
+                currency = self.ticker_currency.get(ticker, 'CAD')
+                
+                # Calculate target value in CAD
+                target_value_cad = portfolio_value_cad * target_weight
+                
+                # Convert to native currency
+                if currency == 'USD':
+                    target_value = target_value_cad / usd_rate
+                else:
+                    target_value = target_value_cad
+                
+                # Calculate target quantity
+                target_quantity = target_value / price
+                
+                # Current quantity
+                current_quantity = current_holdings.get(ticker, 0.0)
+                
+                # Calculate rebalancing quantity (difference)
+                rebalance_quantity = target_quantity - current_quantity
+                
+                # Only add trade if difference is significant (more than 0.01 shares)
+                if abs(rebalance_quantity) > 0.01:
+                    rebalancing_trades.append({
+                        'Date': qe_date,
+                        'Ticker': ticker,
+                        'Currency': currency,
+                        'Quantity': rebalance_quantity,
+                        'Price': price
+                    })
+                    logger.info(
+                        f"Rebalancing {ticker} on {qe_date.strftime('%Y-%m-%d')}: "
+                        f"{current_quantity:.4f} -> {target_quantity:.4f} "
+                        f"(delta: {rebalance_quantity:+.4f})"
+                    )
+            
+            # Accumulate rebalancing trades for this quarter-end to include in next simulation
+            if rebalancing_trades:
+                # Get trades just added for this quarter-end
+                current_qe_trades = [t for t in rebalancing_trades if t['Date'] == qe_date]
+                if current_qe_trades:
+                    qe_df = pd.DataFrame(current_qe_trades)
+                    qe_df['Date'] = pd.to_datetime(qe_df['Date'])
+                    qe_df.set_index('Date', inplace=True)
+                    if prev_trades.empty:
+                        prev_trades = qe_df
+                    else:
+                        prev_trades = pd.concat([prev_trades, qe_df]).sort_index()
+        
+        # Add rebalancing trades to self.trades
+        if rebalancing_trades:
+            rebalance_df = pd.DataFrame(rebalancing_trades)
+            rebalance_df['Date'] = pd.to_datetime(rebalance_df['Date'])
+            rebalance_df.set_index('Date', inplace=True)
+            
+            # Combine with existing trades and sort
+            self.trades = pd.concat([self.trades, rebalance_df]).sort_index()
+            logger.info(f"Added {len(rebalancing_trades)} rebalancing trades to benchmark portfolio")
 
     def _fetch_split_events(self):
         """Fetch stock split events for tickers within the date range.
