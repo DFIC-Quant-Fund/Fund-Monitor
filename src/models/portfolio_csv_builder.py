@@ -272,8 +272,6 @@ class Portfolio:
         end = pd.to_datetime(self.end_date)
         
         quarter_ends = []
-        current_year = start.year
-        current_quarter = (start.month - 1) // 3 + 1
         
         quarter_end_months = {1: 3, 
                               2: 6, 
