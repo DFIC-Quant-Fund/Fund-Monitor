@@ -5,7 +5,7 @@ This component displays:
 - Total portfolio value
 - Equity value
 - Total holdings
-- Largest position
+- Return since inception
 - As of date
 """
 
@@ -48,11 +48,12 @@ def render_portfolio_summary(summary_data: Dict[str, Any], total_portfolio_value
         )
     
     with col4:
-        st.metric(
-            "Largest Position",
-            f"{summary_data['largest_position_ticker']} ({summary_data['largest_position_weight']:.1f}%)",
-            help="Largest holding by market value"
-        )
+        inception_val = summary_data.get('inception_return_pct')
+        if inception_val is None:
+            inception_display = "N/A"
+        else:
+            inception_display = f"{inception_val:.2f}%"
+        st.metric("Return Since Inception", inception_display, help="Cumulative return since inception (total return including dividends/cash)")
     
     with col5:
         st.metric(
