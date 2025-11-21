@@ -23,6 +23,7 @@ from .risk_metrics import RiskMetrics
 from .market_comparison import MarketComparison
 from .benchmark import Benchmark
 from .data_service import DataService
+from .fixed_income import FixedIncomeAnalyzer
 
 # Import config
 from src.config.securities_config import securities_config
@@ -266,6 +267,49 @@ class PortfolioController:
     def get_dividend_data(self) -> pd.DataFrame:
         """Get dividend data DataFrame"""
         return self._data_service.get_dividend_data()
+    
+    def get_fixed_income_info(self) -> pd.DataFrame:
+        """
+        Return fixed income specific analysis.
+        Filters holdings by sector='Fixed Income' and analyzes separately.
+        
+        Returns:
+            DataFrame with fixed income holdings analysis, or empty DataFrame if none found
+        """
+        try:
+            # Get all holdings with sector info
+            holdings_summary = self.get_holdings_summary_data()
+            if holdings_summary.empty:
+                logger.warning("No holdings summary available for fixed income analysis")
+                return pd.DataFrame()
+
+            # Filter to only fixed income tickers
+            fi_holdings = holdings_summary[holdings_summary.get('sector', '') == 'Fixed Income']
+            fi_tickers = fi_holdings['ticker'].tolist()
+            
+            if not fi_tickers:
+                logger.info("No fixed income holdings found in portfolio")
+                return pd.DataFrame()
+
+            logger.info(f"Analyzing {len(fi_tickers)} fixed income tickers: {fi_tickers}")
+
+            # Get market values and FX from data service
+            market_values = self._data_service.get_market_values_data()
+            exchange_rates = self._data_service.get_exchange_rates_data()
+
+            if market_values.empty:
+                logger.error("Cannot analyze fixed income: no market values data available")
+                return pd.DataFrame()
+
+            # Run analyzer with injected data
+            analyzer = FixedIncomeAnalyzer(market_values, exchange_rates)
+            fi_df = analyzer.get_fixed_income_info(fi_tickers)
+            
+            return fi_df
+            
+        except Exception as e:
+            logger.error(f"Error in get_fixed_income_info: {e}", exc_info=True)
+            return pd.DataFrame()
     
     def clear_cache(self):
         """Clear data cache"""

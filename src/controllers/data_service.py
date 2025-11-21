@@ -258,6 +258,67 @@ class DataService:
         self._update_cache(cache_key, dividends_df, [source_file])
         return dividends_df
     
+    def get_market_values_data(self) -> pd.DataFrame:
+        """
+        Get market values timeseries.
+        Tries multiple possible filenames for backward compatibility.
+        """
+        cache_key = "market_values"
+        
+        # Try possible filenames in order of preference
+        possible_files = [
+            os.path.join(self.output_folder, "cad_market_values.csv"),
+            os.path.join(self.output_folder, "market_values.csv"),
+        ]
+        
+        source_file = None
+        for filepath in possible_files:
+            if os.path.exists(filepath):
+                source_file = filepath
+                break
+        
+        if source_file is None:
+            logger.warning(f"Market values file not found in {self.output_folder}")
+            logger.warning(f"Looked for: {', '.join([os.path.basename(f) for f in possible_files])}")
+            return pd.DataFrame()
+        
+        if self._is_cache_valid(cache_key, [source_file]):
+            return self._data_cache[cache_key][0]
+        
+        try:
+            mv_df = pd.read_csv(source_file)
+            mv_df['Date'] = pd.to_datetime(mv_df['Date'])
+            mv_df = mv_df.sort_values('Date').set_index('Date')
+            self._update_cache(cache_key, mv_df, [source_file])
+            logger.info(f"Loaded market values from {os.path.basename(source_file)}")
+            return mv_df
+        except Exception as e:
+            logger.error(f"Error loading market values: {e}")
+            return pd.DataFrame()
+
+    def get_exchange_rates_data(self) -> pd.DataFrame:
+        """Get exchange rates timeseries (exchange_rates.csv)"""
+        cache_key = "exchange_rates"
+        source_file = os.path.join(self.output_folder, "exchange_rates.csv")
+        
+        if not os.path.exists(source_file):
+            logger.warning(f"Exchange rates file not found: {source_file}")
+            return pd.DataFrame()
+        
+        if self._is_cache_valid(cache_key, [source_file]):
+            return self._data_cache[cache_key][0]
+        
+        try:
+            fx_df = pd.read_csv(source_file)
+            fx_df['Date'] = pd.to_datetime(fx_df['Date'])
+            fx_df = fx_df.sort_values('Date').set_index('Date')
+            self._update_cache(cache_key, fx_df, [source_file])
+            logger.info(f"Loaded exchange rates")
+            return fx_df
+        except Exception as e:
+            logger.error(f"Error loading exchange rates: {e}")
+            return pd.DataFrame()
+    
     def clear_cache(self):
         """Clear all cached data"""
         self._data_cache.clear()

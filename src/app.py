@@ -12,9 +12,13 @@ import pandas as pd
 import sys
 import os
 import traceback
+import logging
 
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 # Import controller
 from src.controllers.portfolio_controller import PortfolioController
@@ -125,7 +129,7 @@ def main():
     render_cash_breakdown(cash_data)
     
     # Tabs for different views
-    tab1, tab2, tab3 = st.tabs(["📈 Holdings", "🏭 Allocation", "📊 Performance"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📈 Holdings", "🏭 Allocation", "📊 Performance", "🏦 Fixed Income"])
     
     with tab1:
         # Render holdings table using component
@@ -138,6 +142,46 @@ def main():
     with tab3:
         # Render performance metrics using component
         render_performance_metrics(performance_data)
+    
+    with tab4:
+        # Fixed Income tab
+        st.header("Fixed Income Analysis")
+        try:
+            fi_data = portfolio_controller.get_fixed_income_info()
+            
+            if fi_data.empty:
+                st.info("ℹ️ No fixed income holdings in portfolio")
+            else:
+                # Display summary metrics
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    total_fi_value = fi_data['Market Value (CAD)'].sum()
+                    st.metric("Total FI Value (CAD)", f"${total_fi_value:,.2f}")
+                
+                with col2:
+                    st.metric("Number of FI Holdings", len(fi_data))
+                
+                with col3:
+                    usd_holdings = (fi_data['Currency'] == 'USD').sum()
+                    st.metric("USD Holdings", usd_holdings)
+                
+                st.divider()
+                
+                # Display detailed table
+                st.subheader("Fixed Income Holdings Details")
+                st.dataframe(
+                    fi_data.style.format({
+                        'Market Value (CAD)': '${:,.2f}',
+                        'Total FI Share %': '{:.2f}%',
+                        'USD FI Share %': '{:.2f}%'
+                    }),
+                    use_container_width=True
+                )
+                
+        except Exception as e:
+            st.error(f"Error loading fixed income data: {e}")
+            logger.error(f"Fixed income error: {e}", exc_info=True)
 
 if __name__ == "__main__":
     main()
