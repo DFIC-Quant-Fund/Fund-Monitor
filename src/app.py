@@ -12,13 +12,9 @@ import pandas as pd
 import sys
 import os
 import traceback
-import logging
 
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-# Set up logger
-logger = logging.getLogger(__name__)
 
 # Import controller
 from src.controllers.portfolio_controller import PortfolioController
@@ -150,7 +146,7 @@ def main():
             fi_data = portfolio_controller.get_fixed_income_info()
             
             if fi_data.empty:
-                st.info("ℹ️ No fixed income holdings in portfolio")
+                st.info("No fixed income holdings in portfolio")
             else:
                 # Display summary metrics
                 col1, col2, col3 = st.columns(3)
@@ -181,7 +177,6 @@ def main():
                 
         except Exception as e:
             st.error(f"Error loading fixed income data: {e}")
-            logger.error(f"Fixed income error: {e}", exc_info=True)
 
 if __name__ == "__main__":
     main()
