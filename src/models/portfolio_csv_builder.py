@@ -79,6 +79,9 @@ class Portfolio:
         self.holdings_cad = None
         self.holdings_usd = None
 
+        self.total_cad_dividends = 0.0
+        self.total_usd_dividends = 0.0
+
         # Clean up existing CSV files before building new ones
         self.cleanup_existing_csv_files()
         
@@ -271,12 +274,7 @@ class Portfolio:
 
         pd.DataFrame(self.holdings).to_csv(os.path.join(self.output_folder, holdings_file), index_label='Date')
 
-    def create_table_cash(self):
-        # TODO: Make this currency cache a class variable potentially
-        ticker_currency = {}
-        for ticker in self.tickers:
-            ticker_currency[ticker] = yf.Ticker(ticker).info.get('currency')
-
+    def create_table_cash(self): 
         self.cash = pd.DataFrame(index=self.valid_dates)
         self.cash['CAD_Cash'] = 0.0
         self.cash['USD_Cash'] = 0.0
@@ -291,54 +289,11 @@ class Portfolio:
         current_usd_cash = 0.0
 
         for i, date in enumerate(self.valid_dates):
-            
+            # forward fill cash balances
             if i != 0:
                 self.cash.loc[date] = self.cash.loc[self.valid_dates[i - 1]]
                 current_cad_cash = self.cash.loc[date, 'CAD_Cash']
                 current_usd_cash = self.cash.loc[date, 'USD_Cash']
-
-            # First, process explicit currency conversions for this date
-            if self.conversions is not None and not self.conversions.empty and date in self.conversions.index:
-                rows_for_date = self.conversions.loc[date]
-                if isinstance(rows_for_date, pd.Series):
-                    rows_for_date = rows_for_date.to_frame().T
-                for _, row in rows_for_date.iterrows():
-                    c_from = row['Currency_From']
-                    c_to = row['Currency_To']
-                    amount = float(row['Amount'])
-                    rate = float(row['Rate']) if not (isinstance(row['Rate'], float) and math.isnan(row['Rate'])) else None
-                    # Fallback to exchange rate table if Rate is NaN
-                    if rate is None:
-                        # Rate defined as units of To per 1 unit of From
-                        if c_from == 'USD' and c_to == 'CAD':
-                            rate = float(self.exchange_rates.loc[date, 'USD'])
-                        elif c_from == 'CAD' and c_to == 'USD':
-                            usd_rate = float(self.exchange_rates.loc[date, 'USD'])
-                            rate = (1.0 / usd_rate) if usd_rate != 0 else 0.0
-                        else:
-                            raise ValueError(f"Unsupported conversion pair without explicit rate: {c_from}->{c_to}")
-
-                    logger.info(f"Applying conversion on {date.strftime('%Y-%m-%d')}: {amount:.2f} {c_from} -> {c_to} at {rate:.6g}")
-
-                    if c_from == 'CAD' and c_to == 'USD':
-                        cad_delta = -amount
-                        usd_delta = amount * rate
-                        current_cad_cash += cad_delta
-                        current_usd_cash += usd_delta
-                    elif c_from == 'USD' and c_to == 'CAD':
-                        usd_delta = -amount
-                        cad_delta = amount * rate
-                        current_usd_cash += usd_delta
-                        current_cad_cash += cad_delta
-                    else:
-                        # Future currencies can be added here
-                        raise ValueError(f"Unsupported currency conversion: {c_from}->{c_to}")
-
-                    # Update balances after each conversion
-                    self.cash.at[date, 'CAD_Cash'] = current_cad_cash
-                    self.cash.at[date, 'USD_Cash'] = current_usd_cash
-                    total_cad = current_cad_cash + (current_usd_cash * self.exchange_rates.loc[date, 'USD'])
-                    self.cash.at[date, 'Total_CAD'] = total_cad
 
             # Process trades for this date
             if date in self.trades.index:
@@ -354,123 +309,238 @@ class Portfolio:
                     price = row['Price']
                     ticker = row['Ticker']
                     trade_value = abs(quantity * price)
+                    er = self.exchange_rates.loc[date, 'USD']
 
                     logger.debug(f"Trade: {ticker} - {quantity} shares @ ${price:.2f} {currency}")
                     logger.debug(f"Trade value: ${trade_value:.2f} {currency}")
 
-                    if quantity > 0:
-                        # Buy: Deduct cash using helper
-                        current_cad_cash, current_usd_cash, conversion_type = self._convert_currency_for_trade(
-                            trade_value, currency, current_cad_cash, current_usd_cash, date
-                        )
-                        logger.debug("Buy: Decreased cash for purchase.")
-                    elif quantity < 0:
-                        # Sell: Add proceeds to correct cash balance
-                        if currency == 'CAD':
-                            current_cad_cash += trade_value
-                            logger.debug(f"Sell: Increased CAD cash by ${trade_value:.2f}")
-                        elif currency == 'USD':
-                            current_usd_cash += trade_value
-                            logger.debug(f"Sell: Increased USD cash by ${trade_value:.2f}")
-                        else:
-                            # If unknown currency, default to CAD
-                            current_cad_cash += trade_value
-                            logger.debug(f"Sell: Unknown currency, increased CAD cash by ${trade_value:.2f}")
+                    # if quantity > 0: # Buy
+                    #     # if currency == 'CAD':
+                    #     #     current_cad_cash -= trade_value
+                    #     # elif currency == 'USD':
+                    #     #     if current_usd_cash < trade_value:
+                    #     #         current_cad_cash -= trade_value * er
+                    #     #     else:
+                    #     #         current_usd_cash -= trade_value
+                    self._handle_trade(quantity, trade_value, currency, current_cad_cash, current_usd_cash, date)
+                    #     else:
+                    #         raise ValueError(f"Unsupported currency: {currency}")
+                    #     logger.debug("Buy: Decreased cash for purchase.")
+                    # else:
+                    #     # Sell: Add proceeds to correct cash balance
+                    #     if currency == 'CAD':
+                    #         current_cad_cash += trade_value
+                    #         logger.debug(f"Sell: Increased CAD cash by ${trade_value:.2f}")
+                    #     elif currency == 'USD':
+                    #         current_usd_cash += trade_value
+                    #         logger.debug(f"Sell: Increased USD cash by ${trade_value:.2f}")
+                    #     else:
+                    #         raise ValueError(f"Unsupported currency: {currency}")
 
                     # Update cash balances
                     self.cash.at[date, 'CAD_Cash'] = current_cad_cash
                     self.cash.at[date, 'USD_Cash'] = current_usd_cash
                     # Calculate total in CAD
-                    total_cad = current_cad_cash + (current_usd_cash * self.exchange_rates.loc[date, 'USD'])
+                    total_cad = current_cad_cash + (current_usd_cash * er)
                     self.cash.at[date, 'Total_CAD'] = total_cad
-                    logger.debug(f"After trade - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}, Total CAD: ${total_cad:.2f}")
+                    # logger.debug(f"After trade - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}, Total CAD: ${total_cad:.2f}")
 
-            # Process dividends for this date
-            if self.dividend_income is not None and date in self.dividend_income.index:
-                logger.info(f"--- Processing dividends on {date.strftime('%Y-%m-%d')} ---")
-                logger.debug(f"Starting balances - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}")
-                
-                for ticker in self.tickers:
-                    dividend_amount = self.dividend_income.at[date, ticker] if ticker in self.dividend_income.columns else 0.0
-                    if pd.isna(dividend_amount) or dividend_amount == 0.0:
-                        continue
-                    currency = ticker_currency.get(ticker, 'CAD')
-                    logger.debug(f"Dividend: {ticker} - ${dividend_amount:.2f} {currency}")
-                    # Add dividend to appropriate currency balance
-                    if currency == 'CAD':
-                        current_cad_cash += dividend_amount
-                        logger.debug(f"Added ${dividend_amount:.2f} to CAD cash")
-                    elif currency == 'USD':
-                        current_usd_cash += dividend_amount
-                        logger.debug(f"Added ${dividend_amount:.2f} to USD cash")
-                    else:
-                        # If unknown currency, default to CAD
-                        current_cad_cash += dividend_amount
-                        logger.debug(f"Unknown currency, added ${dividend_amount:.2f} to CAD cash")
-                    # Update cash balances
-                    self.cash.at[date, 'CAD_Cash'] = current_cad_cash
-                    self.cash.at[date, 'USD_Cash'] = current_usd_cash
-                    # Calculate total in CAD
-                    total_cad = current_cad_cash + (current_usd_cash * self.exchange_rates.loc[date, 'USD'])
-                    self.cash.at[date, 'Total_CAD'] = total_cad
-                    logger.debug(f"After dividend - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}, Total CAD: ${total_cad:.2f}")
-
+        # Process all dividends
+        cad_dividends, usd_dividends = self._get_dividend_income()
+        logger.debug(f"Total CAD dividends: ${cad_dividends:.2f}")
+        logger.debug(f"Total USD dividends: ${usd_dividends:.2f}")
+       
+        # Process explicit currency conversions for this date
+        current_cad_cash, current_usd_cash, total_cash_cad = self._apply_explicit_currency_conversions(
+            date, current_cad_cash, current_usd_cash
+        )
+        logger.debug(f"After conversions - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}, Total CAD: ${total_cash_cad:.2f}")
+        
         pd.DataFrame(self.cash).to_csv(os.path.join(self.output_folder, cash_file), index_label='Date')
 
-    def _convert_currency_for_trade(self, trade_value, trade_currency, current_cad_cash, current_usd_cash, date):
+        sys.exit(0)
+
+    def _handle_trade(self, quantity, trade_value, currency, current_cad_cash, current_usd_cash, date):
         """
-        Helper function to handle currency conversion for trades.
+        Helper function to handle trades.
+        Assumption: we always have enough total cash to make a trade.
+        """
+        er = self.exchange_rates.loc[date, 'USD']
+        if quantity > 0: # Buy
+            if currency == 'CAD':
+                if current_cad_cash < trade_value:
+                    # need to convert USD to CAD
+                    cad_needed = abs(trade_value - current_cad_cash)
+                    cad_to_convert = cad_needed * er
+                    current_cad_cash -= cad_to_convert
+                    current_usd_cash -= cad_needed
+                else:
+                    current_cad_cash -= trade_value
+            elif currency == 'USD':
+                if current_usd_cash < trade_value:
+                    # need to convert CAD to USD
+                    cad_to_convert = trade_value - current_usd_cash
+
+                else:
+                    current_usd_cash -= trade_value
+        else: # Sell
+            self._handle_sell(quantity, trade_value, currency, current_cad_cash, current_usd_cash, date)
+
+    # def _convert_currency_for_trade(self, trade_value, trade_currency, current_cad_cash, current_usd_cash, date):
+    #     """
+    #     Helper function to handle currency conversion for trades.
         
-        Args:
-            trade_value: Amount of the trade
-            trade_currency: Currency of the trade ('CAD' or 'USD')
-            current_cad_cash: Current CAD cash balance
-            current_usd_cash: Current USD cash balance
-            date: Date of the trade for exchange rate lookup
+    #     Args:
+    #         trade_value: Amount of the trade
+    #         trade_currency: Currency of the trade ('CAD' or 'USD')
+    #         current_cad_cash: Current CAD cash balance
+    #         current_usd_cash: Current USD cash balance
+    #         date: Date of the trade for exchange rate lookup
             
-        Returns:
-            tuple: (new_cad_cash, new_usd_cash, conversion_details)
+    #     Returns:
+    #         tuple: (new_cad_cash, new_usd_cash, conversion_details)
+    #     """
+    #     if trade_currency == 'CAD':
+    #         # For CAD trades, use CAD cash first, convert USD if needed
+    #         if current_cad_cash >= trade_value:
+    #             # We have enough CAD cash
+    #             logger.debug(f"CAD trade - using existing CAD cash (${current_cad_cash:.2f} available)")
+    #             return current_cad_cash - trade_value, current_usd_cash, "used_cad_cash"
+    #         else:
+    #             # Need to convert some USD to CAD
+    #             cad_needed = trade_value - current_cad_cash
+    #             usd_to_convert = cad_needed / self.exchange_rates.loc[date, 'USD']
+    #             exchange_rate = self.exchange_rates.loc[date, 'USD']
+                
+    #             logger.debug(f"CAD trade - need ${cad_needed:.2f} more CAD")
+    #             logger.debug(f"Converting ${usd_to_convert:.2f} USD to CAD (rate: {exchange_rate:.4f})")
+    #             logger.debug(f"Using all available CAD cash: ${current_cad_cash:.2f}")
+                
+    #             # Use all available CAD cash and convert USD
+    #             new_cad_cash = 0
+    #             new_usd_cash = current_usd_cash - usd_to_convert
+    #             return new_cad_cash, new_usd_cash, "converted_usd_to_cad"
+    #     elif trade_currency == 'USD':
+    #         # For USD trades, use USD cash first, convert CAD if needed
+    #         if current_usd_cash >= trade_value:
+    #             # We have enough USD cash
+    #             logger.debug(f"USD trade - using existing USD cash (${current_usd_cash:.2f} available)")
+    #             return current_cad_cash, current_usd_cash - trade_value, "used_usd_cash"
+    #         else:
+    #             # Need to convert some CAD to USD
+    #             usd_needed = trade_value - current_usd_cash
+    #             cad_to_convert = usd_needed * self.exchange_rates.loc[date, 'USD']
+    #             exchange_rate = self.exchange_rates.loc[date, 'USD']
+                
+    #             logger.debug(f"  USD trade - need ${usd_needed:.2f} more USD")
+    #             logger.debug(f"  Converting ${cad_to_convert:.2f} CAD to USD (rate: {exchange_rate:.4f})")
+    #             logger.debug(f"  Using all available USD cash: ${current_usd_cash:.2f}")
+                
+    #             # Use all available USD cash and convert CAD
+    #             new_cad_cash = current_cad_cash - cad_to_convert
+    #             new_usd_cash = 0
+    #             return new_cad_cash, new_usd_cash, "converted_cad_to_usd"
+
+    # def _apply_dividends_for_date(self, date, current_cad_cash, current_usd_cash):
+    #     """
+    #     Apply dividend cash flows for a given date to the running CAD/USD cash balances.
+    #     Updates self.cash for the date after each dividend and returns updated balances.
+    #     """
+
+    #     er = self.exchange_rates.loc[date, 'USD']
+    #     total_cash_cad = current_cad_cash + (current_usd_cash * er)
+    #     if self.dividend_income is None or date not in self.dividend_income.index:
+    #         return current_cad_cash, current_usd_cash, total_cash_cad
+
+    #     logger.info(f"--- Processing dividends on {date.strftime('%Y-%m-%d')} ---")
+    #     logger.debug(f"Starting balances - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}")
+        
+    #     for ticker in self.tickers:
+    #         dividend_amount = self.dividend_income.at[date, ticker]
+    #         if pd.isna(dividend_amount) or dividend_amount == 0.0:
+    #             continue
+    #         currency = self.ticker_currency[ticker]
+    #         logger.debug(f"Dividend: {ticker} - ${dividend_amount:.2f} {currency}")
+    #         # Add dividend to appropriate currency balance
+    #         if currency == 'CAD':
+    #             self.total_cad_dividends += dividend_amount
+    #             logger.debug(f"Added ${dividend_amount:.2f} to CAD cash")
+    #         elif currency == 'USD':
+    #             self.total_usd_dividends += dividend_amount
+    #             logger.debug(f"Added ${dividend_amount:.2f} to USD cash")
+    #         else:
+    #             raise ValueError(f"Unsupported currency: {currency}")
+
+    #         # Update cash balances after each dividend
+    #         current_cad_cash += self.total_cad_dividends
+    #         current_usd_cash += self.total_usd_dividends
+
+    #         total_cash_cad = current_cad_cash + (current_usd_cash * er)
+    #         self.cash.at[date, 'CAD_Cash'] = current_cad_cash
+    #         self.cash.at[date, 'USD_Cash'] = current_usd_cash
+    #         self.cash.at[date, 'Total_CAD'] = total_cash_cad
+    #         logger.debug(f"After dividend - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}, Total CAD: ${total_cash_cad:.2f}")
+
+    #     return current_cad_cash, current_usd_cash, total_cash_cad
+
+    def _get_dividend_income(self):
         """
-        if trade_currency == 'CAD':
-            # For CAD trades, use CAD cash first, convert USD if needed
-            if current_cad_cash >= trade_value:
-                # We have enough CAD cash
-                logger.debug(f"CAD trade - using existing CAD cash (${current_cad_cash:.2f} available)")
-                return current_cad_cash - trade_value, current_usd_cash, "used_cad_cash"
+        Get the total dividend income for all tickers
+        """
+        cad_dividends = 0.0
+        usd_dividends = 0.0
+        dividends = pd.read_csv('data/core/output/dividend_income.csv')
+        dividends['Date'] = pd.to_datetime(dividends['Date'])
+        dividends.set_index('Date', inplace=True)
+
+        for _, row in dividends.iterrows():
+            for ticker in dividends.columns:
+                currency = self.ticker_currency[ticker]
+                if currency == 'CAD':
+                    cad_dividends += row[ticker]
+                elif currency == 'USD':
+                    usd_dividends += row[ticker]
+        return cad_dividends, usd_dividends
+
+    def _apply_explicit_currency_conversions(self, date, current_cad_cash, current_usd_cash):
+        """
+        Apply explicit currency conversions for a given date to the running CAD/USD cash balances.
+        Updates self.cash for the date after each conversion and returns the updated balances.
+        """
+        er = self.exchange_rates.loc[date, 'USD']
+        total_cash_cad = current_cad_cash + (current_usd_cash * er)
+        if self.conversions is None or self.conversions.empty or date not in self.conversions.index:
+            return current_cad_cash, current_usd_cash, total_cash_cad
+
+        rows_for_date = self.conversions.loc[date]
+        if isinstance(rows_for_date, pd.Series):
+            rows_for_date = rows_for_date.to_frame().T
+
+        for _, row in rows_for_date.iterrows():
+            c_from = row['Currency_From']
+            c_to = row['Currency_To']
+            amount = float(row['Amount'])
+            rate = float(row['Rate'])
+
+            logger.info(f"Applying conversion on {date.strftime('%Y-%m-%d')}: {amount:.2f} {c_from} -> {c_to} at {rate:.6g}")
+
+            if c_from == 'CAD' and c_to == 'USD':
+                current_cad_cash -= amount
+                current_usd_cash += amount * rate
+            elif c_from == 'USD' and c_to == 'CAD':
+                current_usd_cash -= amount
+                current_cad_cash += amount * rate
             else:
-                # Need to convert some USD to CAD
-                cad_needed = trade_value - current_cad_cash
-                usd_to_convert = cad_needed / self.exchange_rates.loc[date, 'USD']
-                exchange_rate = self.exchange_rates.loc[date, 'USD']
-                
-                logger.debug(f"CAD trade - need ${cad_needed:.2f} more CAD")
-                logger.debug(f"Converting ${usd_to_convert:.2f} USD to CAD (rate: {exchange_rate:.4f})")
-                logger.debug(f"Using all available CAD cash: ${current_cad_cash:.2f}")
-                
-                # Use all available CAD cash and convert USD
-                new_cad_cash = 0
-                new_usd_cash = current_usd_cash - usd_to_convert
-                return new_cad_cash, new_usd_cash, "converted_usd_to_cad"
-        elif trade_currency == 'USD':
-            # For USD trades, use USD cash first, convert CAD if needed
-            if current_usd_cash >= trade_value:
-                # We have enough USD cash
-                logger.debug(f"USD trade - using existing USD cash (${current_usd_cash:.2f} available)")
-                return current_cad_cash, current_usd_cash - trade_value, "used_usd_cash"
-            else:
-                # Need to convert some CAD to USD
-                usd_needed = trade_value - current_usd_cash
-                cad_to_convert = usd_needed * self.exchange_rates.loc[date, 'USD']
-                exchange_rate = self.exchange_rates.loc[date, 'USD']
-                
-                logger.debug(f"  USD trade - need ${usd_needed:.2f} more USD")
-                logger.debug(f"  Converting ${cad_to_convert:.2f} CAD to USD (rate: {exchange_rate:.4f})")
-                logger.debug(f"  Using all available USD cash: ${current_usd_cash:.2f}")
-                
-                # Use all available USD cash and convert CAD
-                new_cad_cash = current_cad_cash - cad_to_convert
-                new_usd_cash = 0
-                return new_cad_cash, new_usd_cash, "converted_cad_to_usd"
+                # Future currencies can be added here
+                raise ValueError(f"Unsupported currency conversion: {c_from}->{c_to}")
+
+            # Update balances after each conversion
+            self.cash.at[date, 'CAD_Cash'] = current_cad_cash
+            self.cash.at[date, 'USD_Cash'] = current_usd_cash
+            total_cash_cad = current_cad_cash + (current_usd_cash * er)
+            self.cash.at[date, 'Total_CAD'] = total_cash_cad
+
+        return current_cad_cash, current_usd_cash, total_cash_cad
 
     def create_table_market_values(self):
         holdings = self.holdings[self.tickers]

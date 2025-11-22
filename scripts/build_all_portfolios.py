@@ -33,7 +33,7 @@ def run_builder(portfolio_name: str) -> None:
 
 
 def main() -> None:
-    portfolios = ['core', 'benchmark']
+    portfolios = ['core']
     # Derive trades.csv from YAML before building
     derive_cmd = [sys.executable, os.path.join(PROJECT_ROOT, 'scripts', 'derive_trades_from_yaml.py')] + portfolios
     logger.info("\n=== Deriving trades from YAML ===")
