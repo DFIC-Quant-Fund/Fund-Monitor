@@ -227,8 +227,8 @@ class Portfolio:
         if date in self.exchange_rates.index:
             usd_rate = float(self.exchange_rates.loc[date, 'USD'])
         else:
-            # Fallback to first available rate
-            usd_rate = float(self.exchange_rates['USD'].dropna().iloc[0])
+            # Fallback to latest available rate
+            usd_rate = float(self.exchange_rates['USD'].dropna().iloc[-1])
         
         # Convert to CAD
         if currency == 'USD':
