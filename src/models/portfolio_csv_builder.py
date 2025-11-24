@@ -322,7 +322,7 @@ class Portfolio:
                     #     #         current_cad_cash -= trade_value * er
                     #     #     else:
                     #     #         current_usd_cash -= trade_value
-                    self._handle_trade(quantity, trade_value, currency, current_cad_cash, current_usd_cash, date)
+                    current_cad_cash, current_usd_cash = self._handle_trade(quantity, trade_value, currency, current_cad_cash, current_usd_cash, date)
                     #     else:
                     #         raise ValueError(f"Unsupported currency: {currency}")
                     #     logger.debug("Buy: Decreased cash for purchase.")
@@ -346,7 +346,7 @@ class Portfolio:
                     # logger.debug(f"After trade - CAD: ${current_cad_cash:.2f}, USD: ${current_usd_cash:.2f}, Total CAD: ${total_cad:.2f}")
 
         # Process all dividends
-        cad_dividends, usd_dividends = self._get_dividend_income()
+        cad_dividends, usd_dividends = self._get_total_dividend_income()
         logger.debug(f"Total CAD dividends: ${cad_dividends:.2f}")
         logger.debug(f"Total USD dividends: ${usd_dividends:.2f}")
        
@@ -370,21 +370,36 @@ class Portfolio:
             if currency == 'CAD':
                 if current_cad_cash < trade_value:
                     # need to convert USD to CAD
-                    cad_needed = abs(trade_value - current_cad_cash)
-                    cad_to_convert = cad_needed * er
-                    current_cad_cash -= cad_to_convert
-                    current_usd_cash -= cad_needed
+                    cad_needed = trade_value - current_cad_cash
+                    usd_to_convert = cad_needed / er
+                    current_usd_cash -= usd_to_convert
+                    current_cad_cash += cad_needed
+
+                    # make trade with CAD
+                    current_cad_cash -= trade_value
                 else:
                     current_cad_cash -= trade_value
             elif currency == 'USD':
                 if current_usd_cash < trade_value:
                     # need to convert CAD to USD
-                    cad_to_convert = trade_value - current_usd_cash
+                    usd_needed = trade_value - current_usd_cash
+                    cad_to_convert = usd_needed * er
+                    current_cad_cash -= cad_to_convert
+                    current_usd_cash += usd_needed
 
+                    # make trade with USD
+                    current_usd_cash -= trade_value
                 else:
                     current_usd_cash -= trade_value
         else: # Sell
-            self._handle_sell(quantity, trade_value, currency, current_cad_cash, current_usd_cash, date)
+            if currency == 'CAD':
+                current_cad_cash += trade_value
+            elif currency == 'USD':
+                current_usd_cash += trade_value
+            else:
+                raise ValueError(f"Unsupported currency: {currency}")
+
+        return current_cad_cash, current_usd_cash
 
     # def _convert_currency_for_trade(self, trade_value, trade_currency, current_cad_cash, current_usd_cash, date):
     #     """
@@ -483,7 +498,7 @@ class Portfolio:
 
     #     return current_cad_cash, current_usd_cash, total_cash_cad
 
-    def _get_dividend_income(self):
+    def _get_total_dividend_income(self):
         """
         Get the total dividend income for all tickers
         """
