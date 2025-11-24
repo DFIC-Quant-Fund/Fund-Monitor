@@ -66,3 +66,23 @@ class ReturnsCalculator:
         daily_returns = self.df['pct_change'].dropna()
         average_daily_return = daily_returns.mean()
         return (1 + average_daily_return) ** 252 - 1 
+    
+    def cumulative_return_series(self) -> pd.DataFrame:
+        """
+        Compute cumulative return since inception as a percentage time series.
+        Returns a DataFrame with columns: Date, Cumulative_Return_Pct
+        """
+        if self.df is None or self.df.empty:
+            return pd.DataFrame(columns=['Date', 'Cumulative_Return_Pct'])
+        
+        df = self.df.copy()
+        df = df.sort_values('Date').reset_index(drop=True)
+        if self.portfolio_column not in df.columns:
+            return pd.DataFrame(columns=['Date', 'Cumulative_Return_Pct'])
+        
+        starting_value = df[self.portfolio_column].iloc[0]
+        if starting_value == 0 or pd.isna(starting_value):
+            return pd.DataFrame(columns=['Date', 'Cumulative_Return_Pct'])
+        
+        df['Cumulative_Return_Pct'] = (df[self.portfolio_column] / starting_value - 1.0) * 100.0
+        return df[['Date', 'Cumulative_Return_Pct']]

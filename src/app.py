@@ -26,7 +26,8 @@ from src.views import (
     render_cash_breakdown,
     render_holdings_table,
     render_allocation_charts,
-    render_performance_metrics
+    render_performance_metrics,
+    render_returns_chart
 )
 
 # Page configuration
@@ -103,6 +104,14 @@ def main():
         st.info("This usually means the portfolio data hasn't been built yet. Please ensure the data building process has been completed.")
         return
     
+    # Fetch cumulative returns (since inception) and render chart at the top
+    try:
+        returns_df = portfolio_controller.get_cumulative_returns()
+        render_returns_chart(returns_df)
+        st.markdown("---")
+    except Exception as e:
+        st.warning(f"Could not render returns chart: {e}")
+
     # Load data for selected date
     try:
         portfolio_summary = portfolio_controller.get_portfolio_summary(selected_date.strftime('%Y-%m-%d'))
