@@ -23,6 +23,9 @@ from .performance_metrics import (
 	render_market_metrics,
 	render_performance_summary,
 )
+from .fixed_income_analysis import (
+	render_fixed_income_analysis,
+)
 
 __all__ = [
 	'render_portfolio_summary',
@@ -38,4 +41,5 @@ __all__ = [
 	'render_risk_ratios',
 	'render_market_metrics',
 	'render_performance_summary',
+	'render_fixed_income_analysis',
 ]
