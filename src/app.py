@@ -115,8 +115,8 @@ def main():
     # Load data for selected date
     try:
         portfolio_summary = portfolio_controller.get_portfolio_summary(selected_date.strftime('%Y-%m-%d'))
-        # Use new holdings summary table
-        holdings_data = portfolio_controller.get_holdings_summary_data()
+        holdings_data = portfolio_controller.get_holdings_data()
+        allocations_data = portfolio_controller.get_allocation_data()
         performance_data = portfolio_controller.get_performance_metrics(selected_date.strftime('%Y-%m-%d'))
         # Use cash breakdown from cash.csv and totals from portfolio_total.csv
         cash_data = portfolio_controller.get_cash_data(selected_date.strftime('%Y-%m-%d'))
@@ -142,7 +142,7 @@ def main():
     
     with tab2:
         # Render allocation charts using component
-        render_allocation_charts(holdings_data)
+        render_allocation_charts(allocations_data)
     
     with tab3:
         # Render performance metrics using component

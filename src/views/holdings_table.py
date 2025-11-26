@@ -34,7 +34,6 @@ def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
             'pnl': 'PnL ($)',
             'pnl_percent': 'PnL (%)',
             'sector': 'Sector',
-            'fund': 'Fund'
         })
         # Scale percentage columns for display while retaining numeric types
         if 'PnL (%)' in df_show.columns:
