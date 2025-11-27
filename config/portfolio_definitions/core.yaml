@@ -48,9 +48,9 @@ transactions:
     price: 97.83
     quantity: 155
     currency: USD
-    sector: TBD
+    sector: ETF Fixed Income
     geography: US
-    asset_class: Fixed Income
+    asset_class: ETF Fixed Income
 
   - type: Buy
     date: 2023-04-27
@@ -68,9 +68,9 @@ transactions:
     price: 31.26
     quantity: 630
     currency: CAD
-    sector: Equity ETF
+    sector: ETF Equity
     geography: CAN
-    asset_class: Equity
+    asset_class: ETF Equity
 
   - type: Buy
     date: 2023-04-27
@@ -78,9 +78,9 @@ transactions:
     price: 28.15
     quantity: 741
     currency: CAD
-    sector: TBD
+    sector: ETF Fixed Income
     geography: CAN
-    asset_class: Fixed Income
+    asset_class: ETF Fixed Income
 
   - type: Buy
     date: 2023-04-27
@@ -98,9 +98,9 @@ transactions:
     price: 406.81
     quantity: 35
     currency: USD
-    sector: Equity ETF
+    sector: ETF Equity
     geography: US
-    asset_class: Equity
+    asset_class: ETF Equity
 
   - type: Buy
     date: 2023-04-27
@@ -158,9 +158,9 @@ transactions:
     price: 475.16
     quantity: 10
     currency: USD
-    sector: Equity ETF
+    sector: ETF Equity
     geography: US
-    asset_class: Equity
+    asset_class: ETF Equity
 
   - type: Buy
     date: 2023-12-27
@@ -178,9 +178,9 @@ transactions:
     price: 98.97
     quantity: 59
     currency: USD
-    sector: TBD
+    sector: ETF Fixed Income
     geography: US
-    asset_class: Fixed Income
+    asset_class: ETF Fixed Income
 
   - type: Buy
     date: 2023-12-27
@@ -188,9 +188,9 @@ transactions:
     price: 29.73
     quantity: 320
     currency: USD
-    sector: TBD
+    sector: ETF Fixed Income
     geography: US
-    asset_class: Fixed Income
+    asset_class: ETF Fixed Income
 
   - type: Buy
     date: 2023-12-28
@@ -218,7 +218,7 @@ transactions:
     price: 11.60
     quantity: 107
     currency: CAD
-    sector: Real Estate
+    sector: Consumer and Healthcare
     geography: CAN
     asset_class: Equity
 
@@ -228,9 +228,9 @@ transactions:
     price: 28.36
     quantity: 557
     currency: CAD
-    sector: TBD
+    sector: ETF Fixed Income
     geography: CAN
-    asset_class: Fixed Income
+    asset_class: ETF Fixed Income
 
   - type: Sell
     date: 2024-12-23
@@ -288,7 +288,7 @@ transactions:
     price: 39.58
     quantity: 61
     currency: USD
-    sector: Consumer Discretionary
+    sector: Consumer and Healthcare
     geography: US
     asset_class: Equity
 
@@ -298,7 +298,7 @@ transactions:
     price: 220.52
     quantity: 4
     currency: USD
-    sector: Communication Services
+    sector: Technology, Media, Telecom
     geography: US
     asset_class: Equity
 
@@ -338,9 +338,9 @@ transactions:
     price: 98.46
     quantity: 96
     currency: USD
-    sector: TBD
+    sector: ETF Fixed Income
     geography: US
-    asset_class: Fixed Income
+    asset_class: ETF Fixed Income
 
   - type: Sell
     date: 2025-03-25
@@ -348,7 +348,7 @@ transactions:
     price: 574.1601
     quantity: 25
     currency: USD
-    sector: Equity ETF
+    sector: ETF Equity
     geography: US
     asset_class: Equity
 
@@ -358,9 +358,9 @@ transactions:
     price: 30.0402
     quantity: 320
     currency: USD
-    sector: TBD
+    sector: ETF Fixed Income
     geography: US
-    asset_class: Fixed Income
+    asset_class: ETF Fixed Income
 
   - type: Buy
     date: 2025-03-25
@@ -368,9 +368,9 @@ transactions:
     price: 89.8399
     quantity: 225
     currency: USD
-    sector: TBD
+    sector: ETF Fixed Income
     geography: US
-    asset_class: Fixed Income
+    asset_class: ETF Fixed Income
 
   - type: Buy
     date: 2025-03-25
@@ -378,9 +378,9 @@ transactions:
     price: 26.6199
     quantity: 256
     currency: USD
-    sector: TBD
+    sector: ETF Fixed Income
     geography: US
-    asset_class: Fixed Income
+    asset_class: ETF Fixed Income
 
   - type: Sell
     date: 2025-06-16
@@ -498,9 +498,9 @@ transactions:
     price: 89.11
     quantity: 225
     currency: USD
-    sector: TBD
+    sector: ETF Fixed Income
     geography: US
-    asset_class: Fixed Income
+    asset_class: ETF Fixed Income
 
   # Conversion rate must be rate for 'from' currency to 'to' currency
   # Currently only USD<->CAD is supported
@@ -520,7 +520,7 @@ transactions:
     currency: USD
     sector: Absolute Return
     geography: US
-    asset_class: Equity
+    asset_class: Gold
 
   - type: Buy
     date: 2025-10-15

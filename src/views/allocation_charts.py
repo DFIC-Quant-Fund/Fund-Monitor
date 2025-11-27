@@ -71,7 +71,41 @@ def render_allocation_charts(portfolio_name: str):
     # Sort by Weight descending
     allocation_df = allocation_df.sort_values('Weight', ascending=False)
 
+    # --- Asset Class Allocation Calculation ---
+    asset_class_df = pd.DataFrame()
+    if 'asset_class' in holdings_df.columns:
+        asset_group = holdings_df.groupby('asset_class')['market_value_cad'].sum().reset_index()
+        
+        asset_data = []
+        # Add Asset Classes
+        for _, row in asset_group.iterrows():
+            asset_data.append({
+                'Asset Class': row['asset_class'],
+                'Value': row['market_value_cad']
+            })
+            
+        # Add Cash as an asset class
+        # Check if 'Cash' already exists (unlikely but good to be safe)
+        cash_exists = False
+        for item in asset_data:
+            if item['Asset Class'] == 'Cash':
+                item['Value'] += total_cash_cad
+                cash_exists = True
+                break
+        
+        if not cash_exists:
+            asset_data.append({
+                'Asset Class': 'Cash',
+                'Value': total_cash_cad
+            })
+            
+        asset_class_df = pd.DataFrame(asset_data)
+        asset_class_df['Weight'] = (asset_class_df['Value'] / total_portfolio_value) * 100.0
+        asset_class_df = asset_class_df.sort_values('Weight', ascending=False)
+
     # Render Charts
+    st.subheader("Allocations (Total Portfolio)")
+    
     col1, col2 = st.columns(2)
     with col1:
         if not allocation_df.empty:
@@ -86,15 +120,31 @@ def render_allocation_charts(portfolio_name: str):
             st.plotly_chart(fig_sector, use_container_width=True)
             
     with col2:
-        render_allocation_summary(allocation_df, total_portfolio_value)
+        if not asset_class_df.empty:
+            fig_asset = px.pie(
+                asset_class_df, 
+                values='Weight', 
+                names='Asset Class', 
+                title="Asset Class Allocation", 
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig_asset.update_traces(textposition='inside', textinfo='percent+label')
+            st.plotly_chart(fig_asset, use_container_width=True)
 
-def render_allocation_summary(allocation_df: pd.DataFrame, total_portfolio_value: float):
-    if not allocation_df.empty:
-        st.subheader("Allocation Summary")
+    # Render Summaries below charts
+    col3, col4 = st.columns(2)
+    with col3:
+        render_allocation_summary(allocation_df, "Sector", total_portfolio_value)
+    with col4:
+        if not asset_class_df.empty:
+            render_allocation_summary(asset_class_df, "Asset Class", total_portfolio_value)
+
+def render_allocation_summary(df: pd.DataFrame, category_col: str, total_portfolio_value: float):
+    if not df.empty:
+        st.subheader(f"{category_col} Summary")
         
-        st.write("**Top Sectors (including Cash):**")
-        for _, row in allocation_df.iterrows():
-            st.write(f"• {row['Sector']}: ${row['Value']:,.0f} ({row['Weight']:.1f}%)")
+        for _, row in df.iterrows():
+            st.write(f"• {row[category_col]}: ${row['Value']:,.0f} ({row['Weight']:.1f}%)")
             
         st.write("---")
         st.write(f"**Total Portfolio Value:** ${total_portfolio_value:,.0f}")
