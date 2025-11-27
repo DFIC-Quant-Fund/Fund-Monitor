@@ -151,7 +151,8 @@ class Portfolio:
                 ticker=row['Ticker'],
                 sector=row['Sector'],
                 geography=row['Geography'],
-                currency=row['Currency']
+                currency=row['Currency'],
+                asset_class=row['Asset_Class']
             )
             self.ticker_currency_map[row['Ticker']] = row['Currency']
             if row['Currency'] == 'USD':
@@ -901,10 +902,11 @@ class Portfolio:
         else:
             result['dividends_to_date'] = 0.0
 
-        # Add sector, geography, and status per ticker from Security instances
+        # Add sector, geography, asset_class, and status per ticker from Security instances
         for security in self.securities.values():
             result.loc[result['ticker'] == security.get_ticker(), 'sector'] = security.get_sector()
             result.loc[result['ticker'] == security.get_ticker(), 'geography'] = security.get_geography()
+            result.loc[result['ticker'] == security.get_ticker(), 'asset_class'] = security.get_asset_class()
             result.loc[result['ticker'] == security.get_ticker(), 'status'] = security.get_status()
 
         # Persist

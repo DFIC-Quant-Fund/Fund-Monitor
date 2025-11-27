@@ -1,26 +1,6 @@
 portfolio:
   name: "benchmark"
 
-# [SECURITIES]
-securities:  
-  # Benchmark
-- ticker: XIU.TO
-  fund: Benchmark
-  sector: Fixed Income
-  geography: CAN
-- ticker: SPY
-  fund: Benchmark
-  sector: Equity
-  geography: US
-- ticker: AGG
-  fund: Benchmark
-  sector: Fixed Income
-  geography: US
-- ticker: XBB.TO
-  fund: Benchmark
-  sector: Fixed Income
-  geography: CAN
-
 # [CURRENCIES]
 currencies:
   - currency: USD
@@ -37,21 +17,29 @@ transactions:
   price: 28.92279434
   quantity: 1054.30674
   currency: CAD
+  sector: Fixed Income
+  geography: CAN
 - type: Buy
   date: 2022-05-05
   ticker: SPY
   price: 397.25787354
   quantity: 60.26439139
   currency: USD
+  sector: Equity ETF
+  geography: US
 - type: Buy
   date: 2022-05-05
   ticker: AGG
   price: 92.74882507
   quantity: 172.0812466
   currency: USD
+  sector: Fixed Income
+  geography: US
 - type: Buy
   date: 2022-05-05
   ticker: XBB.TO
   price: 25.58189964
   quantity: 794.663288
   currency: CAD
+  sector: Fixed Income
+  geography: CAN

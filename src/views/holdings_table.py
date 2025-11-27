@@ -14,11 +14,7 @@ def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
             display_data['current_price'] = display_data['price']
 
         # Select columns to show (keep numeric types for proper sorting)
-        cols = ['ticker', 'currency', 'shares', 'holding_weight', 'dividends_to_date', 'current_price', 'avg_purchase_price', 'market_value', 'book_value', 'pnl', 'pnl_percent']
-        if 'sector' in display_data.columns:
-            cols.append('sector')
-        if 'fund' in display_data.columns:
-            cols.append('fund')
+        cols = ['ticker', 'currency', 'shares', 'holding_weight', 'dividends_to_date', 'current_price', 'avg_purchase_price', 'market_value', 'book_value', 'pnl', 'pnl_percent', 'sector', 'geography']
         # Filter to available columns
         cols = [c for c in cols if c in display_data.columns]
         df_show = display_data[cols].rename(columns={
@@ -34,6 +30,7 @@ def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
             'pnl': 'PnL ($)',
             'pnl_percent': 'PnL (%)',
             'sector': 'Sector',
+            'geography': 'Geography',
         })
         # Scale percentage columns for display while retaining numeric types
         if 'PnL (%)' in df_show.columns:
@@ -53,6 +50,8 @@ def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
                 'Book Value ($)': st.column_config.NumberColumn('Book Value ($)', format='$%d'),
                 'PnL ($)': st.column_config.NumberColumn('PnL ($)', format='$%d'),
                 'PnL (%)': st.column_config.NumberColumn('PnL (%)', format='%.2f%%'),
+                'Sector': st.column_config.TextColumn('Sector'),
+                'Geography': st.column_config.TextColumn('Geography'),
             }
         )
         st.info("💡 **Note**: Weights shown are relative to holdings only (excluding cash).")

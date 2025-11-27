@@ -59,6 +59,7 @@ def _normalize_row(tx: Dict[str, Any]) -> Dict[str, Any]:
     # Extract optional metadata fields
     sector = str(tx.get('sector', '')).strip()
     geography = str(tx.get('geography', '')).strip()
+    asset_class = str(tx.get('asset_class', '')).strip()
     status = str(tx.get('status', '')).strip()
 
     return {
@@ -69,6 +70,7 @@ def _normalize_row(tx: Dict[str, Any]) -> Dict[str, Any]:
         'Price': price,
         'Sector': sector,
         'Geography': geography,
+        'Asset_Class': asset_class,
         'Status': status,
     }
 
@@ -121,7 +123,7 @@ def derive_trades_for_portfolio(portfolio_name: str) -> str:
 
     with open(output_csv, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(
-            f, fieldnames=['Date', 'Ticker', 'Currency', 'Quantity', 'Price', 'Sector', 'Geography', 'Status']
+            f, fieldnames=['Date', 'Ticker', 'Currency', 'Quantity', 'Price', 'Sector', 'Geography', 'Asset_Class', 'Status']
         )
         writer.writeheader()
         for row in trade_rows:

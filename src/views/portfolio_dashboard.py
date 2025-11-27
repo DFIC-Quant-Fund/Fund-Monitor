@@ -169,7 +169,6 @@ class PortfolioDashboard:
                 'market_value': 'Market Value',
                 'weight_percent': 'Weight %',
                 'sector': 'Sector',
-                'fund': 'Fund',
                 'geography': 'Geography'
             })
             
