@@ -984,16 +984,20 @@ class Portfolio:
         cad_holdings_mv = self.market_values[cad_cols].sum(axis=1) if len(cad_cols) > 0 else pd.Series(0.0, index=self.valid_dates)
         usd_holdings_mv = self.market_values[usd_cols].sum(axis=1) if len(usd_cols) > 0 else pd.Series(0.0, index=self.valid_dates)
 
-        # Use the most recent USD→CAD exchange rate for all conversions
-        latest_usd_rate = float(self.exchange_rates['USD'].dropna().iloc[-1])
+        # Use historical exchange rates for each date
+        # Align exchange rates with the data index (should match valid_dates)
+        usd_rates = self.exchange_rates['USD'].reindex(self.valid_dates).ffill()
 
         # Cash breakdown
         cad_cash = self.cash['CAD_Cash']
         usd_cash = self.cash['USD_Cash']
-        total_cash_cad = cad_cash + (usd_cash * latest_usd_rate)
+        
+        # Convert USD cash to CAD using daily rates
+        total_cash_cad = cad_cash + (usd_cash * usd_rates)
 
-        # Holdings and portfolio totals in CAD using the most recent FX rate
-        total_holdings_cad = cad_holdings_mv + (usd_holdings_mv * latest_usd_rate)
+        # Convert USD holdings to CAD using daily rates
+        total_holdings_cad = cad_holdings_mv + (usd_holdings_mv * usd_rates)
+        
         total_portfolio_value = total_cash_cad + total_holdings_cad
 
         # Assign requested columns
