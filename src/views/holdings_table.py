@@ -14,7 +14,7 @@ def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
             display_data['current_price'] = display_data['price']
 
         # Select columns to show (keep numeric types for proper sorting)
-        cols = ['ticker', 'currency', 'shares', 'holding_weight', 'dividends_to_date', 'current_price', 'avg_purchase_price', 'market_value', 'book_value', 'pnl', 'pnl_percent', 'sector', 'geography']
+        cols = ['ticker', 'currency', 'shares', 'holding_weight', 'dividends_to_date', 'current_price', 'avg_purchase_price', 'market_value', 'book_value', 'realized_pnl_cad', 'unrealized_pnl_cad', 'pnl', 'pnl_percent', 'sector', 'geography']
         # Filter to available columns
         cols = [c for c in cols if c in display_data.columns]
         df_show = display_data[cols].rename(columns={
@@ -27,6 +27,8 @@ def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
             'avg_purchase_price': 'Avg Purchase ($)',
             'market_value': 'Market Value ($)',
             'book_value': 'Book Value ($)',
+            'realized_pnl_cad': 'Realized PnL (CAD)',
+            'unrealized_pnl_cad': 'Unrealized PnL (CAD)',
             'pnl': 'PnL ($)',
             'pnl_percent': 'PnL (%)',
             'sector': 'Sector',
@@ -48,6 +50,8 @@ def render_holdings_table(holdings_data: pd.DataFrame, equity_value: float):
                 'Avg Purchase ($)': st.column_config.NumberColumn('Avg Purchase ($)', format='$%.2f'),
                 'Market Value ($)': st.column_config.NumberColumn('Market Value ($)', format='$%d'),
                 'Book Value ($)': st.column_config.NumberColumn('Book Value ($)', format='$%d'),
+                'Realized PnL (CAD)': st.column_config.NumberColumn('Realized PnL (CAD)', format='$%d'),
+                'Unrealized PnL (CAD)': st.column_config.NumberColumn('Unrealized PnL (CAD)', format='$%d'),
                 'PnL ($)': st.column_config.NumberColumn('PnL ($)', format='$%d'),
                 'PnL (%)': st.column_config.NumberColumn('PnL (%)', format='%.2f%%'),
                 'Sector': st.column_config.TextColumn('Sector'),

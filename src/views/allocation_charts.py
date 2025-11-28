@@ -37,14 +37,18 @@ def render_allocation_charts(portfolio_name: str):
         st.info("Portfolio value is zero")
         return
 
+    # Filter for open positions for allocation charts
+    # We use shares > 0 to determine open positions
+    open_holdings_df = holdings_df[holdings_df['shares'] > 0].copy()
+
     # --- Sector Allocation Calculation ---
     # Group holdings by sector and sum market_value_cad
     # Ensure 'sector' column exists
-    if 'sector' not in holdings_df.columns or 'market_value_cad' not in holdings_df.columns:
+    if 'sector' not in open_holdings_df.columns or 'market_value_cad' not in open_holdings_df.columns:
         st.error("Holdings file missing required columns (sector, market_value_cad)")
         return
 
-    sector_group = holdings_df.groupby('sector')['market_value_cad'].sum().reset_index()
+    sector_group = open_holdings_df.groupby('sector')['market_value_cad'].sum().reset_index()
     
     # Prepare data for plotting: Sectors + Cash
     allocation_data = []
@@ -73,8 +77,8 @@ def render_allocation_charts(portfolio_name: str):
 
     # --- Asset Class Allocation Calculation ---
     asset_class_df = pd.DataFrame()
-    if 'asset_class' in holdings_df.columns:
-        asset_group = holdings_df.groupby('asset_class')['market_value_cad'].sum().reset_index()
+    if 'asset_class' in open_holdings_df.columns:
+        asset_group = open_holdings_df.groupby('asset_class')['market_value_cad'].sum().reset_index()
         
         asset_data = []
         # Add Asset Classes
@@ -138,6 +142,54 @@ def render_allocation_charts(portfolio_name: str):
     with col4:
         if not asset_class_df.empty:
             render_allocation_summary(asset_class_df, "Asset Class", total_portfolio_value)
+
+    # --- Sector Performance Calculation (Including Closed Positions) ---
+    render_sector_performance(holdings_df)
+
+def render_sector_performance(df: pd.DataFrame):
+    st.subheader("📊 Sector Returns Since Inception")
+    st.info("Performance calculation includes realized gains/losses from closed positions and dividends.")
+
+    # Check for required columns
+    required_cols = ['sector', 'total_return_cad', 'total_invested_cad']
+    if not all(col in df.columns for col in required_cols):
+        st.warning(f"Missing columns for performance calculation. Required: {required_cols}")
+        return
+
+    # Group by sector
+    # Sum total_return_cad (Realized + Unrealized + Dividends)
+    # Sum total_invested_cad (Gross Capital Deployed)
+    sector_perf = df.groupby('sector')[['total_return_cad', 'total_invested_cad']].sum().reset_index()
+
+    # Calculate Return %
+    # Avoid division by zero
+    sector_perf['Return %'] = sector_perf.apply(
+        lambda row: (row['total_return_cad'] / row['total_invested_cad'] * 100.0) if row['total_invested_cad'] > 0 else 0.0,
+        axis=1
+    )
+
+    # Sort by Return % descending
+    sector_perf = sector_perf.sort_values('Return %', ascending=False)
+
+    # Display as a chart
+    if not sector_perf.empty:
+        fig = px.bar(
+            sector_perf,
+            x='sector',
+            y='Return %',
+            title='Total Return by Sector (Since Inception)',
+            labels={'sector': 'Sector', 'Return %': 'Return (%)'},
+            color='Return %',
+            color_continuous_scale=px.colors.diverging.RdYlGn,
+            text_auto='.1f'
+        )
+        
+        fig.update_layout(
+            yaxis_title='Total Return (%)',
+            xaxis_title='Sector',
+            coloraxis_showscale=False
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 def render_allocation_summary(df: pd.DataFrame, category_col: str, total_portfolio_value: float):
     if not df.empty:
