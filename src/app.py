@@ -28,8 +28,7 @@ from src.views import (
     render_allocation_charts,
     render_performance_metrics,
     render_returns_chart,
-    render_fama_french_factors,
-    render_fama_french_summary_card
+    render_fama_french_factors
 )
 
 # Page configuration

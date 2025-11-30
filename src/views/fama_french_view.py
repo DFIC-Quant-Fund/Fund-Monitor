@@ -6,7 +6,6 @@ showing market, size, and value factor exposures.
 """
 
 import streamlit as st
-import pandas as pd
 import plotly.graph_objects as go
 from typing import Dict, Any
 
