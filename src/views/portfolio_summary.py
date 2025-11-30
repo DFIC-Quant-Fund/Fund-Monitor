@@ -5,7 +5,7 @@ This component displays:
 - Total portfolio value
 - Equity value
 - Total holdings
-- Largest position
+- Return since inception
 - As of date
 """
 
@@ -29,30 +29,31 @@ def render_portfolio_summary(summary_data: Dict[str, Any], total_portfolio_value
         st.metric(
             "Total Portfolio Value",
             f"${total_portfolio_value:,.0f}",
-            help="Total portfolio value including equities, cash, and dividends"
+            help="Total portfolio value including holdings and cash"
         )
     
     with col2:
-        equity_value = summary_data['total_value']
+        holdings_value = summary_data['total_holdings_value']
         st.metric(
-            "Equity Value",
-            f"${equity_value:,.0f}",
-            help="Total value of equity holdings only"
+            "Holdings Value",
+            f"${holdings_value:,.0f}",
+            help="Total value of all holdings (excluding cash)"
         )
     
     with col3:
         st.metric(
             "Total Holdings",
             summary_data['total_holdings'],
-            help="Number of individual equity positions"
+            help="Number of individual positions"
         )
     
     with col4:
-        st.metric(
-            "Largest Position",
-            f"{summary_data['largest_position_ticker']} ({summary_data['largest_position_weight']:.1f}%)",
-            help="Largest equity holding by market value"
-        )
+        inception_val = summary_data.get('inception_return_pct')
+        if inception_val is None:
+            inception_display = "N/A"
+        else:
+            inception_display = f"{inception_val:.2f}%"
+        st.metric("Return Since Inception", inception_display, help="Cumulative return since inception (total return including dividends/cash)")
     
     with col5:
         st.metric(
@@ -61,6 +62,25 @@ def render_portfolio_summary(summary_data: Dict[str, Any], total_portfolio_value
             help="Date of portfolio snapshot"
         )
     
+    # Breakdown metrics
+    st.markdown("---")
+    st.subheader("🔎 Breakdown")
+    b1, b2, b3 = st.columns(3)
+    with b1:
+        st.metric("CAD Holdings MV", f"${summary_data['cad_holdings_mv']:,.0f}")
+    with b2:
+        st.metric("USD Holdings MV", f"${summary_data['usd_holdings_mv']:,.0f}")
+    with b3:
+        st.metric("Total Cash (CAD)", f"${summary_data['total_cash_cad']:,.0f}")
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("CAD Cash", f"${summary_data['cad_cash']:,.0f}")
+    with c2:
+        st.metric("USD Cash", f"${summary_data['usd_cash']:,.0f}")
+    with c3:
+        st.metric("Holdings + Cash", f"${total_portfolio_value:,.0f}")
+
     st.markdown("---")
 
 def render_portfolio_breakdown(summary_data: Dict[str, Any], total_portfolio_value: float, cash_data: Dict[str, float]):
@@ -75,14 +95,14 @@ def render_portfolio_breakdown(summary_data: Dict[str, Any], total_portfolio_val
     st.subheader("📊 Portfolio Breakdown")
     breakdown_col1, breakdown_col2, breakdown_col3, breakdown_col4 = st.columns(4)
     
-    equity_value = summary_data['total_value']
+    holdings_value = summary_data['total_holdings_value']
     
     with breakdown_col1:
-        equity_weight = (equity_value / total_portfolio_value * 100) if total_portfolio_value > 0 else 0
+        holdings_weight = (holdings_value / total_portfolio_value * 100) if total_portfolio_value > 0 else 0
         st.metric(
-            "Equity Allocation",
-            f"{equity_weight:.1f}%",
-            help="Percentage of portfolio in equities"
+            "Holdings Allocation",
+            f"{holdings_weight:.1f}%",
+            help="Percentage of portfolio in holdings (excluding cash)"
         )
     
     with breakdown_col2:
@@ -95,9 +115,9 @@ def render_portfolio_breakdown(summary_data: Dict[str, Any], total_portfolio_val
     
     with breakdown_col3:
         st.metric(
-            "Equity Value",
-            f"${equity_value:,.0f}",
-            help="Total value of equity holdings"
+            "Holdings Value",
+            f"${holdings_value:,.0f}",
+            help="Total value of all holdings (excluding cash)"
         )
     
     with breakdown_col4:
@@ -108,7 +128,7 @@ def render_portfolio_breakdown(summary_data: Dict[str, Any], total_portfolio_val
         )
     
     # Add note about total portfolio value
-    st.info("💡 **Note**: Total portfolio value includes equities, cash, and cumulative dividends.")
+    st.info("💡 **Note**: Total portfolio value includes holdings and cash.")
     st.markdown("---")
 
 def render_cash_breakdown(cash_data: Dict[str, float]):

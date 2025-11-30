@@ -65,7 +65,6 @@ class PortfolioController:
         """Get portfolio summary data"""
         try:
             holdings_df = self._data_service.get_holdings_data(as_of_date)
-            
             if holdings_df.empty:
                 raise ValueError(f"No holdings data found for portfolio {self.portfolio_name}. Please ensure the portfolio data has been built.")
         except Exception as e:
@@ -82,40 +81,53 @@ class PortfolioController:
             # closest previous date
             as_of_dt = totals_df['Date'].max()
             row = totals_df[totals_df['Date'] == as_of_dt]
-        total_equity_value = float(row.iloc[0]['Total_Market_Value']) if not row.empty else holdings_df['market_value'].sum()
-        total_portfolio_value = float(row.iloc[0]['Total_Portfolio_Value']) if not row.empty else total_equity_value
-        total_cash_cad = total_portfolio_value - total_equity_value
-        
-        # Calculate summary metrics using consistent equity value
-        total_value = total_equity_value
-        total_holdings = len(holdings_df)
-        
-        # Find largest position
-        if total_holdings > 0:
-            largest_position = holdings_df.iloc[0]  # Already sorted by market value
-            largest_position_ticker = largest_position['ticker']
-            largest_position_value = largest_position['market_value']
-            largest_position_weight = (largest_position_value / total_value * 100) if total_value > 0 else 0
+        # Use concrete columns emitted by the builder
+        if not row.empty:
+            total_holdings_value = float(row.iloc[0]['Total_Holdings_CAD'])
+            total_portfolio_value = float(row.iloc[0]['Total_Portfolio_Value'])
+            total_cash_cad = float(row.iloc[0]['Total_Cash_CAD'])
+            cad_holdings_mv = float(row.iloc[0]['CAD_Holdings_MV'])
+            usd_holdings_mv = float(row.iloc[0]['USD_Holdings_MV'])
+            cad_cash = float(row.iloc[0]['CAD_Cash'])
+            usd_cash = float(row.iloc[0]['USD_Cash'])
         else:
-            largest_position_ticker = ""
-            largest_position_value = 0
-            largest_position_weight = 0
+            logger.warning(f"No portfolio total data found for {as_of_date}. Using latest available data.")
+            total_holdings_value = float(holdings_df['market_value'].sum())
+            total_portfolio_value = total_holdings_value
+            total_cash_cad = 0.0
+            cad_holdings_mv = float(holdings_df['market_value'].sum())
+            usd_holdings_mv = 0.0
+            cad_cash = 0.0
+            usd_cash = 0.0
+        
+        total_holdings = len(holdings_df)
+
+        # Cumulative return since inception (%)
+        try:
+            returns_series_df = ReturnsCalculator(totals_df).cumulative_return_series()
+            inception_return_pct = float(returns_series_df['Cumulative_Return_Pct'].iloc[-1]) if not returns_series_df.empty else None
+        except Exception as e:
+            logger.warning(f"Could not compute inception cumulative return: {e}")
+            inception_return_pct = None
         
         return {
-            'total_value': total_value,
+            'total_holdings_value': total_holdings_value,
             'total_holdings': total_holdings,
-            'largest_position_ticker': largest_position_ticker,
-            'largest_position_value': largest_position_value,
-            'largest_position_weight': largest_position_weight,
             'as_of_date': as_of_dt,
             'total_portfolio_value': total_portfolio_value,
-            'total_cash_cad': total_cash_cad
+            'total_cash_cad': total_cash_cad,
+            'cad_holdings_mv': cad_holdings_mv,
+            'usd_holdings_mv': usd_holdings_mv,
+            'cad_cash': cad_cash,
+            'usd_cash': usd_cash,
+            'inception_return_pct': inception_return_pct
         }
     
     def get_holdings_data(self, as_of_date: str = None) -> pd.DataFrame:
         """Get holdings data as DataFrame"""
         holdings_df = self._data_service.get_holdings_data(as_of_date)
-        
+        portfolio_total_df = self._data_service.get_portfolio_total_data()
+
         if holdings_df.empty:
             return pd.DataFrame()
         
@@ -125,10 +137,23 @@ class PortfolioController:
         holdings_df['geography'] = holdings_df['ticker'].apply(self._get_geography)
         
         # Calculate weights
-        total_value = holdings_df['market_value'].sum()
-        holdings_df['weight_percent'] = (holdings_df['market_value'] / total_value * 100) if total_value > 0 else 0
+        total_value = float(portfolio_total_df['Total_Holdings_CAD'])
+        holdings_df['holdings_weight_percent'] = (holdings_df['market_value'] / total_value * 100) if total_value > 0 else 0
         
         return holdings_df
+    
+    def get_holdings_summary_data(self) -> pd.DataFrame:
+        """Get per-ticker holdings summary data as DataFrame"""
+        summary_df = self._data_service.get_holdings_summary()
+        if summary_df.empty:
+            return pd.DataFrame()
+        
+        # Add sector, fund, and geography information
+        summary_df['sector'] = summary_df['ticker'].apply(self._get_sector)
+        summary_df['fund'] = summary_df['ticker'].apply(self._get_fund)
+        summary_df['geography'] = summary_df['ticker'].apply(self._get_geography)
+                
+        return summary_df
     
     def get_performance_metrics(self, date: str = None, risk_free_rate: float = 0.02) -> Dict[str, Any]:
         """Get comprehensive performance metrics"""
@@ -242,6 +267,15 @@ class PortfolioController:
     def get_cache_info(self) -> Dict[str, Any]:
         """Get cache information"""
         return self._data_service.get_cache_info()
+    
+    def get_cumulative_returns(self) -> pd.DataFrame:
+        """Get cumulative return since inception as a percentage series (Date, Cumulative_Return_Pct)."""
+        portfolio_total_df = self._data_service.get_portfolio_total_data()
+        if portfolio_total_df.empty:
+            return pd.DataFrame(columns=['Date', 'Cumulative_Return_Pct'])
+        
+        calc = ReturnsCalculator(portfolio_total_df)
+        return calc.cumulative_return_series()
     
     def _get_sector(self, ticker: str) -> str:
         """Get sector for ticker from config or fallback mapping"""
