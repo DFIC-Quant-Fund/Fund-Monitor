@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Dict, List
+from typing import Dict
 import pandas as pd
 import yfinance as yf
 from datetime import timedelta
