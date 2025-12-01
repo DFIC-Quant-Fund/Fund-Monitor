@@ -1,56 +1,150 @@
-"""
-Allocation Charts Component - Reusable UI component for portfolio allocation visualizations.
-"""
-
 import streamlit as st
 import plotly.express as px
 import pandas as pd
+import os
 
-def render_allocation_charts(holdings_data: pd.DataFrame):
+def render_allocation_charts(portfolio_name: str):
     st.header("Portfolio Allocation")
-    if not holdings_data.empty:
-        equity_value = holdings_data['market_value'].sum()
-        holdings_data['equity_weight_percent'] = (holdings_data['market_value'] / equity_value * 100) if equity_value > 0 else 0
-        col1, col2 = st.columns(2)
-        with col1:
-            sector_data = holdings_data.groupby('sector')['equity_weight_percent'].sum().reset_index()
-            if not sector_data.empty:
-                fig_sector = px.pie(sector_data, values='equity_weight_percent', names='sector', title="Sector Allocation (Equity Only)", color_discrete_sequence=px.colors.qualitative.Set3)
-                fig_sector.update_traces(textposition='inside', textinfo='percent+label')
-                st.plotly_chart(fig_sector, use_container_width=True)
-            fund_data = holdings_data.groupby('fund')['equity_weight_percent'].sum().reset_index()
-            if not fund_data.empty:
-                fig_fund = px.pie(fund_data, values='equity_weight_percent', names='fund', title="Fund Allocation (Equity Only)", color_discrete_sequence=px.colors.qualitative.Pastel)
-                fig_fund.update_traces(textposition='inside', textinfo='percent+label')
-                st.plotly_chart(fig_fund, use_container_width=True)
-        with col2:
-            geo_data = holdings_data.groupby('geography')['equity_weight_percent'].sum().reset_index()
-            if not geo_data.empty:
-                fig_geo = px.pie(geo_data, values='equity_weight_percent', names='geography', title="Geographic Allocation (Equity Only)", color_discrete_sequence=px.colors.qualitative.Set1)
-                fig_geo.update_traces(textposition='inside', textinfo='percent+label')
-                st.plotly_chart(fig_geo, use_container_width=True)
-            st.info("💡 **Note**: Allocation charts show equity holdings only (excluding cash).")
-            render_allocation_summary(holdings_data)
-    else:
-        st.info("No allocation data available")
+    
+    # Construct file paths
+    base_path = os.path.join("data", portfolio_name, "output")
+    holdings_path = os.path.join(base_path, "holdings.csv")
+    total_path = os.path.join(base_path, "portfolio_total.csv")
+    
+    # Check if files exist
+    if not os.path.exists(holdings_path) or not os.path.exists(total_path):
+        st.error(f"Data files not found in {base_path}")
+        return
 
-def render_allocation_summary(holdings_data: pd.DataFrame):
-    if not holdings_data.empty:
-        st.subheader("Allocation Summary")
-        sector_summary = holdings_data.groupby('sector')['market_value'].sum().sort_values(ascending=False)
-        st.write("**Top Sectors:**")
-        for sector, value in sector_summary.head(3).items():
-            weight = (value / holdings_data['market_value'].sum()) * 100
-            st.write(f"• {sector}: ${value:,.0f} ({weight:.1f}%)")
-        fund_summary = holdings_data.groupby('fund')['market_value'].sum().sort_values(ascending=False)
-        st.write("**Fund Breakdown:**")
-        for fund, value in fund_summary.items():
-            weight = (value / holdings_data['market_value'].sum()) * 100
-            st.write(f"• {fund}: ${value:,.0f} ({weight:.1f}%)")
-        geo_summary = holdings_data.groupby('geography')['market_value'].sum().sort_values(ascending=False)
-        st.write("**Geographic Breakdown:**")
-        for geo, value in geo_summary.items():
-            weight = (value / holdings_data['market_value'].sum()) * 100
-            st.write(f"• {geo}: ${value:,.0f} ({weight:.1f}%)")
+    try:
+        # Load data directly from CSVs
+        holdings_df = pd.read_csv(holdings_path)
+        total_df = pd.read_csv(total_path)
+    except Exception as e:
+        st.error(f"Error reading data files: {e}")
+        return
 
+    if total_df.empty:
+        st.info("No portfolio data available")
+        return
 
+    # Get totals from the last row of portfolio_total.csv (authoritative source)
+    latest_total_row = total_df.iloc[-1]
+    total_portfolio_value = float(latest_total_row['Total_Portfolio_Value'])
+    total_cash_cad = float(latest_total_row['Total_Cash_CAD'])
+
+    if total_portfolio_value == 0:
+        st.info("Portfolio value is zero")
+        return
+
+    # --- Sector Allocation Calculation ---
+    # Group holdings by sector and sum market_value_cad
+    # Ensure 'sector' column exists
+    if 'sector' not in holdings_df.columns or 'market_value_cad' not in holdings_df.columns:
+        st.error("Holdings file missing required columns (sector, market_value_cad)")
+        return
+
+    sector_group = holdings_df.groupby('sector')['market_value_cad'].sum().reset_index()
+    
+    # Prepare data for plotting: Sectors + Cash
+    allocation_data = []
+    
+    # Add Sectors
+    for _, row in sector_group.iterrows():
+        allocation_data.append({
+            'Sector': row['sector'],
+            'Value': row['market_value_cad']
+        })
+    
+    # Add Cash as a sector
+    allocation_data.append({
+        'Sector': 'Cash',
+        'Value': total_cash_cad
+    })
+    
+    allocation_df = pd.DataFrame(allocation_data)
+    
+    # Calculate weights relative to Total Portfolio Value
+    # Note: Sum of Values should match Total Portfolio Value approximately
+    allocation_df['Weight'] = (allocation_df['Value'] / total_portfolio_value) * 100.0
+    
+    # Sort by Weight descending
+    allocation_df = allocation_df.sort_values('Weight', ascending=False)
+
+    # --- Asset Class Allocation Calculation ---
+    asset_class_df = pd.DataFrame()
+    if 'asset_class' in holdings_df.columns:
+        asset_group = holdings_df.groupby('asset_class')['market_value_cad'].sum().reset_index()
+        
+        asset_data = []
+        # Add Asset Classes
+        for _, row in asset_group.iterrows():
+            asset_data.append({
+                'Asset Class': row['asset_class'],
+                'Value': row['market_value_cad']
+            })
+            
+        # Add Cash as an asset class
+        # Check if 'Cash' already exists (unlikely but good to be safe)
+        cash_exists = False
+        for item in asset_data:
+            if item['Asset Class'] == 'Cash':
+                item['Value'] += total_cash_cad
+                cash_exists = True
+                break
+        
+        if not cash_exists:
+            asset_data.append({
+                'Asset Class': 'Cash',
+                'Value': total_cash_cad
+            })
+            
+        asset_class_df = pd.DataFrame(asset_data)
+        asset_class_df['Weight'] = (asset_class_df['Value'] / total_portfolio_value) * 100.0
+        asset_class_df = asset_class_df.sort_values('Weight', ascending=False)
+
+    # Render Charts
+    st.subheader("Allocations (Total Portfolio)")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if not allocation_df.empty:
+            fig_sector = px.pie(
+                allocation_df, 
+                values='Weight', 
+                names='Sector', 
+                title="Sector Allocation (Total Portfolio)", 
+                color_discrete_sequence=px.colors.qualitative.Set3
+            )
+            fig_sector.update_traces(textposition='inside', textinfo='percent+label')
+            st.plotly_chart(fig_sector, use_container_width=True)
+            
+    with col2:
+        if not asset_class_df.empty:
+            fig_asset = px.pie(
+                asset_class_df, 
+                values='Weight', 
+                names='Asset Class', 
+                title="Asset Class Allocation", 
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig_asset.update_traces(textposition='inside', textinfo='percent+label')
+            st.plotly_chart(fig_asset, use_container_width=True)
+
+    # Render Summaries below charts
+    col3, col4 = st.columns(2)
+    with col3:
+        render_allocation_summary(allocation_df, "Sector", total_portfolio_value)
+    with col4:
+        if not asset_class_df.empty:
+            render_allocation_summary(asset_class_df, "Asset Class", total_portfolio_value)
+
+def render_allocation_summary(df: pd.DataFrame, category_col: str, total_portfolio_value: float):
+    if not df.empty:
+        st.subheader(f"{category_col} Summary")
+        
+        for _, row in df.iterrows():
+            st.write(f"• {row[category_col]}: ${row['Value']:,.0f} ({row['Weight']:.1f}%)")
+            
+        st.write("---")
+        st.write(f"**Total Portfolio Value:** ${total_portfolio_value:,.0f}")

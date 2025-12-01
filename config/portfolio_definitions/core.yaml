@@ -1,191 +1,6 @@
 portfolio:
   name: "core"
 
-# [FUNDS]
-funds:
-  - name: Fixed Income
-    thesis: We generate alpha primarily through strategic duration positioning, while also capitalizing on short-term macro opportunities in commodities.
-  - name: Industrials Fund
-    thesis: We invest in high-quality industrial companies with strong competitive advantages, stable cash flows, and attractive valuations. Our strategy focuses on businesses benefiting from strong economic MOATS and long-term trends aiming to drive value creation for the fund.
-  - name: Resources Fund
-    thesis: We seek to invest in high-quality resource companies with strong fundamentals that are trading at a discount to intrinsic value. Our focus is on long-term value creation through disciplined capital allocation in undervalued sectors of the natural resources sector.
-  - name: C&H Fund
-    thesis: We primarily invest in high-quality Consumer and Healthcare companies with durable growth and strong fundamentals, aiming to generate consistent alpha through diversified, research-driven stock selection.
-  - name: TMT Fund
-    thesis: We aim to invest in businesses with strong competitive advantages in their niche and established market leadership. Companies we select display high growth potential and benefit from long-term industry trends that will continue to drive value.
-  - name: Financials Fund
-    thesis: We are a very good fund, make lots of money, and are very good at it.
-
-# Dates are in YYYY-MM-DD format and are settlement dates
-# [SECURITIES]
-securities:
-  # NSR removed since null in yfinance
-  
-  # Fixed Income
-- ticker: XBB.TO
-  fund: Fixed Income
-  sector: Fixed Income
-  geography: CAN
-- ticker: AGG
-  fund: Fixed Income
-  sector: Fixed Income
-  geography: US
-- ticker: SPY
-  fund: Fixed Income
-  sector: Equity
-  geography: US
-- ticker: SPSB
-  fund: Fixed Income
-  sector: Fixed Income
-  geography: US
-- ticker: SCHP
-  fund: Fixed Income
-  sector: Fixed Income
-  geography: US
-- ticker: TLT
-  fund: Fixed Income
-  sector: Fixed Income
-  geography: US
-
-# Industrials Fund
-- ticker: ACO-X.TO
-  fund: Industrials Fund
-  sector: Industrials
-  geography: CAN
-- ticker: GSL
-  fund: Industrials Fund
-  sector: Industrials
-  geography: US
-- ticker: TEX
-  fund: Industrials Fund
-  sector: Industrials
-  geography: US
-- ticker: CEG
-  fund: Industrials Fund
-  sector: Utilities
-  geography: US
-- ticker: WSC
-  fund: Industrials Fund
-  sector: Industrials
-  geography: US
-
-# Resources Fund
-- ticker: WFG.TO
-  fund: Resources Fund
-  sector: Materials
-  geography: CAN
-- ticker: HBM.TO
-  fund: Resources Fund
-  sector: Materials
-  geography: CAN
-- ticker: MP
-  fund: Resources Fund
-  sector: Materials
-  geography: US
-- ticker: DOLE
-  fund: Resources Fund
-  sector: Consumer Staples
-  geography: US
-
-# C&H Fund
-- ticker: CSH-UN.TO
-  fund: C&H Fund
-  sector: Real Estate
-  geography: CAN
-- ticker: L.TO
-  fund: C&H Fund
-  sector: Consumer Discretionary
-  geography: CAN
-- ticker: ISRG
-  fund: C&H Fund
-  sector: Healthcare
-  geography: US
-- ticker: MA
-  fund: C&H Fund
-  sector: Financials
-  geography: US
-- ticker: BLBD
-  fund: C&H Fund
-  sector: Consumer Discretionary
-  geography: US
-
-# Financials Fund
-- ticker: CG
-  fund: Financials Fund
-  sector: Financials
-  geography: US
-- ticker: APO
-  fund: Financials Fund
-  sector: Financials
-  geography: US
-- ticker: AER
-  fund: Financials Fund
-  sector: Financials
-  geography: US
-- ticker: MA
-  fund: Financials Fund
-  sector: Financials
-  geography: US
-- ticker: AMSF
-  fund: Financials Fund
-  sector: Financials
-  geography: US
-
-- ticker: FFH.TO
-  fund: Financials Fund
-  sector: Financials
-  geography: CAN
-
-- ticker: RY.TO
-  fund: Financials Fund
-  sector: Financials
-  geography: CAN
-
-# TMT Fund
-- ticker: AAPL
-  fund: TMT Fund
-  sector: Technology
-  geography: US
-- ticker: EA
-  fund: TMT Fund
-  sector: Technology
-  geography: US
-- ticker: AMAT
-  fund: TMT Fund
-  sector: Technology
-  geography: US
-- ticker: VEEV
-  fund: TMT Fund
-  sector: Healthcare
-  geography: US
-- ticker: TMUS
-  fund: TMT Fund
-  sector: Communication Services
-  geography: US
-
-- ticker: GOOG
-  fund: TMT Fund
-  sector: Communication Services
-  geography: US
-
-  # No longer in portfolio
-- ticker: RSP
-  fund: Fixed Income
-  sector: Equity
-  geography: US
-- ticker: XIU.TO
-  fund: Fixed Income
-  sector: Equity
-  geography: CAN
-
-# [CURRENCIES]
-currencies:
-  - currency: USD
-    ticker: CAD=X
-  # - currency: EUR
-  #   ticker: EURCAD=X
-
-# [TRANSACTIONS]
 transactions:
   - type: Buy
     date: 2022-05-05
@@ -193,6 +8,9 @@ transactions:
     price: 121.57
     quantity: 16
     currency: USD
+    sector: Technology, Media, Telecom
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2022-05-05
@@ -200,6 +18,9 @@ transactions:
     price: 238.04
     quantity: 8
     currency: USD
+    sector: Consumer and Healthcare
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2022-05-05
@@ -207,6 +28,9 @@ transactions:
     price: 358.41
     quantity: 5
     currency: USD
+    sector: Financials
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2022-05-05
@@ -214,6 +38,9 @@ transactions:
     price: 34.66
     quantity: 56
     currency: USD
+    sector: Industrials
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2023-04-27
@@ -221,6 +48,9 @@ transactions:
     price: 97.83
     quantity: 155
     currency: USD
+    sector: ETF Fixed Income
+    geography: US
+    asset_class: ETF Fixed Income
 
   - type: Buy
     date: 2023-04-27
@@ -228,6 +58,9 @@ transactions:
     price: 6.68
     quantity: 225
     currency: CAD
+    sector: Materials
+    geography: CAN
+    asset_class: Equity
 
   - type: Buy
     date: 2023-04-27
@@ -235,6 +68,9 @@ transactions:
     price: 31.26
     quantity: 630
     currency: CAD
+    sector: ETF Equity
+    geography: CAN
+    asset_class: ETF Equity
 
   - type: Buy
     date: 2023-04-27
@@ -242,6 +78,9 @@ transactions:
     price: 28.15
     quantity: 741
     currency: CAD
+    sector: ETF Fixed Income
+    geography: CAN
+    asset_class: ETF Fixed Income
 
   - type: Buy
     date: 2023-04-27
@@ -249,6 +88,9 @@ transactions:
     price: 126.00
     quantity: 20
     currency: CAD
+    sector: Consumer and Healthcare
+    geography: CAN
+    asset_class: Equity
 
   - type: Buy
     date: 2023-04-27
@@ -256,6 +98,9 @@ transactions:
     price: 406.81
     quantity: 35
     currency: USD
+    sector: ETF Equity
+    geography: US
+    asset_class: ETF Equity
 
   - type: Buy
     date: 2023-04-27
@@ -263,6 +108,9 @@ transactions:
     price: 62.36
     quantity: 30
     currency: USD
+    sector: Financials
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2023-04-27
@@ -270,6 +118,9 @@ transactions:
     price: 165.39
     quantity: 4
     currency: USD
+    sector: Technology, Media, Telecom
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2023-04-27
@@ -277,6 +128,9 @@ transactions:
     price: 76.42
     quantity: 25
     currency: USD
+    sector: Industrials
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2023-12-27
@@ -284,6 +138,9 @@ transactions:
     price: 47.20
     quantity: 45
     currency: USD
+    sector: Financials
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2023-12-27
@@ -291,6 +148,9 @@ transactions:
     price: 189.04
     quantity: 5
     currency: USD
+    sector: Technology, Media, Telecom
+    geography: US
+    asset_class: Equity
 
   - type: Sell
     date: 2023-12-27
@@ -298,6 +158,9 @@ transactions:
     price: 475.16
     quantity: 10
     currency: USD
+    sector: ETF Equity
+    geography: US
+    asset_class: ETF Equity
 
   - type: Buy
     date: 2023-12-27
@@ -305,6 +168,9 @@ transactions:
     price: 20.29
     quantity: 101
     currency: USD
+    sector: Industrials
+    geography: US
+    asset_class: Equity
 
   - type: Sell
     date: 2023-12-27
@@ -312,6 +178,9 @@ transactions:
     price: 98.97
     quantity: 59
     currency: USD
+    sector: ETF Fixed Income
+    geography: US
+    asset_class: ETF Fixed Income
 
   - type: Buy
     date: 2023-12-27
@@ -319,6 +188,9 @@ transactions:
     price: 29.73
     quantity: 320
     currency: USD
+    sector: ETF Fixed Income
+    geography: US
+    asset_class: ETF Fixed Income
 
   - type: Buy
     date: 2023-12-28
@@ -326,6 +198,9 @@ transactions:
     price: 112.40
     quantity: 23
     currency: CAD
+    sector: Natural Resources
+    geography: CAN
+    asset_class: Equity
 
   - type: Sell
     date: 2023-12-28
@@ -333,6 +208,9 @@ transactions:
     price: 31.90
     quantity: 111
     currency: CAD
+    sector: Equity
+    geography: CAN
+    asset_class: Equity
 
   - type: Buy
     date: 2023-12-28
@@ -340,6 +218,9 @@ transactions:
     price: 11.60
     quantity: 107
     currency: CAD
+    sector: Consumer and Healthcare
+    geography: CAN
+    asset_class: Equity
 
   - type: Sell
     date: 2024-12-23
@@ -347,6 +228,9 @@ transactions:
     price: 28.36
     quantity: 557
     currency: CAD
+    sector: ETF Fixed Income
+    geography: CAN
+    asset_class: ETF Fixed Income
 
   - type: Sell
     date: 2024-12-23
@@ -354,6 +238,9 @@ transactions:
     price: 37.43
     quantity: 519
     currency: CAD
+    sector: Equity
+    geography: CAN
+    asset_class: Equity
 
   - type: Buy
     date: 2024-12-23
@@ -361,6 +248,9 @@ transactions:
     price: 47.22
     quantity: 122
     currency: CAD
+    sector: Industrials
+    geography: CAN
+    asset_class: Equity
 
   - type: Buy
     date: 2024-12-23
@@ -368,6 +258,9 @@ transactions:
     price: 50.37
     quantity: 51
     currency: USD
+    sector: Financials
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2024-12-23
@@ -375,6 +268,9 @@ transactions:
     price: 33.59
     quantity: 60
     currency: USD
+    sector: Industrials
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2024-12-23
@@ -382,6 +278,9 @@ transactions:
     price: 95.05
     quantity: 21
     currency: USD
+    sector: Financials
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2024-12-23
@@ -389,6 +288,9 @@ transactions:
     price: 39.58
     quantity: 61
     currency: USD
+    sector: Consumer and Healthcare
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2024-12-23
@@ -396,6 +298,9 @@ transactions:
     price: 220.52
     quantity: 4
     currency: USD
+    sector: Technology, Media, Telecom
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2024-12-23
@@ -403,6 +308,9 @@ transactions:
     price: 15.87
     quantity: 245
     currency: USD
+    sector: Natural Resources
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2024-12-23
@@ -410,6 +318,9 @@ transactions:
     price: 13.81
     quantity: 108
     currency: USD
+    sector: Consumer and Healthcare
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2024-12-23
@@ -417,6 +328,9 @@ transactions:
     price: 164.05
     quantity: 19
     currency: USD
+    sector: Technology, Media, Telecom
+    geography: US
+    asset_class: Equity
 
   - type: Sell
     date: 2025-03-25
@@ -424,6 +338,9 @@ transactions:
     price: 98.46
     quantity: 96
     currency: USD
+    sector: ETF Fixed Income
+    geography: US
+    asset_class: ETF Fixed Income
 
   - type: Sell
     date: 2025-03-25
@@ -431,6 +348,9 @@ transactions:
     price: 574.1601
     quantity: 25
     currency: USD
+    sector: ETF Equity
+    geography: US
+    asset_class: Equity
 
   - type: Sell
     date: 2025-03-25
@@ -438,6 +358,9 @@ transactions:
     price: 30.0402
     quantity: 320
     currency: USD
+    sector: ETF Fixed Income
+    geography: US
+    asset_class: ETF Fixed Income
 
   - type: Buy
     date: 2025-03-25
@@ -445,6 +368,9 @@ transactions:
     price: 89.8399
     quantity: 225
     currency: USD
+    sector: ETF Fixed Income
+    geography: US
+    asset_class: ETF Fixed Income
 
   - type: Buy
     date: 2025-03-25
@@ -452,6 +378,9 @@ transactions:
     price: 26.6199
     quantity: 256
     currency: USD
+    sector: ETF Fixed Income
+    geography: US
+    asset_class: ETF Fixed Income
 
   - type: Sell
     date: 2025-06-16
@@ -459,6 +388,9 @@ transactions:
     price: 196.2
     quantity: 4
     currency: USD
+    sector: Technology, Media, Telecom
+    geography: US
+    asset_class: Equity
 
   - type: Sell
     date: 2025-06-16
@@ -466,6 +398,9 @@ transactions:
     price: 41.022
     quantity: 61
     currency: USD
+    sector: Consumer and Healthcare
+    geography: US
+    asset_class: Equity
 
   - type: Sell
     date: 2025-06-16
@@ -473,6 +408,9 @@ transactions:
     price: 13.07
     quantity: 225
     currency: CAD
+    sector: Natural Resources
+    geography: CAN
+    asset_class: Equity
 
   - type: Sell
     date: 2025-06-16
@@ -480,6 +418,9 @@ transactions:
     price: 14.12
     quantity: 108
     currency: USD
+    sector: Consumer and Healthcare
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2025-06-17
@@ -487,6 +428,9 @@ transactions:
     price: 177.18
     quantity: 29
     currency: USD
+    sector: Technology, Media, Telecom
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2025-06-17
@@ -494,6 +438,9 @@ transactions:
     price: 2415
     quantity: 2
     currency: CAD
+    sector: Financials
+    geography: CAN
+    asset_class: Equity
 
   - type: Sell
     date: 2025-07-14
@@ -501,6 +448,9 @@ transactions:
     price: 47.05
     quantity: 245
     currency: USD
+    sector: Natural Resources
+    geography: US
+    asset_class: Equity
 
   - type: Sell
     date: 2025-07-14
@@ -508,6 +458,9 @@ transactions:
     price: 555.31
     quantity: 5
     currency: USD
+    sector: Financials
+    geography: US
+    asset_class: Equity
 
   - type: Sell
     date: 2025-07-14
@@ -515,6 +468,9 @@ transactions:
     price: 58.06
     quantity: 51
     currency: USD
+    sector: Financials
+    geography: US
+    asset_class: Equity
 
   - type: Sell
     date: 2025-07-14
@@ -522,6 +478,9 @@ transactions:
     price: 149.47
     quantity: 16
     currency: USD
+    sector: Technology, Media, Telecom
+    geography: US
+    asset_class: Equity
 
   - type: Buy
     date: 2025-07-14
@@ -529,6 +488,9 @@ transactions:
     price: 180.31
     quantity: 33
     currency: CAD
+    sector: Financials
+    geography: CAN
+    asset_class: Equity
 
   - type: Sell
     date: 2025-09-09
@@ -536,7 +498,10 @@ transactions:
     price: 89.11
     quantity: 225
     currency: USD
-  
+    sector: ETF Fixed Income
+    geography: US
+    asset_class: ETF Fixed Income
+
   # Conversion rate must be rate for 'from' currency to 'to' currency
   # Currently only USD<->CAD is supported
   # Conversions must be made on valid trading dates
@@ -553,6 +518,9 @@ transactions:
     price: 77.7999
     quantity: 70
     currency: USD
+    sector: Absolute Return
+    geography: US
+    asset_class: Gold
 
   - type: Buy
     date: 2025-10-15
@@ -560,10 +528,16 @@ transactions:
     price: 12.48
     quantity: 160
     currency: USD
-  
+    sector: Absolute Return
+    geography: US
+    asset_class: Equity
+
   - type: Buy
     date: 2025-10-15
     ticker: CGY.TO
     price: 52.89
     quantity: 60
     currency: CAD
+    sector: Industrials
+    geography: CAN
+    asset_class: Equity

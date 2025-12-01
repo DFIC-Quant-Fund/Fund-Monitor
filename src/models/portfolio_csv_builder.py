@@ -1,12 +1,19 @@
 import os
 import sys
+from typing import Dict
 import pandas as pd
 import yfinance as yf
 from datetime import timedelta
 import math
 
-# Add project root to Python path for imports
+# Ensure project root on path for absolute imports when run as a script
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+# Robust import that works both as a module and when run directly
+try:
+    from src.models.security import Security
+except ImportError:
+    from models.security import Security
 
 # Import logging - works both as module and standalone script
 try:
@@ -73,10 +80,12 @@ class Portfolio:
         self.dividend_per_share = None
         self.dividend_income = None
 
+        self.securities: Dict[str, Security] = {} # dictionary of ticker -> Security objects
+
         # Currency-classified data structures (populated by private helper)
-        self.cad_tickers = []
-        self.usd_tickers = []
-        self.ticker_currency = {}
+        self.cad_tickers = set()
+        self.usd_tickers = set()
+        self.ticker_currency_map = {}
         self.holdings_cad = None
         self.holdings_usd = None
 
@@ -86,7 +95,7 @@ class Portfolio:
         # call valid dates function to get dates that both TSX and American exchanges open 
         self.get_valid_dates()
         # all tickers invested in from trades csv 
-        self.load_trades()
+        self._load_trades()
         self.load_conversions()
 
     def cleanup_existing_csv_files(self):
@@ -131,26 +140,25 @@ class Portfolio:
 
         pd.DataFrame(self.exchange_rates).to_csv(os.path.join(self.output_folder, exchange_rates_file), index_label='Date')
 
-    def load_trades(self):
+    def _load_trades(self):
         self.trades = pd.read_csv(os.path.join(self.input_folder, trades_file))
         self.trades['Date'] = pd.to_datetime(self.trades['Date'])
         self.trades.set_index('Date', inplace=True)
         self.tickers = sorted(self.trades['Ticker'].unique())
 
-        # Build and cache ticker -> currency map and precompute CAD/USD lists
-        self.ticker_currency = {}
-        cad_tickers = []
-        usd_tickers = []
-        for ticker in self.tickers:
-            currency = yf.Ticker(ticker).info.get('currency', 'CAD')
-
-            self.ticker_currency[ticker] = currency
-            if currency == 'USD':
-                usd_tickers.append(ticker)
+        for _, row in self.trades.iterrows():
+            self.securities[row['Ticker']] = Security(
+                ticker=row['Ticker'],
+                sector=row['Sector'],
+                geography=row['Geography'],
+                currency=row['Currency'],
+                asset_class=row['Asset_Class']
+            )
+            self.ticker_currency_map[row['Ticker']] = row['Currency']
+            if row['Currency'] == 'USD':
+                self.usd_tickers.add(row['Ticker'])
             else:
-                cad_tickers.append(ticker)
-        self.cad_tickers = cad_tickers
-        self.usd_tickers = usd_tickers
+                self.cad_tickers.add(row['Ticker'])
 
     def load_conversions(self):
         conversions_path = os.path.join(self.input_folder, 'conversions.csv')
@@ -220,7 +228,7 @@ class Portfolio:
         Returns:
             Value in CAD
         """
-        currency = self.ticker_currency.get(ticker, 'CAD')
+        currency = self.ticker_currency_map.get(ticker)
         value = quantity * price
         
         # Get exchange rate for the date
@@ -430,7 +438,7 @@ class Portfolio:
                 if pd.isna(price) or price == 0:
                     continue
                 
-                currency = self.ticker_currency.get(ticker, 'CAD')
+                currency = self.ticker_currency_map.get(ticker, 'CAD')
                 
                 # Calculate target value in CAD
                 target_value_cad = portfolio_value_cad * target_weight
@@ -539,8 +547,7 @@ class Portfolio:
                         )
 
             if date in self.trades.index:
-                logger.debug(f"Trades on {date}")
-                logger.debug(f"{self.trades.loc[date]}")
+                logger.debug(f"Processing trades on {date}")
 
                 rows_for_date = self.trades.loc[date]
 
@@ -553,13 +560,18 @@ class Portfolio:
                     ticker = row['Ticker']
                     self.holdings.at[date, ticker] = self.holdings.loc[date, ticker] + quantity
 
+                    if self.holdings.loc[date, ticker] == 0.0:
+                        self.securities[ticker].set_status('closed')
+                    else:
+                        self.securities[ticker].set_status('open')
+
         pd.DataFrame(self.holdings).to_csv(os.path.join(self.output_folder, holdings_file), index_label='Date')
 
     def create_table_cash(self):
         # TODO: Make this currency cache a class variable potentially
-        ticker_currency = {}
+        ticker_currency_map = {}
         for ticker in self.tickers:
-            ticker_currency[ticker] = yf.Ticker(ticker).info.get('currency')
+            ticker_currency_map[ticker] = yf.Ticker(ticker).info.get('currency')
 
         self.cash = pd.DataFrame(index=self.valid_dates)
         self.cash['CAD_Cash'] = 0.0
@@ -678,7 +690,7 @@ class Portfolio:
                     dividend_amount = self.dividend_income.at[date, ticker] if ticker in self.dividend_income.columns else 0.0
                     if pd.isna(dividend_amount) or dividend_amount == 0.0:
                         continue
-                    currency = ticker_currency.get(ticker, 'CAD')
+                    currency = ticker_currency_map.get(ticker, 'CAD')
                     logger.debug(f"Dividend: {ticker} - ${dividend_amount:.2f} {currency}")
                     # Add dividend to appropriate currency balance
                     if currency == 'CAD':
@@ -763,10 +775,6 @@ class Portfolio:
         # Convert to CAD directly using exchange rates
         market_values = pd.DataFrame(index=self.valid_dates)
         for ticker in self.tickers:
-            # try:
-            #     currency = yf.Ticker(ticker).info['currency']
-            # except (KeyError, AttributeError, Exception):
-            #     currency = 'CAD'
             market_values[ticker] = prices[ticker] * holdings[ticker]
 
         self.market_values = market_values
@@ -860,9 +868,7 @@ class Portfolio:
         result = result.sort_values('market_value', ascending=False)
 
         # Add currency per ticker using existing map (fallback to CAD)
-        # Ensure ticker_currency is populated
-        self._ensure_ticker_currency_map()
-        result['currency'] = result['ticker'].map(lambda t: self.ticker_currency.get(t))
+        result['currency'] = result['ticker'].map(lambda t: self.ticker_currency_map.get(t))
 
         # Compute CAD market value and precomputed weight using portfolio_total.csv latest Total_Holdings_CAD
         latest_usd_rate = float(self.exchange_rates['USD'].dropna().iloc[-1])
@@ -896,6 +902,13 @@ class Portfolio:
         else:
             result['dividends_to_date'] = 0.0
 
+        # Add sector, geography, asset_class, and status per ticker from Security instances
+        for security in self.securities.values():
+            result.loc[result['ticker'] == security.get_ticker(), 'sector'] = security.get_sector()
+            result.loc[result['ticker'] == security.get_ticker(), 'geography'] = security.get_geography()
+            result.loc[result['ticker'] == security.get_ticker(), 'asset_class'] = security.get_asset_class()
+            result.loc[result['ticker'] == security.get_ticker(), 'status'] = security.get_status()
+
         # Persist
         result.to_csv(os.path.join(self.output_folder, holdings_summary_file), index=False)
 
@@ -904,7 +917,7 @@ class Portfolio:
         Build CAD- and USD-only holdings DataFrames using precomputed ticker lists.
 
         Relies on:
-        - self.cad_tickers / self.usd_tickers (populated in load_trades)
+        - self.cad_tickers / self.usd_tickers (populated in _load_trades)
         - self.holdings (constructed in create_table_holdings)
 
         Produces:
@@ -914,8 +927,10 @@ class Portfolio:
         usd_tickers = self.usd_tickers or []
 
         if self.holdings is not None and not self.holdings.empty:
-            self.holdings_cad = self.holdings[cad_tickers] if len(cad_tickers) > 0 else pd.DataFrame(index=self.valid_dates)
-            self.holdings_usd = self.holdings[usd_tickers] if len(usd_tickers) > 0 else pd.DataFrame(index=self.valid_dates)
+            cad_cols = list(cad_tickers) if len(cad_tickers) > 0 else []
+            usd_cols = list(usd_tickers) if len(usd_tickers) > 0 else []
+            self.holdings_cad = self.holdings[cad_cols] if len(cad_cols) > 0 else pd.DataFrame(index=self.valid_dates)
+            self.holdings_usd = self.holdings[usd_cols] if len(usd_cols) > 0 else pd.DataFrame(index=self.valid_dates)
         else:
             self.holdings_cad = pd.DataFrame(index=self.valid_dates)
             self.holdings_usd = pd.DataFrame(index=self.valid_dates)
@@ -924,15 +939,15 @@ class Portfolio:
         """
         Build a cached map of ticker -> currency using yfinance.
         """
-        if self.ticker_currency and all(t in self.ticker_currency for t in (self.tickers or [])):
+        if self.ticker_currency_map and all(t in self.ticker_currency_map for t in (self.tickers or [])):
             return
-        ticker_currency = {}
+        ticker_currency_map = {}
         for ticker in (self.tickers or []):
             try:
-                ticker_currency[ticker] = yf.Ticker(ticker).info.get('currency', 'CAD')
+                ticker_currency_map[ticker] = yf.Ticker(ticker).info.get('currency', 'CAD')
             except Exception:
-                ticker_currency[ticker] = 'CAD'
-        self.ticker_currency = ticker_currency
+                ticker_currency_map[ticker] = 'CAD'
+        self.ticker_currency_map = ticker_currency_map
 
     def create_table_dividend_per_share(self):
         self.dividend_per_share = pd.DataFrame(index=self.valid_dates)
@@ -958,17 +973,19 @@ class Portfolio:
     def create_table_portfolio_total(self):
         self.portfolio_total = pd.DataFrame(index=self.valid_dates)
 
-        # Ensure currency map (CAD vs USD tickers)
-        self._ensure_ticker_currency_map()
-        cad_tickers = [t for t in (self.tickers or []) if self.ticker_currency.get(t, 'CAD') != 'USD']
-        usd_tickers = [t for t in (self.tickers or []) if self.ticker_currency.get(t, 'CAD') == 'USD']
+        # # Ensure currency map (CAD vs USD tickers)
+        # self._ensure_ticker_currency_map()
+        # cad_tickers = [t for t in (self.tickers or []) if self.ticker_currency_map.get(t, 'CAD') != 'USD']
+        # usd_tickers = [t for t in (self.tickers or []) if self.ticker_currency_map.get(t, 'CAD') == 'USD']
 
         # Totals by currency (native units)
-        cad_holdings_mv = self.market_values[cad_tickers].sum(axis=1) if len(cad_tickers) > 0 else pd.Series(0.0, index=self.valid_dates)
-        usd_holdings_mv = self.market_values[usd_tickers].sum(axis=1) if len(usd_tickers) > 0 else pd.Series(0.0, index=self.valid_dates)
+        cad_cols = list(self.cad_tickers) if len(self.cad_tickers) > 0 else []
+        usd_cols = list(self.usd_tickers) if len(self.usd_tickers) > 0 else []
+        cad_holdings_mv = self.market_values[cad_cols].sum(axis=1) if len(cad_cols) > 0 else pd.Series(0.0, index=self.valid_dates)
+        usd_holdings_mv = self.market_values[usd_cols].sum(axis=1) if len(usd_cols) > 0 else pd.Series(0.0, index=self.valid_dates)
 
         # Use the most recent USD→CAD exchange rate for all conversions
-        latest_usd_rate = float(self.exchange_rates['USD'].dropna().iloc[-1]) if self.exchange_rates is not None else 1.0
+        latest_usd_rate = float(self.exchange_rates['USD'].dropna().iloc[-1])
 
         # Cash breakdown
         cad_cash = self.cash['CAD_Cash']
@@ -1053,7 +1070,7 @@ if __name__ == '__main__':
 
     # load functions after intial set up - fills all output CSVs 
     portfolio.create_table_exchange_rates()
-    portfolio.load_trades()
+    portfolio._load_trades()
 
     portfolio.create_table_prices()
     portfolio.create_table_daily_holdings()
