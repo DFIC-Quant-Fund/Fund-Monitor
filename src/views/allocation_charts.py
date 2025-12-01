@@ -31,7 +31,6 @@ def render_allocation_charts(portfolio_name: str):
     # Get totals from the last row of portfolio_total.csv (authoritative source)
     latest_total_row = total_df.iloc[-1]
     total_portfolio_value = float(latest_total_row['Total_Portfolio_Value']) # this includes dividends
-    total_portfolio_value_no_dividends = float(latest_total_row['Total_Holdings_CAD'])
     total_cash_cad = float(latest_total_row['Total_Cash_CAD'])
 
     if total_portfolio_value == 0:
