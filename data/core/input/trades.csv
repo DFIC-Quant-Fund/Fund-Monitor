@@ -52,3 +52,4 @@ Date,Ticker,Currency,Quantity,Price,Sector,Geography,Asset_Class,Status
 2025-10-15,CGY.TO,CAD,60.0,52.89,Industrials,CAN,Equity,
 2025-10-15,IAU,USD,70.0,77.7999,Absolute Return,US,Gold,
 2025-10-15,LUNR,USD,160.0,12.48,Absolute Return,US,Equity,
+2025-11-25,BIL,USD,310.0,91.6699,ETF Fixed Income,US,ETF Fixed Income,
