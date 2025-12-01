@@ -541,3 +541,13 @@ transactions:
     sector: Industrials
     geography: CAN
     asset_class: Equity
+
+  - type: Buy
+    date: 2025-11-25
+    ticker: BIL
+    price: 91.6699
+    quantity: 310
+    currency: USD
+    sector: ETF Fixed Income
+    geography: US
+    asset_class: ETF Fixed Income
