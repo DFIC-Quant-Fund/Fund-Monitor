@@ -168,7 +168,7 @@ class PortfolioDashboard:
                 'price': 'Price',
                 'market_value': 'Market Value',
                 'weight_percent': 'Weight %',
-                'sector': 'Sector',
+                'sector': 'sector',
                 'geography': 'Geography'
             })
             
