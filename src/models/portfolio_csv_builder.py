@@ -806,208 +806,162 @@ class Portfolio:
 
     def create_table_holdings(self):
         """
-        Build per-ticker holdings summary with robust ledger-based accounting.
-        Tracks accurate Cost Basis (ACB), Realized PnL, and Total Returns Since Inception
-        in CAD, accounting for currency fluctuations at the time of each transaction.
-        Includes all tickers ever traded (open and closed).
+        Builds a holdings summary where all financial metrics are reported in 
+        the ticker's NATIVE currency (USD or CAD).
+        
+        Aggregate calculations (Holding Weight) use a normalized CAD value 
+        using the LATEST exchange rate to ensure accurate proportions.
         """
         if self.prices is None or self.prices.empty:
-            raise ValueError("Prices are not computed. Call create_table_prices() first.")
+            raise ValueError("Prices are not computed.")
 
-        # Initialize Ledger for all tickers ever traded
-        ledger = {
+        # 1. Initialize State Tracking (All in Native Currency)
+        positions = {
             ticker: {
-                'quantity_held': 0.0,
-                'acb_cad': 0.0,         # Adjusted Cost Base in CAD (remaining book value)
-                'acb_native': 0.0,      # Adjusted Cost Base in Native Currency
-                'realized_pnl_cad': 0.0,
-                'total_invested_cad': 0.0, # Gross cost of all buys (CAD)
-                'total_dividends_cad': 0.0,
-                'total_dividends_native': 0.0
+                'qty': 0.0,
+                'book_value': 0.0,       # Total Cost Basis (Native)
+                'realized_pnl': 0.0,     # Realized Gains/Losses (Native)
+                'total_dividends': 0.0,  # Dividends Collected (Native)
+                'cost_of_closed': 0.0    # Accumulates cost of shares sold (for ROI calc)
             } for ticker in self.tickers
         }
 
-        # --- 1. Process Trades (Chronological) ---
+        # 2. Process Trades (Chronological) - No FX needed here!
         if self.trades is not None and not self.trades.empty:
-            sorted_trades = self.trades.sort_index() # Sort by Date
-            
+            sorted_trades = self.trades.sort_index()
+
             for date, row in sorted_trades.iterrows():
                 ticker = row['Ticker']
-                quantity = row['Quantity'] # Positive for Buy, Negative for Sell
-                price = row['Price']
-                currency = row['Currency']
+                quantity = row['Quantity'] # + for Buy, - for Sell
+                price = row['Price']       # Native Price
                 
-                # Get Exchange Rate for this trade date
-                fx_rate = 1.0
-                if currency == 'USD':
-                    if date in self.exchange_rates.index:
-                        fx_rate = float(self.exchange_rates.loc[date, 'USD'])
-                    else:
-                        try:
-                            idx = self.exchange_rates.index.get_indexer([date], method='pad')[0]
-                            if idx == -1:
-                                raise ValueError(f"No exchange rate found on or before {date}")
-                            fx_rate = float(self.exchange_rates.iloc[idx]['USD'])
-                        except Exception as e:
-                            raise ValueError(f"Failed to find exchange rate for {date}: {e}")
-                
-                trade_val_native = abs(quantity) * price
-                trade_val_cad = trade_val_native * fx_rate
+                # Transaction Value (Native)
+                trade_val = abs(quantity) * price
                 
                 if quantity > 0: # BUY
-                    ledger[ticker]['quantity_held'] += quantity
-                    ledger[ticker]['acb_cad'] += trade_val_cad
-                    ledger[ticker]['acb_native'] += trade_val_native
-                    ledger[ticker]['total_invested_cad'] += trade_val_cad
+                    positions[ticker]['qty'] += quantity
+                    positions[ticker]['book_value'] += trade_val
                     
                 elif quantity < 0: # SELL
                     qty_sold = abs(quantity)
-                    qty_held_before = ledger[ticker]['quantity_held']
+                    qty_held_before = positions[ticker]['qty']
                     
+                    # Prevent divide by zero / Short sell logic gap
                     if qty_held_before > 0:
-                        # Average Cost Rule: Reduce ACB proportionally
                         fraction_sold = qty_sold / qty_held_before
-                        cost_of_shares_sold_cad = ledger[ticker]['acb_cad'] * fraction_sold
                         
-                        proceeds_cad = trade_val_cad # Already calculated as abs(qty) * price * fx
+                        # 1. Calculate Cost Basis of the specific chunk being sold
+                        cost_chunk = positions[ticker]['book_value'] * fraction_sold
                         
-                        # Realized PnL = Proceeds - Cost Basis of those shares
-                        pnl_on_sale = proceeds_cad - cost_of_shares_sold_cad
+                        # 2. Calculate PnL (Proceeds - Cost)
+                        proceeds = trade_val
+                        pnl = proceeds - cost_chunk
                         
-                        ledger[ticker]['realized_pnl_cad'] += pnl_on_sale
-                        ledger[ticker]['acb_cad'] -= cost_of_shares_sold_cad
-                        ledger[ticker]['acb_native'] -= (ledger[ticker]['acb_native'] * fraction_sold)
-                        ledger[ticker]['quantity_held'] -= qty_sold
-                    else:
-                        logger.warning(f"Sell transaction for {ticker} on {date} with no shares held.")
+                        # 3. Update Ledger
+                        positions[ticker]['realized_pnl'] += pnl
+                        positions[ticker]['book_value'] -= cost_chunk
+                        positions[ticker]['qty'] -= qty_sold
+                        
+                        # 4. Track capital for Closed ROI
+                        # If we sold, we add the cost basis of those shares to the "closed bucket"
+                        positions[ticker]['cost_of_closed'] += cost_chunk
 
-        # --- 2. Process Dividends ---
+        # 3. Process Dividends - No FX needed here!
         if self.dividend_income is not None and not self.dividend_income.empty:
             for date, row in self.dividend_income.iterrows():
-                # Get FX rate for dividend date
-                fx_rate = 1.0
-                latest_usd_rate_date = 1.0
-                
-                if date in self.exchange_rates.index:
-                    latest_usd_rate_date = float(self.exchange_rates.loc[date, 'USD'])
-                else:
-                    try:
-                        idx = self.exchange_rates.index.get_indexer([date], method='pad')[0]
-                        if idx == -1:
-                            raise ValueError(f"No exchange rate found on or before {date}")
-                        latest_usd_rate_date = float(self.exchange_rates.iloc[idx]['USD'])
-                    except Exception as e:
-                        raise ValueError(f"Failed to find exchange rate for {date}: {e}")
-
                 for ticker, div_amount in row.items():
-                    if div_amount > 0:
-                        currency = self.ticker_currency_map[ticker]
-                        div_val_cad = div_amount
-                        if currency == 'USD':
-                             div_val_cad = div_amount * latest_usd_rate_date
-                        
-                        if ticker in ledger:
-                            ledger[ticker]['total_dividends_cad'] += div_val_cad
-                            ledger[ticker]['total_dividends_native'] += div_amount
+                    if div_amount > 0 and ticker in positions:
+                        # Assumes dividend is paid in native currency (Standard behavior)
+                        positions[ticker]['total_dividends'] += div_amount
 
-        # --- 3. Build Final DataFrame ---
+        # 4. Build Final DataFrame
         latest_date = self.valid_dates[-1]
         latest_prices = self.prices.loc[latest_date]
-        latest_usd_rate = float(self.exchange_rates['USD'].dropna().iloc[-1])
+        
+        # We only need the FX rate NOW for the weighting calculation
+        # Get latest USD to CAD rate
+        latest_fx_usd_cad = float(self.exchange_rates['USD'].dropna().iloc[-1])
 
         results = []
-        for ticker, data in ledger.items():
-            qty = data['quantity_held']
+        
+        for ticker, data in positions.items():
+            qty = data['qty']
             
-            # Current Market Values
-            current_price = float(latest_prices.get(ticker, 0.0))
-            mkt_val_native = qty * current_price
-            
+            # Metadata
             currency = self.ticker_currency_map[ticker]
-            fx_now = latest_usd_rate if currency == 'USD' else 1.0
-            mkt_val_cad = mkt_val_native * fx_now
+            current_price = float(latest_prices[ticker])
             
-            # Unrealized PnL (CAD)
-            # Only relevant if we still hold shares. If qty is near zero, unrlz is 0.
-            if qty > 0.000001: 
-                unrealized_pnl_cad = mkt_val_cad - data['acb_cad']
-                avg_cost_native = data['acb_native'] / qty
+            # --- Native Metrics ---
+            market_val_native = qty * current_price
+            
+            # Average Price (Simple Average: Total Book / Total Shares)
+            avg_price = (data['book_value'] / qty) if qty > 0 else 0.0
+            
+            # Unrealized PnL (Market Value - Remaining Book Value)
+            if qty > 0.00001:
+                unrealized_pnl = market_val_native - data['book_value']
+                # Denominator for ROI is the current money tied up
+                roi_denominator = data['book_value']
             else:
-                unrealized_pnl_cad = 0.0
-                avg_cost_native = 0.0
-                qty = 0.0 # Clean up floating point dust
+                unrealized_pnl = 0.0
+                # Denominator for ROI is the money that WAS tied up
+                roi_denominator = data['cost_of_closed']
+                qty = 0.0 # Clean up dust
+                
+            total_return_native = data['realized_pnl'] + unrealized_pnl + data['total_dividends']
             
-            # Total Return (CAD) = Realized + Unrealized + Dividends
-            total_return_cad = data['realized_pnl_cad'] + unrealized_pnl_cad + data['total_dividends_cad']
-            
-            # Total Return % = Total Return $ / Total Invested Capital
-            # Guard against divide by zero
-            return_pct = (total_return_cad / data['total_invested_cad'] * 100.0) if data['total_invested_cad'] > 0 else 0.0
-            
-            # Basic PnL % (Unrealized only - for compatibility with existing views)
-            # This mimics the old 'pnl_percent' which was (Mkt - Book) / Book
-            simple_pnl_pct = (unrealized_pnl_cad / data['acb_cad']) if data['acb_cad'] > 0 else 0.0
+            # ROI % (Native Return / Native Investment)
+            # Math is identical regardless of currency
+            return_pct = (total_return_native / roi_denominator * 100.0) if roi_denominator > 0 else 0.0
 
-            # Get Metadata
+            # --- Aggregation Prep (Normalized to CAD) ---
+            # We calculate a hidden CAD market value solely for the weighting step
+            fx_multiplier = latest_fx_usd_cad if currency == 'USD' else 1.0
+            market_val_cad_calc = market_val_native * fx_multiplier
+            
             sec = self.securities.get(ticker)
-            sector = sec.get_sector() if sec else 'Unknown'
-            geography = sec.get_geography() if sec else 'Unknown'
-            asset_class = sec.get_asset_class() if sec else 'Unknown'
-            status = 'open' if qty > 0 else 'closed' # Update status dynamically based on ledger
 
             results.append({
                 'ticker': ticker,
                 'shares': qty,
-                'avg_purchase_price': avg_cost_native,
-                'current_price': current_price,
                 'currency': currency,
                 
-                # Native Values (Legacy/Display)
-                'market_value': mkt_val_native,
-                'book_value': data['acb_native'],
+                # REPORTING COLUMNS (Native)
+                'current_price': current_price,
+                'avg_price': avg_price,
+                'market_value': market_val_native,
+                'book_value': data['book_value'] if qty > 0 else 0.0, # Only show book value if open
+                'dividends': data['total_dividends'],
+                'realized_pnl': data['realized_pnl'],
+                'unrealized_pnl': unrealized_pnl,
+                'total_return': total_return_native,
+                'total_return_cad_normalized': total_return_native * latest_fx_usd_cad,
+                'total_return_pct': return_pct,
                 
-                # CAD Values (Core Accounting)
-                'market_value_cad': mkt_val_cad,
-                'book_value_cad': data['acb_cad'], # This is the specific cost basis of currently held shares
-                'realized_pnl_cad': data['realized_pnl_cad'],
-                'unrealized_pnl_cad': unrealized_pnl_cad,
-                'total_dividends_cad': data['total_dividends_cad'],
-                'total_invested_cad': data['total_invested_cad'], # Sum of all buys ever
-                'total_return_cad': total_return_cad,
-                'total_return_pct': return_pct * 100, # Legacy field name collision, let's use explicit
+                'mv_cad_normalized': market_val_cad_calc,
+                'invested_capital': roi_denominator,
+                'invested_capital_cad': roi_denominator * latest_fx_usd_cad,
                 
-                # Legacy Fields for Compatibility
-                'pnl': unrealized_pnl_cad, # Default 'pnl' usually means unrealized in simple views
-                'pnl_percent': simple_pnl_pct, 
-                'dividends_to_date': data['total_dividends_native'], # Native currency
-                
-                # Metadata
-                'sector': sector,
-                'geography': geography,
-                'asset_class': asset_class,
-                'status': status
+                # METADATA
+                'sector': sec.get_sector() if sec else 'Unknown',
+                'asset_class': sec.get_asset_class() if sec else 'Unknown',
+                'status': 'Open' if qty > 0 else 'Closed'
             })
 
         df = pd.DataFrame(results)
         
-        # Calculate 'holding_weight' based on Total Portfolio Value (Holdings portion)
-        # Load latest Total_Holdings_CAD from portfolio_total.csv
-        total_path = os.path.join(self.output_folder, portfolio_total_file)
-        denom_total = 1.0
-        if os.path.exists(total_path):
-             try:
-                totals_df = pd.read_csv(total_path)
-                if not totals_df.empty:
-                    denom_total = float(totals_df.iloc[-1]['Total_Holdings_CAD'])
-             except:
-                 pass
+        # 5. Calculate Weights (Using the Normalized CAD values)
+        # Total Portfolio Value in CAD
+        total_portfolio_cad = df['mv_cad_normalized'].sum()
         
-        df['holding_weight'] = df['market_value_cad'].apply(lambda x: (x / denom_total * 100.0) if denom_total > 0 else 0.0)
-
-        # Sort by Market Value (Descending)
-        df = df.sort_values('market_value_cad', ascending=False)
+        df['holding_weight'] = df['mv_cad_normalized'].apply(
+            lambda x: (x / total_portfolio_cad * 100.0) if total_portfolio_cad > 0 else 0.0
+        )
         
-        # Persist
+        # Sort by the implicit CAD value (Largest positions first)
+        # We have to re-calculate sort key or use the weight
+        df = df.sort_values('holding_weight', ascending=False)
+        
         df.to_csv(os.path.join(self.output_folder, holdings_summary_file), index=False)
 
     def _build_currency_holdings(self):
