@@ -37,6 +37,7 @@ class ReturnsCalculator:
             "one_day": self.date - timedelta(days=1),
             "one_week": self.date - timedelta(days=7),
             "one_month": self.date - timedelta(days=30),
+            "qtd": self.date.replace(month=self.date.month - ((self.date.month - 1) % 3), day=1),
             "ytd": pd.Timestamp(year=self.date.year, month=1, day=1),
             "one_year": self.date - timedelta(days=365),
             "inception": self.df['Date'].min()
