@@ -815,6 +815,26 @@ class Portfolio:
         if self.prices is None or self.prices.empty:
             raise ValueError("Prices are not computed.")
 
+        split_events = self._fetch_split_events()
+        
+        # Get latest date for split calculations
+        latest_date = self.valid_dates[-1]
+
+        # Helper to calculate cumulative split factor from a date to the end
+        def cumulative_split_factor(ticker, from_date, to_date):
+            events = split_events.get(ticker, {})
+            if not events:
+                return 1.0
+            factor = 1.0
+            for event_date, event_factor in events.items():
+                # Apply splits strictly after the date up to and including end date
+                if from_date < event_date <= to_date:
+                    try:
+                        factor *= float(event_factor)
+                    except Exception:
+                        continue
+            return factor
+
         # 1. Initialize State Tracking (All in Native Currency)
         positions = {
             ticker: {
@@ -826,16 +846,30 @@ class Portfolio:
             } for ticker in self.tickers
         }
 
-        # 2. Process Trades (Chronological) - No FX needed here!
+        # 2. Process Trades (Chronological)
+        # Apply split adjustments to trades so we process everything in "current share" equivalents
         if self.trades is not None and not self.trades.empty:
-            sorted_trades = self.trades.sort_index()
+            sorted_trades = self.trades.sort_index().copy()
+            
+            # Apply split adjustment to all trades (Buys and Sells)
+            # Quantity * Factor
+            # Price / Factor
+            # Value = Quantity * Price (Unchanged)
+            
+            sorted_trades['split_factor'] = sorted_trades.apply(
+                lambda r: cumulative_split_factor(r['Ticker'], r.name, latest_date), axis=1
+            )
+            
+            # Adjust Quantity and Price to be in "Today's Terms"
+            sorted_trades['Quantity'] = sorted_trades['Quantity'] * sorted_trades['split_factor']
+            sorted_trades['Price'] = sorted_trades['Price'] / sorted_trades['split_factor']
 
             for date, row in sorted_trades.iterrows():
                 ticker = row['Ticker']
                 quantity = row['Quantity'] # + for Buy, - for Sell
-                price = row['Price']       # Native Price
+                price = row['Price']       # Adjusted Price
                 
-                # Transaction Value (Native)
+                # Transaction Value (Native) - Should match original trade value
                 trade_val = abs(quantity) * price
                 
                 if quantity > 0: # BUY
