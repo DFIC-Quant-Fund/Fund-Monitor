@@ -29,7 +29,7 @@ class ColorFormatter(logging.Formatter):
 def setup_logging():
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
-    root_logger.setLevel(logging.DEBUG)
+    root_logger.setLevel(logging.INFO)
 
     console_handler = logging.StreamHandler(sys.stdout)
     console_formatter = ColorFormatter(

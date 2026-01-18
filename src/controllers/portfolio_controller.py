@@ -11,6 +11,7 @@ This controller handles all portfolio operations including:
 import os
 import sys
 import pandas as pd
+import yfinance as yf
 from datetime import datetime
 from typing import List, Dict, Any
 
@@ -24,11 +25,9 @@ from .market_comparison import MarketComparison
 from .benchmark import Benchmark
 from .data_service import DataService
 
-# Import config
-from src.config.securities_config import securities_config
-
 # Import logging
 from ..config.logging_config import get_logger
+from ..config.securities_config import securities_config
 
 # Set up logger for this module
 logger = get_logger(__name__)
@@ -64,7 +63,7 @@ class PortfolioController:
     def get_portfolio_summary(self, as_of_date: str = None) -> Dict[str, Any]:
         """Get portfolio summary data"""
         try:
-            holdings_df = self._data_service.get_holdings_data(as_of_date)
+            holdings_df = self._data_service.get_holdings_data()
             if holdings_df.empty:
                 raise ValueError(f"No holdings data found for portfolio {self.portfolio_name}. Please ensure the portfolio data has been built.")
         except Exception as e:
@@ -125,35 +124,65 @@ class PortfolioController:
     
     def get_holdings_data(self, as_of_date: str = None) -> pd.DataFrame:
         """Get holdings data as DataFrame"""
-        holdings_df = self._data_service.get_holdings_data(as_of_date)
+        holdings_df = self._data_service.get_holdings_data()
         portfolio_total_df = self._data_service.get_portfolio_total_data()
-
-        if holdings_df.empty:
-            return pd.DataFrame()
-        
-        # Add sector, fund, and geography information
-        holdings_df['sector'] = holdings_df['ticker'].apply(self._get_sector)
-        holdings_df['fund'] = holdings_df['ticker'].apply(self._get_fund)
-        holdings_df['geography'] = holdings_df['ticker'].apply(self._get_geography)
         
         # Calculate weights
-        total_value = float(portfolio_total_df['Total_Holdings_CAD'])
-        holdings_df['holdings_weight_percent'] = (holdings_df['market_value'] / total_value * 100) if total_value > 0 else 0
+        if portfolio_total_df.empty:
+            raise ValueError("portfolio_total.csv is empty or missing required data (Total_Holdings_CAD).")
+        # Use latest (or selected) Total_Holdings_CAD
+        if as_of_date is not None:
+            as_of_dt = pd.to_datetime(as_of_date)
+            row = portfolio_total_df.loc[portfolio_total_df['Date'] == as_of_dt]
+            if row.empty:
+                row = portfolio_total_df.sort_values('Date').iloc[[-1]]
+        else:
+            row = portfolio_total_df.sort_values('Date').iloc[[-1]]
+        total_value = float(row.iloc[0]['Total_Holdings_CAD'])
+
+        denom = total_value if total_value > 0 else 0.0
+        if denom > 0:
+            # Prefer CAD-based weighting if available
+            numer = holdings_df['market_value_cad'] if 'market_value_cad' in holdings_df.columns else holdings_df['market_value']
+            holdings_df['holdings_weight_percent'] = (numer / denom) * 100.0
+        else:
+            holdings_df['holdings_weight_percent'] = 0.0
         
         return holdings_df
     
-    def get_holdings_summary_data(self) -> pd.DataFrame:
-        """Get per-ticker holdings summary data as DataFrame"""
-        summary_df = self._data_service.get_holdings_summary()
-        if summary_df.empty:
-            return pd.DataFrame()
+    def get_allocation_data(self) -> pd.DataFrame:
+        """Get allocation data as DataFrame"""
+        df = self._data_service.get_allocation_data()
+        if df.empty:
+            logger.error("Allocation data is empty")
+            return df
         
-        # Add sector, fund, and geography information
-        summary_df['sector'] = summary_df['ticker'].apply(self._get_sector)
-        summary_df['fund'] = summary_df['ticker'].apply(self._get_fund)
-        summary_df['geography'] = summary_df['ticker'].apply(self._get_geography)
-                
-        return summary_df
+        # Need: ticker, sector, geography, currency, holding_weight, market_value
+        # Then need allocation chart for only equities (exclude cash, fixed income and gold)
+        # and another chart for cash and fixed income only
+        # Another chart for all holdings including cash, gold and fixed income
+
+        # Calculate per-ticker weights directly on df
+        sector_norm = df['sector'].astype(str).str.lower()
+        is_equity = (sector_norm != 'fixed income') & (sector_norm != 'absolute return')
+        is_fixed_income = (sector_norm == 'fixed income')
+
+        total_equity_mv = df.loc[is_equity, 'market_value_cad'].sum()
+        total_fi_mv = df.loc[is_fixed_income, 'market_value_cad'].sum()
+
+        df['equity_weight_percent'] = 0.0
+        df.loc[is_equity & (total_equity_mv > 0), 'equity_weight_percent'] = (
+            df.loc[is_equity, 'market_value_cad'] / total_equity_mv * 100.0
+        )
+
+        df['fi_weight_percent'] = 0.0
+        df.loc[is_fixed_income & (total_fi_mv > 0), 'fi_weight_percent'] = (
+            df.loc[is_fixed_income, 'market_value_cad'] / total_fi_mv * 100.0
+        )
+
+        return df
+
+
     
     def get_performance_metrics(self, date: str = None, risk_free_rate: float = 0.02) -> Dict[str, Any]:
         """Get comprehensive performance metrics"""
@@ -272,10 +301,73 @@ class PortfolioController:
         """Get cumulative return since inception as a percentage series (Date, Cumulative_Return_Pct)."""
         portfolio_total_df = self._data_service.get_portfolio_total_data()
         if portfolio_total_df.empty:
-            return pd.DataFrame(columns=['Date', 'Cumulative_Return_Pct'])
+            return pd.DataFrame(columns=['Date', 'Cumulative_Return_Pct', 'Benchmark_Cumulative_Return_Pct'])
         
         calc = ReturnsCalculator(portfolio_total_df)
-        return calc.cumulative_return_series()
+        portfolio_returns = calc.cumulative_return_series()
+        
+        # Get Benchmark Returns
+        try:
+            # Direct read from benchmark output
+            benchmark_path = os.path.join(self.data_directory, 'benchmark', 'output', 'portfolio_total.csv')
+            if os.path.exists(benchmark_path):
+                bench_df = pd.read_csv(benchmark_path)
+                if not bench_df.empty and 'Date' in bench_df.columns and 'Total_Portfolio_Value' in bench_df.columns:
+                    bench_df['Date'] = pd.to_datetime(bench_df['Date'])
+                    
+                    # Filter benchmark to match portfolio date range
+                    start_date = portfolio_returns['Date'].min()
+                    bench_df = bench_df[bench_df['Date'] >= start_date].copy()
+                    bench_df = bench_df.sort_values('Date')
+                    
+                    if not bench_df.empty:
+                        start_val = bench_df['Total_Portfolio_Value'].iloc[0]
+                        if start_val > 0:
+                            bench_df['Benchmark_Cumulative_Return_Pct'] = (bench_df['Total_Portfolio_Value'] / start_val - 1.0) * 100.0
+                            
+                            # Merge with portfolio returns
+                            portfolio_returns = pd.merge(
+                                portfolio_returns, 
+                                bench_df[['Date', 'Benchmark_Cumulative_Return_Pct']], 
+                                on='Date', 
+                                how='left'
+                            )
+        except Exception as e:
+            logger.warning(f"Could not load benchmark data: {e}")
+
+        # Get SPY Returns
+        try:
+            start_date = portfolio_returns['Date'].min()
+            end_date = portfolio_returns['Date'].max() + pd.Timedelta(days=1)
+            
+            # Download SPY data
+            spy_data = yf.Ticker('SPY').history(start=start_date, end=end_date)
+            
+            if not spy_data.empty:
+                # Reset index to get Date column and ensure timezone naive
+                spy_data = spy_data.reset_index()
+                spy_data['Date'] = pd.to_datetime(spy_data['Date']).dt.tz_localize(None)
+                spy_data = spy_data.sort_values('Date')
+                
+                # Filter to ensure we align with portfolio dates
+                spy_data = spy_data[spy_data['Date'] >= start_date]
+                
+                if not spy_data.empty:
+                    start_price = spy_data['Close'].iloc[0]
+                    if start_price > 0:
+                        spy_data['SPY_Cumulative_Return_Pct'] = (spy_data['Close'] / start_price - 1.0) * 100.0
+                        
+                        # Merge with portfolio returns
+                        portfolio_returns = pd.merge(
+                            portfolio_returns, 
+                            spy_data[['Date', 'SPY_Cumulative_Return_Pct']], 
+                            on='Date', 
+                            how='left'
+                        )
+        except Exception as e:
+            logger.warning(f"Could not load SPY data: {e}")
+            
+        return portfolio_returns
     
     def _get_sector(self, ticker: str) -> str:
         """Get sector for ticker from config or fallback mapping"""
@@ -362,7 +454,6 @@ class PortfolioController:
             }
             
             # Try to get additional regression statistics if available
-            # (You may want to add these methods to MarketComparison later)
             try:
                 # Calculate alpha from the 3-factor model
                 # This would require a full regression, which we can add later

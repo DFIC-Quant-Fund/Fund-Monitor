@@ -30,13 +30,14 @@ def render_period_returns(perf_data: Dict[str, Any]):
     with col2:
         if perf_data.get('one_month') is not None:
             st.metric("1 Month", f"{perf_data['one_month']:.2f}%")
+        if perf_data.get('qtd') is not None:
+            st.metric("QTD", f"{perf_data['qtd']:.2f}%")
+    with col3:
         if perf_data.get('ytd') is not None:
             st.metric("YTD", f"{perf_data['ytd']:.2f}%")
-    with col3:
         if perf_data.get('one_year') is not None:
-            st.metric("1 Year", f"{perf_data['one_year']:.2f}%")
-        if perf_data.get('inception') is not None:
-            st.metric("Inception", f"{perf_data['inception']:.2f}%")
+            st.metric("LTM", f"{perf_data['one_year']:.2f}%")
+        
     st.markdown("---")
 
 def render_risk_metrics(risk_data: Dict[str, Any]):
@@ -44,17 +45,17 @@ def render_risk_metrics(risk_data: Dict[str, Any]):
     col1, col2, col3 = st.columns(3)
     with col1:
         if 'daily_volatility' in risk_data:
-            st.metric("Daily Volatility", f"{risk_data['daily_volatility']:.4f}")
+            st.metric("Daily Volatility", f"{risk_data['daily_volatility']:.2%}")
         if 'annualized_volatility' in risk_data:
-            st.metric("Annualized Volatility", f"{risk_data['annualized_volatility']:.4f}")
+            st.metric("Annualized Volatility", f"{risk_data['annualized_volatility']:.2%}")
     with col2:
         if 'maximum_drawdown' in risk_data:
-            st.metric("Max Drawdown", f"{risk_data['maximum_drawdown']:.4f}")
+            st.metric("Max Drawdown", f"{risk_data['maximum_drawdown']:.2%}")
         if 'daily_downside_volatility' in risk_data:
-            st.metric("Downside Volatility", f"{risk_data['daily_downside_volatility']:.4f}")
+            st.metric("Downside Volatility", f"{risk_data['daily_downside_volatility']:.2%}")
     with col3:
         if 'annualized_downside_volatility' in risk_data:
-            st.metric("Annualized Downside Vol", f"{risk_data['annualized_downside_volatility']:.4f}")
+            st.metric("Annualized Downside Vol", f"{risk_data['annualized_downside_volatility']:.2%}")
     st.markdown("---")
 
 def render_risk_ratios(ratios_data: Dict[str, Any]):

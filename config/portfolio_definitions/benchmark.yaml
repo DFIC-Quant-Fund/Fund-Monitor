@@ -1,26 +1,6 @@
 portfolio:
   name: "benchmark"
 
-# [SECURITIES]
-securities:  
-  # Benchmark
-- ticker: XIU.TO
-  fund: Benchmark
-  sector: Fixed Income
-  geography: CAN
-- ticker: SPY
-  fund: Benchmark
-  sector: Equity
-  geography: US
-- ticker: AGG
-  fund: Benchmark
-  sector: Fixed Income
-  geography: US
-- ticker: XBB.TO
-  fund: Benchmark
-  sector: Fixed Income
-  geography: CAN
-
 # [CURRENCIES]
 currencies:
   - currency: USD
@@ -34,24 +14,39 @@ transactions:
 - type: Buy
   date: 2022-05-05
   ticker: XIU.TO
-  price: 28.92279434
-  quantity: 1054.30674
+  price: 31.780000686645508
+  quantity: 959.518471 # 30% of 101644.99 / price
   currency: CAD
+  sector: ETF Equity
+  geography: CAN
+  asset_class: ETF Equity
+
 - type: Buy
   date: 2022-05-05
   ticker: SPY
-  price: 397.25787354
-  quantity: 60.26439139
+  price: 414.4800109863281
+  quantity: 57.239937 # 30% of 101644.99 / (price * 1.2853000164031982)
   currency: USD
+  sector: ETF Equity
+  geography: US
+  asset_class: ETF Equity
+
 - type: Buy
   date: 2022-05-05
   ticker: AGG
-  price: 92.74882507
-  quantity: 172.0812466
+  price: 102.12999725341797
+  quantity: 154.866732 # 20% of 101644.99 / (price * 1.2853000164031982)
   currency: USD
+  sector: ETF Fixed Income
+  geography: US
+  asset_class: ETF Fixed Income
+
 - type: Buy
   date: 2022-05-05
   ticker: XBB.TO
-  price: 25.58189964
-  quantity: 794.663288
+  price: 28.100000381469727
+  quantity: 723.451886 # 20% of 101644.99 / price
   currency: CAD
+  sector: ETF Fixed Income
+  geography: CAN
+  asset_class: ETF Fixed Income

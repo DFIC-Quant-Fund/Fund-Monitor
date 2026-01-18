@@ -1,12 +1,19 @@
 import os
 import sys
+from typing import Dict
 import pandas as pd
 import yfinance as yf
 from datetime import timedelta
 import math
 
-# Add project root to Python path for imports
+# Ensure project root on path for absolute imports when run as a script
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+# Robust import that works both as a module and when run directly
+try:
+    from src.models.security import Security
+except ImportError:
+    from models.security import Security
 
 # Import logging - works both as module and standalone script
 try:
@@ -73,10 +80,12 @@ class Portfolio:
         self.dividend_per_share = None
         self.dividend_income = None
 
+        self.securities: Dict[str, Security] = {} # dictionary of ticker -> Security objects
+
         # Currency-classified data structures (populated by private helper)
-        self.cad_tickers = []
-        self.usd_tickers = []
-        self.ticker_currency = {}
+        self.cad_tickers = set()
+        self.usd_tickers = set()
+        self.ticker_currency_map = {}
         self.holdings_cad = None
         self.holdings_usd = None
 
@@ -86,7 +95,7 @@ class Portfolio:
         # call valid dates function to get dates that both TSX and American exchanges open 
         self.get_valid_dates()
         # all tickers invested in from trades csv 
-        self.load_trades()
+        self._load_trades()
         self.load_conversions()
 
     def cleanup_existing_csv_files(self):
@@ -131,26 +140,25 @@ class Portfolio:
 
         pd.DataFrame(self.exchange_rates).to_csv(os.path.join(self.output_folder, exchange_rates_file), index_label='Date')
 
-    def load_trades(self):
+    def _load_trades(self):
         self.trades = pd.read_csv(os.path.join(self.input_folder, trades_file))
         self.trades['Date'] = pd.to_datetime(self.trades['Date'])
         self.trades.set_index('Date', inplace=True)
         self.tickers = sorted(self.trades['Ticker'].unique())
 
-        # Build and cache ticker -> currency map and precompute CAD/USD lists
-        self.ticker_currency = {}
-        cad_tickers = []
-        usd_tickers = []
-        for ticker in self.tickers:
-            currency = yf.Ticker(ticker).info.get('currency', 'CAD')
-
-            self.ticker_currency[ticker] = currency
-            if currency == 'USD':
-                usd_tickers.append(ticker)
+        for _, row in self.trades.iterrows():
+            self.securities[row['Ticker']] = Security(
+                ticker=row['Ticker'],
+                sector=row['Sector'],
+                geography=row['Geography'],
+                currency=row['Currency'],
+                asset_class=row['Asset_Class']
+            )
+            self.ticker_currency_map[row['Ticker']] = row['Currency']
+            if row['Currency'] == 'USD':
+                self.usd_tickers.add(row['Ticker'])
             else:
-                cad_tickers.append(ticker)
-        self.cad_tickers = cad_tickers
-        self.usd_tickers = usd_tickers
+                self.cad_tickers.add(row['Ticker'])
 
     def load_conversions(self):
         conversions_path = os.path.join(self.input_folder, 'conversions.csv')
@@ -220,15 +228,28 @@ class Portfolio:
         Returns:
             Value in CAD
         """
-        currency = self.ticker_currency.get(ticker, 'CAD')
+        currency = self.ticker_currency_map.get(ticker)
         value = quantity * price
         
         # Get exchange rate for the date
         if date in self.exchange_rates.index:
             usd_rate = float(self.exchange_rates.loc[date, 'USD'])
         else:
-            # Fallback to latest available rate
-            usd_rate = float(self.exchange_rates['USD'].dropna().iloc[-1])
+             # Use the closest previous date (forward fill logic implies using asof)
+             # Since self.exchange_rates is indexed by valid_dates and forward filled,
+             # we can look for the last valid index <= date.
+             # However, if date is not in index, we need to be careful.
+             # self.valid_dates is sorted.
+             
+             # Find the index position that maintains order
+             try:
+                 # asof works on the index directly if it's sorted
+                 idx = self.exchange_rates.index.get_indexer([date], method='pad')[0]
+                 if idx == -1:
+                     raise ValueError(f"No exchange rate found on or before {date}")
+                 usd_rate = float(self.exchange_rates.iloc[idx]['USD'])
+             except Exception as e:
+                 raise ValueError(f"Failed to find exchange rate for {date}: {e}")
         
         # Convert to CAD
         if currency == 'USD':
@@ -430,7 +451,7 @@ class Portfolio:
                 if pd.isna(price) or price == 0:
                     continue
                 
-                currency = self.ticker_currency.get(ticker, 'CAD')
+                currency = self.ticker_currency_map.get(ticker, 'CAD')
                 
                 # Calculate target value in CAD
                 target_value_cad = portfolio_value_cad * target_weight
@@ -539,8 +560,7 @@ class Portfolio:
                         )
 
             if date in self.trades.index:
-                logger.debug(f"Trades on {date}")
-                logger.debug(f"{self.trades.loc[date]}")
+                logger.debug(f"Processing trades on {date}")
 
                 rows_for_date = self.trades.loc[date]
 
@@ -553,13 +573,18 @@ class Portfolio:
                     ticker = row['Ticker']
                     self.holdings.at[date, ticker] = self.holdings.loc[date, ticker] + quantity
 
+                    if self.holdings.loc[date, ticker] == 0.0:
+                        self.securities[ticker].set_status('closed')
+                    else:
+                        self.securities[ticker].set_status('open')
+
         pd.DataFrame(self.holdings).to_csv(os.path.join(self.output_folder, holdings_file), index_label='Date')
 
     def create_table_cash(self):
         # TODO: Make this currency cache a class variable potentially
-        ticker_currency = {}
+        ticker_currency_map = {}
         for ticker in self.tickers:
-            ticker_currency[ticker] = yf.Ticker(ticker).info.get('currency')
+            ticker_currency_map[ticker] = yf.Ticker(ticker).info.get('currency')
 
         self.cash = pd.DataFrame(index=self.valid_dates)
         self.cash['CAD_Cash'] = 0.0
@@ -593,12 +618,23 @@ class Portfolio:
                     rate = float(row['Rate']) if not (isinstance(row['Rate'], float) and math.isnan(row['Rate'])) else None
                     # Fallback to exchange rate table if Rate is NaN
                     if rate is None:
+                        if date not in self.exchange_rates.index:
+                             # Try to get previous valid rate
+                             try:
+                                 idx = self.exchange_rates.index.get_indexer([date], method='pad')[0]
+                                 if idx == -1:
+                                     raise ValueError(f"No exchange rate found on or before {date}")
+                                 current_usd_rate = float(self.exchange_rates.iloc[idx]['USD'])
+                             except Exception as e:
+                                 raise ValueError(f"Failed to find exchange rate for {date}: {e}")
+                        else:
+                             current_usd_rate = float(self.exchange_rates.loc[date, 'USD'])
+
                         # Rate defined as units of To per 1 unit of From
                         if c_from == 'USD' and c_to == 'CAD':
-                            rate = float(self.exchange_rates.loc[date, 'USD'])
+                            rate = current_usd_rate
                         elif c_from == 'CAD' and c_to == 'USD':
-                            usd_rate = float(self.exchange_rates.loc[date, 'USD'])
-                            rate = (1.0 / usd_rate) if usd_rate != 0 else 0.0
+                            rate = 1.0 / current_usd_rate
                         else:
                             raise ValueError(f"Unsupported conversion pair without explicit rate: {c_from}->{c_to}")
 
@@ -678,7 +714,7 @@ class Portfolio:
                     dividend_amount = self.dividend_income.at[date, ticker] if ticker in self.dividend_income.columns else 0.0
                     if pd.isna(dividend_amount) or dividend_amount == 0.0:
                         continue
-                    currency = ticker_currency.get(ticker, 'CAD')
+                    currency = ticker_currency_map.get(ticker, 'CAD')
                     logger.debug(f"Dividend: {ticker} - ${dividend_amount:.2f} {currency}")
                     # Add dividend to appropriate currency balance
                     if currency == 'CAD':
@@ -763,10 +799,6 @@ class Portfolio:
         # Convert to CAD directly using exchange rates
         market_values = pd.DataFrame(index=self.valid_dates)
         for ticker in self.tickers:
-            # try:
-            #     currency = yf.Ticker(ticker).info['currency']
-            # except (KeyError, AttributeError, Exception):
-            #     currency = 'CAD'
             market_values[ticker] = prices[ticker] * holdings[ticker]
 
         self.market_values = market_values
@@ -774,137 +806,204 @@ class Portfolio:
 
     def create_table_holdings(self):
         """
-        Build per-ticker holdings summary with:
-        - shares
-        - avg_purchase_price (weighted by split-adjusted share quantity across all buy trades)
-        - market_value (current price * shares)
-        - market_value_cad (converted to CAD using latest USD rate when needed)
-        - book_value (avg_purchase_price * shares)
-        - pnl (market_value - book_value)
-        - pnl_percent (pnl / book_value)
-        - current_price (latest price)
-        - holding_weight (market_value_cad / latest Total_Holdings_CAD from portfolio_total.csv)
+        Builds a holdings summary where all financial metrics are reported in 
+        the ticker's NATIVE currency (USD or CAD).
+        
+        Aggregate calculations (Holding Weight) use a normalized CAD value 
+        using the LATEST exchange rate to ensure accurate proportions.
         """
-        if self.holdings is None or self.holdings.empty:
-            raise ValueError("Holdings are not computed. Call create_table_holdings() first.")
         if self.prices is None or self.prices.empty:
-            raise ValueError("Prices are not computed. Call create_table_prices() first.")
+            raise ValueError("Prices are not computed.")
 
-        latest_date = self.holdings.index.max()
-        shares_series = self.holdings.loc[latest_date].copy()
-        # Keep only tickers we currently hold (> 0 shares)
-        shares_series = shares_series[shares_series > 0]
-        if shares_series.empty:
-            # Nothing to write; create empty file with headers
-            empty_df = pd.DataFrame(columns=['ticker','shares','avg_purchase_price','market_value','book_value','pnl','pnl_percent'])
-            empty_df.to_csv(os.path.join(self.output_folder, holdings_summary_file), index=False)
-            return
+        split_events = self._fetch_split_events()
+        
+        # Get latest date for split calculations
+        latest_date = self.valid_dates[-1]
 
-        # Weighted average purchase price from buy trades (Quantity > 0), adjusted for stock splits
-        buys = self.trades[self.trades['Quantity'] > 0].copy() if self.trades is not None else pd.DataFrame(columns=['Ticker','Quantity','Price'])
-        if not buys.empty:
-            # Reset index to access trade dates
-            buys = buys.reset_index()  # 'Date' column appears
-            # Fetch split events once and compute cumulative factor from trade date to latest_date
-            split_events = self._fetch_split_events()
+        # Helper to calculate cumulative split factor from a date to the end
+        def cumulative_split_factor(ticker, from_date, to_date):
+            events = split_events.get(ticker, {})
+            if not events:
+                return 1.0
+            factor = 1.0
+            for event_date, event_factor in events.items():
+                # Apply splits strictly after the date up to and including end date
+                if from_date < event_date <= to_date:
+                    try:
+                        factor *= float(event_factor)
+                    except Exception:
+                        continue
+            return factor
 
-            def cumulative_split_factor(ticker, buy_date, end_date):
-                events = split_events.get(ticker, {})
-                if not events:
-                    return 1.0
-                factor = 1.0
-                for event_date, event_factor in events.items():
-                    # Apply splits strictly after the buy date up to and including end_date
-                    if buy_date < event_date <= end_date:
-                        try:
-                            factor *= float(event_factor)
-                        except Exception:
-                            continue
-                return factor
+        # 1. Initialize State Tracking (All in Native Currency)
+        positions = {
+            ticker: {
+                'qty': 0.0,
+                'book_value': 0.0,       # Total Cost Basis (Native)
+                'realized_pnl': 0.0,     # Realized Gains/Losses (Native)
+                'total_dividends': 0.0,  # Dividends Collected (Native)
+                'cost_of_closed': 0.0    # Accumulates cost of shares sold (for ROI calc)
+            } for ticker in self.tickers
+        }
 
-            buys['adj_factor'] = buys.apply(lambda r: cumulative_split_factor(r['Ticker'], r['Date'], latest_date), axis=1)
-            buys['weighted_cost'] = buys['Quantity'] * buys['Price']
-            buys['adj_shares'] = buys['Quantity'] * buys['adj_factor']
+        # 2. Process Trades (Chronological)
+        # Apply split adjustments to trades so we process everything in "current share" equivalents
+        if self.trades is not None and not self.trades.empty:
+            sorted_trades = self.trades.sort_index().copy()
+            
+            # Apply split adjustment to all trades (Buys and Sells)
+            # Quantity * Factor
+            # Price / Factor
+            # Value = Quantity * Price (Unchanged)
+            
+            sorted_trades['split_factor'] = sorted_trades.apply(
+                lambda r: cumulative_split_factor(r['Ticker'], r.name, latest_date), axis=1
+            )
+            
+            # Adjust Quantity and Price to be in "Today's Terms"
+            sorted_trades['Quantity'] = sorted_trades['Quantity'] * sorted_trades['split_factor']
+            sorted_trades['Price'] = sorted_trades['Price'] / sorted_trades['split_factor']
 
-            grouped = buys.groupby('Ticker').agg(weighted_cost=('weighted_cost', 'sum'),
-                                                 adj_shares=('adj_shares', 'sum'))
-            # Avoid division by zero
-            grouped['avg_purchase_price'] = grouped.apply(lambda r: (r['weighted_cost'] / r['adj_shares']) if r['adj_shares'] not in (0, 0.0) else float('nan'), axis=1)
-            avg_price_by_ticker = grouped[['avg_purchase_price']]
-        else:
-            avg_price_by_ticker = pd.DataFrame(columns=['avg_purchase_price'])
+            for date, row in sorted_trades.iterrows():
+                ticker = row['Ticker']
+                quantity = row['Quantity'] # + for Buy, - for Sell
+                price = row['Price']       # Adjusted Price
+                
+                # Transaction Value (Native) - Should match original trade value
+                trade_val = abs(quantity) * price
+                
+                if quantity > 0: # BUY
+                    positions[ticker]['qty'] += quantity
+                    positions[ticker]['book_value'] += trade_val
+                    
+                elif quantity < 0: # SELL
+                    qty_sold = abs(quantity)
+                    qty_held_before = positions[ticker]['qty']
+                    
+                    # Prevent divide by zero / Short sell logic gap
+                    if qty_held_before > 0:
+                        fraction_sold = qty_sold / qty_held_before
+                        
+                        # 1. Calculate Cost Basis of the specific chunk being sold
+                        cost_chunk = positions[ticker]['book_value'] * fraction_sold
+                        
+                        # 2. Calculate PnL (Proceeds - Cost)
+                        proceeds = trade_val
+                        pnl = proceeds - cost_chunk
+                        
+                        # 3. Update Ledger
+                        positions[ticker]['realized_pnl'] += pnl
+                        positions[ticker]['book_value'] -= cost_chunk
+                        positions[ticker]['qty'] -= qty_sold
+                        
+                        # 4. Track capital for Closed ROI
+                        # If we sold, we add the cost basis of those shares to the "closed bucket"
+                        positions[ticker]['cost_of_closed'] += cost_chunk
 
-        # Current prices and market values at latest_date
-        latest_prices = self.prices.loc[latest_date].copy()
-        # Align price series to held tickers
-        latest_prices = latest_prices.reindex(shares_series.index)
-
-        result = pd.DataFrame({
-            'ticker': shares_series.index,
-            'shares': shares_series.values
-        })
-
-        result = result.merge(avg_price_by_ticker, left_on='ticker', right_index=True, how='left')
-        result['avg_purchase_price'] = result['avg_purchase_price'].astype(float)
-
-        # Current price, market value and book value
-        result['current_price'] = result['ticker'].map(lambda t: float(latest_prices.get(t, float('nan'))))
-        result['market_value'] = result['current_price'] * result['shares']
-        result['book_value'] = result['avg_purchase_price'].fillna(0.0) * result['shares']
-
-        # PnL metrics
-        result['pnl'] = result['market_value'] - result['book_value']
-        result['pnl_percent'] = result.apply(lambda r: (r['pnl'] / r['book_value']) if r['book_value'] not in (0, 0.0) else 0.0, axis=1)
-
-        # Sort by market value descending
-        result = result.sort_values('market_value', ascending=False)
-
-        # Add currency per ticker using existing map (fallback to CAD)
-        # Ensure ticker_currency is populated
-        self._ensure_ticker_currency_map()
-        result['currency'] = result['ticker'].map(lambda t: self.ticker_currency.get(t))
-
-        # Compute CAD market value and precomputed weight using portfolio_total.csv latest Total_Holdings_CAD
-        latest_usd_rate = float(self.exchange_rates['USD'].dropna().iloc[-1])
-        result['market_value_cad'] = result.apply(
-            lambda r: float(r['market_value']) * latest_usd_rate if r.get('currency') == 'USD' else float(r['market_value']),
-            axis=1
-        )
-        # Load latest Total_Holdings_CAD from portfolio_total.csv
-        total_path = os.path.join(self.output_folder, portfolio_total_file)
-
-        if os.path.exists(total_path):
-            totals_df = pd.read_csv(total_path)
-            totals_df['Date'] = pd.to_datetime(totals_df['Date'])
-            latest_row = totals_df.sort_values('Date').iloc[-1]
-            denom_total_holdings_cad = float(latest_row['Total_Holdings_CAD'])
-
-        result['holding_weight'] = result.apply(
-            lambda r: (float(r['market_value_cad']) / denom_total_holdings_cad * 100.0) if denom_total_holdings_cad > 0 else 0.0,
-            axis=1
-        )
-
-        # Add cumulative dividends to date per ticker (native currency of the ticker)
+        # 3. Process Dividends - No FX needed here!
         if self.dividend_income is not None and not self.dividend_income.empty:
-            # Ensure datetime index
-            div_df = self.dividend_income.copy()
-            div_df.index = pd.to_datetime(div_df.index)
-            # Sum up to latest_date across all rows for each ticker
-            div_upto = div_df.loc[div_df.index <= latest_date]
-            dividends_cumulative = div_upto.sum(numeric_only=True)
-            result['dividends_to_date'] = result['ticker'].map(lambda t: float(dividends_cumulative.get(t, 0.0)))
-        else:
-            result['dividends_to_date'] = 0.0
+            for date, row in self.dividend_income.iterrows():
+                for ticker, div_amount in row.items():
+                    if div_amount > 0 and ticker in positions:
+                        # Assumes dividend is paid in native currency (Standard behavior)
+                        positions[ticker]['total_dividends'] += div_amount
 
-        # Persist
-        result.to_csv(os.path.join(self.output_folder, holdings_summary_file), index=False)
+        # 4. Build Final DataFrame
+        latest_date = self.valid_dates[-1]
+        latest_prices = self.prices.loc[latest_date]
+        
+        # We only need the FX rate NOW for the weighting calculation
+        # Get latest USD to CAD rate
+        latest_fx_usd_cad = float(self.exchange_rates['USD'].dropna().iloc[-1])
+
+        results = []
+        
+        for ticker, data in positions.items():
+            qty = data['qty']
+            
+            # Metadata
+            currency = self.ticker_currency_map[ticker]
+            current_price = float(latest_prices[ticker])
+            
+            # --- Native Metrics ---
+            market_val_native = qty * current_price
+            
+            # Average Price (Simple Average: Total Book / Total Shares)
+            avg_price = (data['book_value'] / qty) if qty > 0 else 0.0
+            
+            # Unrealized PnL (Market Value - Remaining Book Value)
+            if qty > 0.00001:
+                unrealized_pnl = market_val_native - data['book_value']
+                # Denominator for ROI is the current money tied up
+                roi_denominator = data['book_value']
+            else:
+                unrealized_pnl = 0.0
+                # Denominator for ROI is the money that WAS tied up
+                roi_denominator = data['cost_of_closed']
+                qty = 0.0 # Clean up dust
+                
+            total_return_native = data['realized_pnl'] + unrealized_pnl + data['total_dividends']
+            
+            # ROI % (Native Return / Native Investment)
+            # Math is identical regardless of currency
+            return_pct = (total_return_native / roi_denominator * 100.0) if roi_denominator > 0 else 0.0
+
+            # --- Aggregation Prep (Normalized to CAD) ---
+            # We calculate a hidden CAD market value solely for the weighting step
+            fx_multiplier = latest_fx_usd_cad if currency == 'USD' else 1.0
+            market_val_cad_calc = market_val_native * fx_multiplier
+            
+            sec = self.securities.get(ticker)
+
+            results.append({
+                'ticker': ticker,
+                'shares': qty,
+                'currency': currency,
+                
+                # REPORTING COLUMNS (Native)
+                'current_price': current_price,
+                'avg_price': avg_price,
+                'market_value': market_val_native,
+                'book_value': data['book_value'] if qty > 0 else 0.0, # Only show book value if open
+                'dividends': data['total_dividends'],
+                'realized_pnl': data['realized_pnl'],
+                'unrealized_pnl': unrealized_pnl,
+                'total_return': total_return_native,
+                'total_return_cad_normalized': total_return_native * latest_fx_usd_cad,
+                'total_return_pct': return_pct,
+                
+                'mv_cad_normalized': market_val_cad_calc,
+                'invested_capital': roi_denominator,
+                'invested_capital_cad': roi_denominator * latest_fx_usd_cad,
+                
+                # METADATA
+                'sector': sec.get_sector() if sec else 'Unknown',
+                'asset_class': sec.get_asset_class() if sec else 'Unknown',
+                'status': 'Open' if qty > 0 else 'Closed'
+            })
+
+        df = pd.DataFrame(results)
+        
+        # 5. Calculate Weights (Using the Normalized CAD values)
+        # Total Portfolio Value in CAD
+        total_portfolio_cad = df['mv_cad_normalized'].sum()
+        
+        df['holding_weight'] = df['mv_cad_normalized'].apply(
+            lambda x: (x / total_portfolio_cad * 100.0) if total_portfolio_cad > 0 else 0.0
+        )
+        
+        # Sort by the implicit CAD value (Largest positions first)
+        # We have to re-calculate sort key or use the weight
+        df = df.sort_values('holding_weight', ascending=False)
+        
+        df.to_csv(os.path.join(self.output_folder, holdings_summary_file), index=False)
 
     def _build_currency_holdings(self):
         """
         Build CAD- and USD-only holdings DataFrames using precomputed ticker lists.
 
         Relies on:
-        - self.cad_tickers / self.usd_tickers (populated in load_trades)
+        - self.cad_tickers / self.usd_tickers (populated in _load_trades)
         - self.holdings (constructed in create_table_holdings)
 
         Produces:
@@ -914,8 +1013,10 @@ class Portfolio:
         usd_tickers = self.usd_tickers or []
 
         if self.holdings is not None and not self.holdings.empty:
-            self.holdings_cad = self.holdings[cad_tickers] if len(cad_tickers) > 0 else pd.DataFrame(index=self.valid_dates)
-            self.holdings_usd = self.holdings[usd_tickers] if len(usd_tickers) > 0 else pd.DataFrame(index=self.valid_dates)
+            cad_cols = list(cad_tickers) if len(cad_tickers) > 0 else []
+            usd_cols = list(usd_tickers) if len(usd_tickers) > 0 else []
+            self.holdings_cad = self.holdings[cad_cols] if len(cad_cols) > 0 else pd.DataFrame(index=self.valid_dates)
+            self.holdings_usd = self.holdings[usd_cols] if len(usd_cols) > 0 else pd.DataFrame(index=self.valid_dates)
         else:
             self.holdings_cad = pd.DataFrame(index=self.valid_dates)
             self.holdings_usd = pd.DataFrame(index=self.valid_dates)
@@ -924,15 +1025,15 @@ class Portfolio:
         """
         Build a cached map of ticker -> currency using yfinance.
         """
-        if self.ticker_currency and all(t in self.ticker_currency for t in (self.tickers or [])):
+        if self.ticker_currency_map and all(t in self.ticker_currency_map for t in (self.tickers or [])):
             return
-        ticker_currency = {}
+        ticker_currency_map = {}
         for ticker in (self.tickers or []):
             try:
-                ticker_currency[ticker] = yf.Ticker(ticker).info.get('currency', 'CAD')
+                ticker_currency_map[ticker] = yf.Ticker(ticker).info.get('currency', 'CAD')
             except Exception:
-                ticker_currency[ticker] = 'CAD'
-        self.ticker_currency = ticker_currency
+                ticker_currency_map[ticker] = 'CAD'
+        self.ticker_currency_map = ticker_currency_map
 
     def create_table_dividend_per_share(self):
         self.dividend_per_share = pd.DataFrame(index=self.valid_dates)
@@ -958,25 +1059,31 @@ class Portfolio:
     def create_table_portfolio_total(self):
         self.portfolio_total = pd.DataFrame(index=self.valid_dates)
 
-        # Ensure currency map (CAD vs USD tickers)
-        self._ensure_ticker_currency_map()
-        cad_tickers = [t for t in (self.tickers or []) if self.ticker_currency.get(t, 'CAD') != 'USD']
-        usd_tickers = [t for t in (self.tickers or []) if self.ticker_currency.get(t, 'CAD') == 'USD']
+        # # Ensure currency map (CAD vs USD tickers)
+        # self._ensure_ticker_currency_map()
+        # cad_tickers = [t for t in (self.tickers or []) if self.ticker_currency_map.get(t, 'CAD') != 'USD']
+        # usd_tickers = [t for t in (self.tickers or []) if self.ticker_currency_map.get(t, 'CAD') == 'USD']
 
         # Totals by currency (native units)
-        cad_holdings_mv = self.market_values[cad_tickers].sum(axis=1) if len(cad_tickers) > 0 else pd.Series(0.0, index=self.valid_dates)
-        usd_holdings_mv = self.market_values[usd_tickers].sum(axis=1) if len(usd_tickers) > 0 else pd.Series(0.0, index=self.valid_dates)
+        cad_cols = list(self.cad_tickers) if len(self.cad_tickers) > 0 else []
+        usd_cols = list(self.usd_tickers) if len(self.usd_tickers) > 0 else []
+        cad_holdings_mv = self.market_values[cad_cols].sum(axis=1) if len(cad_cols) > 0 else pd.Series(0.0, index=self.valid_dates)
+        usd_holdings_mv = self.market_values[usd_cols].sum(axis=1) if len(usd_cols) > 0 else pd.Series(0.0, index=self.valid_dates)
 
-        # Use the most recent USD→CAD exchange rate for all conversions
-        latest_usd_rate = float(self.exchange_rates['USD'].dropna().iloc[-1]) if self.exchange_rates is not None else 1.0
+        # Use historical exchange rates for each date
+        # Align exchange rates with the data index (should match valid_dates)
+        usd_rates = self.exchange_rates['USD'].reindex(self.valid_dates).ffill()
 
         # Cash breakdown
         cad_cash = self.cash['CAD_Cash']
         usd_cash = self.cash['USD_Cash']
-        total_cash_cad = cad_cash + (usd_cash * latest_usd_rate)
+        
+        # Convert USD cash to CAD using daily rates
+        total_cash_cad = cad_cash + (usd_cash * usd_rates)
 
-        # Holdings and portfolio totals in CAD using the most recent FX rate
-        total_holdings_cad = cad_holdings_mv + (usd_holdings_mv * latest_usd_rate)
+        # Convert USD holdings to CAD using daily rates
+        total_holdings_cad = cad_holdings_mv + (usd_holdings_mv * usd_rates)
+        
         total_portfolio_value = total_cash_cad + total_holdings_cad
 
         # Assign requested columns
@@ -1053,7 +1160,7 @@ if __name__ == '__main__':
 
     # load functions after intial set up - fills all output CSVs 
     portfolio.create_table_exchange_rates()
-    portfolio.load_trades()
+    portfolio._load_trades()
 
     portfolio.create_table_prices()
     portfolio.create_table_daily_holdings()
