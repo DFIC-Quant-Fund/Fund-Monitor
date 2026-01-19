@@ -22,7 +22,7 @@ def render_holdings_table(holdings_data: pd.DataFrame):
     if selected_tickers:
         display_data = holdings_data[holdings_data['ticker'].isin(selected_tickers)]
     else:
-        display_data = holdings_data
+        display_data = holdings_data.copy()
 
     if not holdings_data.empty:
         # Select columns to show (keep numeric types for proper sorting)
