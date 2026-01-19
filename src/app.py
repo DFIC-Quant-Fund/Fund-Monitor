@@ -134,24 +134,8 @@ def main():
     tab1, tab2, tab3 = st.tabs(["📈 Holdings", "🏭 Allocation", "📊 Performance"])
     
     with tab1:
-        # Holdings search
-        unique_tickers = sorted(holdings_data['ticker'].unique())
-            
-        search_col, _ = st.columns([1, 2])
-        with search_col:
-            selected_tickers = st.multiselect(
-                "Search/Filter Tickers",
-                options=unique_tickers,
-                placeholder="Type ticker symbol..."
-            )
-
-        if selected_tickers:
-            filtered_holdings = holdings_data[holdings_data['ticker'].isin(selected_tickers)]
-        else:
-            filtered_holdings = holdings_data
-
         # Render holdings table using component
-        render_holdings_table(filtered_holdings)
+        render_holdings_table(holdings_data)
     
     with tab2:
         # Render allocation charts using component
