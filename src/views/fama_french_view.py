@@ -287,25 +287,7 @@ def _render_detailed_interpretation(market: float, size: float, value: float):
         st.markdown(part)
         if i < len(interpretation_parts) - 1:
             st.markdown("")  # Add spacing
-    
-    # Risk implications
-    st.markdown("---")
-    st.markdown("### ⚠️ Risk Implications")
-    
-    risk_notes = []
-    
-    if market > 1.2:
-        risk_notes.append("• Higher volatility during market downturns")
-    if abs(size) > 0.4:
-        risk_notes.append(f"• Concentrated exposure to {'small' if size > 0 else 'large'}-cap risks")
-    if abs(value) > 0.4:
-        risk_notes.append(f"• Style risk - vulnerable when {'growth' if value > 0 else 'value'} outperforms")
-    
-    if risk_notes:
-        for note in risk_notes:
-            st.markdown(note)
-    else:
-        st.markdown("• Well-diversified factor exposure reduces concentration risk")
+
 
 
 def render_fama_french_summary_card(ff_data: Dict[str, Any]):

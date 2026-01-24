@@ -27,7 +27,6 @@ from .data_service import DataService
 
 # Import logging
 from ..config.logging_config import get_logger
-from ..config.securities_config import securities_config
 
 # Set up logger for this module
 logger = get_logger(__name__)
@@ -368,45 +367,6 @@ class PortfolioController:
             logger.warning(f"Could not load SPY data: {e}")
             
         return portfolio_returns
-    
-    def _get_sector(self, ticker: str) -> str:
-        """Get sector for ticker from config or fallback mapping"""
-        security_info = securities_config.get_security_info(ticker)
-        if security_info:
-            return security_info.sector.value
-        
-        # Fallback mapping
-        fallback_mapping = {
-            'AAPL': 'Technology', 'MSFT': 'Technology', 'GOOGL': 'Technology',
-            'NVDA': 'Technology', 'AMAT': 'Technology', 'VEEV': 'Technology',
-            'ISRG': 'Technology', 'MA': 'Financial Services', 'APO': 'Financial Services',
-            'WFG.TO': 'Financial Services', 'TMUS': 'Communication Services',
-            'EA': 'Communication Services', 'ACO-X.TO': 'Consumer Discretionary',
-            'DOLE': 'Consumer Discretionary', 'AER': 'Energy', 'CEG': 'Energy',
-            'CG': 'Energy', 'HBM.TO': 'Materials', 'MP': 'Materials',
-            'L.TO': 'Industrials', 'WSC': 'Industrials', 'BLBD': 'Industrials',
-            'GSL': 'Industrials', 'TEX': 'Industrials', 'CSH-UN.TO': 'Real Estate',
-            'AGG': 'Fixed Income', 'SCHP': 'Fixed Income', 'TLT': 'Fixed Income',
-            'XBB.TO': 'Fixed Income', 'SPSB': 'Fixed Income', 'SPY': 'Equity ETF',
-            'XIU.TO': 'Equity ETF', 'AMSF': 'Insurance'
-        }
-        return fallback_mapping.get(ticker, 'Other')
-    
-    def _get_fund(self, ticker: str) -> str:
-        """Get fund for ticker from config"""
-        security_info = securities_config.get_security_info(ticker)
-        if security_info:
-            return security_info.fund.value
-        return 'Other'
-    
-    def _get_geography(self, ticker: str) -> str:
-        """Get geography from config or ticker-based logic"""
-        security_info = securities_config.get_security_info(ticker)
-        if security_info:
-            return 'Canada' if security_info.geography.value == 'CAN' else 'US'
-        
-        # Fallback to ticker-based logic
-        return 'Canada' if '.TO' in ticker else 'US'
     
     def get_fama_french_factors(self, as_of_date: str = None) -> Dict[str, float]:
         """
