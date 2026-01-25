@@ -25,7 +25,8 @@ def render_holdings_table(holdings_data: pd.DataFrame):
             'realized_pnl', 
             'unrealized_pnl', 
             'total_return',
-            'total_return_pct', 
+            'total_return_pct',
+            'annualized_return_pct',
             'sector', 
             'asset_class',
             'status'
@@ -48,6 +49,7 @@ def render_holdings_table(holdings_data: pd.DataFrame):
             'unrealized_pnl': 'Unrealized PnL',
             'total_return': 'Total Return ($)',
             'total_return_pct': 'Total Return (%)',
+            'annualized_return_pct': 'Annualized Return (%)',
             'sector': 'sector',
             'asset_class': 'Asset Class',
             'status': 'Status'
@@ -71,6 +73,7 @@ def render_holdings_table(holdings_data: pd.DataFrame):
                 'Unrealized PnL': st.column_config.NumberColumn('Unrealized PnL', format='$%.2f'),
                 'Total Return ($)': st.column_config.NumberColumn('Total Return ($)', format='$%.2f'),
                 'Total Return (%)': st.column_config.NumberColumn('Total Return (%)', format='%.2f%%'),
+                'Annualized Return (%)': st.column_config.NumberColumn('Annualized Return (%)', format='%.2f%%'),
                 'Sector': st.column_config.TextColumn('sector'),
                 'Asset Class': st.column_config.TextColumn('Asset Class'),
                 'Status': st.column_config.TextColumn('Status'),

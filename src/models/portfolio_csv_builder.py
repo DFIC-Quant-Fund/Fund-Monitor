@@ -900,6 +900,22 @@ class Portfolio:
                         # If we sold, we add the cost basis of those shares to the "closed bucket"
                         positions[ticker]['cost_of_closed'] += cost_chunk
 
+            # First purchase and last sale dates per ticker (for annualized return)
+            first_purchase_dates = {}
+            last_sale_dates = {}
+            for date, row in sorted_trades.iterrows():
+                t = row['Ticker']
+                qty_trade = row['Quantity']
+                if qty_trade > 0:  # Buy: use first purchase date
+                    if t not in first_purchase_dates or date < first_purchase_dates[t]:
+                        first_purchase_dates[t] = date
+                elif qty_trade < 0:  # Sell: use last sale date
+                    if t not in last_sale_dates or date > last_sale_dates[t]:
+                        last_sale_dates[t] = date
+        else:
+            first_purchase_dates = {}
+            last_sale_dates = {}
+
         # 3. Process Dividends - No FX needed here!
         if self.dividend_income is not None and not self.dividend_income.empty:
             for date, row in self.dividend_income.iterrows():
@@ -948,6 +964,22 @@ class Portfolio:
             # Math is identical regardless of currency
             return_pct = (total_return_native / roi_denominator * 100.0) if roi_denominator > 0 else 0.0
 
+            # Annualized return since purchase: (1 + Total Return %)^(365 / Days Held) - 1
+            # Days Held: first purchase -> today (open) or last sale (closed); use first purchase only
+            is_open = data['qty'] > 0.00001
+            first_purchase = first_purchase_dates.get(ticker)
+            if first_purchase is None or roi_denominator <= 0:
+                annualized_return_pct = float('nan')
+            else:
+                end_date = latest_date if is_open else last_sale_dates.get(ticker, first_purchase)
+                start_d = pd.Timestamp(first_purchase)
+                end_d = pd.Timestamp(end_date)
+                days_held = (end_d - start_d).days
+                if days_held > 0:
+                    annualized_return_pct = ((1.0 + return_pct / 100.0) ** (365.0 / days_held) - 1.0) * 100.0
+                else:
+                    annualized_return_pct = float('nan')
+
             # --- Aggregation Prep (Normalized to CAD) ---
             # We calculate a hidden CAD market value solely for the weighting step
             fx_multiplier = latest_fx_usd_cad if currency == 'USD' else 1.0
@@ -971,6 +1003,7 @@ class Portfolio:
                 'total_return': total_return_native,
                 'total_return_cad_normalized': total_return_native * latest_fx_usd_cad,
                 'total_return_pct': return_pct,
+                'annualized_return_pct': annualized_return_pct,
                 
                 'mv_cad_normalized': market_val_cad_calc,
                 'invested_capital': roi_denominator,
