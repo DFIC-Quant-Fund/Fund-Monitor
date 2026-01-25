@@ -413,15 +413,6 @@ class PortfolioController:
                 'value_factor': value_factor
             }
             
-            # Try to get additional regression statistics if available
-            try:
-                # Calculate alpha from the 3-factor model
-                # This would require a full regression, which we can add later
-                # For now, we return the basic factors
-                pass
-            except Exception as e:
-                logger.debug(f"Could not calculate additional regression stats: {e}")
-            
             logger.info(f"Fama-French factors calculated: Market={market_factor:.3f}, Size={size_factor:.3f}, Value={value_factor:.3f}")
             return result
             
