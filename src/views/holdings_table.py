@@ -7,9 +7,24 @@ import pandas as pd
 
 def render_holdings_table(holdings_data: pd.DataFrame):
     st.header("Portfolio Holdings")
-    if not holdings_data.empty:
-        display_data = holdings_data.copy()
+
+    # Search Holdings
+    unique_tickers = sorted(holdings_data['ticker'].unique())
         
+    search_col, _ = st.columns([1, 2])
+    with search_col:
+        selected_tickers = st.multiselect(
+            "Search/Filter Tickers",
+            options=unique_tickers,
+            placeholder="Type ticker symbol..."
+        )
+
+    if selected_tickers:
+        display_data = holdings_data[holdings_data['ticker'].isin(selected_tickers)]
+    else:
+        display_data = holdings_data.copy()
+
+    if not holdings_data.empty:
         # Select columns to show (keep numeric types for proper sorting)
         # These keys must match the output of create_table_holdings in portfolio_csv_builder.py
         cols = [
