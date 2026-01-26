@@ -217,7 +217,7 @@ class PortfolioController:
             risk_metrics_inst = RiskMetrics(portfolio_total_df)
             daily_sharpe, annualized_sharpe = risk_metrics_inst.sharpe_ratio(risk_free_rate)
             daily_sortino, annualized_sortino = risk_metrics_inst.sortino_ratio(risk_free_rate)
-            market_comp = MarketComparison(portfolio_total_df, useSpy=True, risk_free_rate=risk_free_rate)
+            market_comp = MarketComparison(portfolio_total_df, useSpy=False, risk_free_rate=risk_free_rate)
             daily_info, annualized_info = market_comp.information_ratio()
             
             ratios = {
@@ -234,7 +234,7 @@ class PortfolioController:
         
         # Add market comparison metrics - use in-memory portfolio data
         try:
-            market_comp = market_comp if 'market_comp' in locals() else MarketComparison(portfolio_total_df, useSpy=True, risk_free_rate=risk_free_rate)
+            market_comp = market_comp if 'market_comp' in locals() else MarketComparison(portfolio_total_df, useSpy=False, risk_free_rate=risk_free_rate)
             beta = market_comp.beta()
             alpha = market_comp.alpha()
             risk_premium = market_comp.portfolio_risk_premium()
