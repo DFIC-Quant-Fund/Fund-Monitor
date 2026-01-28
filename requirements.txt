@@ -17,6 +17,7 @@ Flask==3.1.0
 flask-cors==5.0.1
 fonttools==4.55.8
 frozendict==2.4.6
+getfamafrenchfactors==0.0.5
 gunicorn==23.0.0
 html5lib==1.1
 idna==3.10
