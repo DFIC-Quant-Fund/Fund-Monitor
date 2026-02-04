@@ -11,9 +11,10 @@ This controller handles all portfolio operations including:
 import os
 import sys
 import pandas as pd
+import yaml
 import yfinance as yf
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -47,7 +48,38 @@ class PortfolioController:
         self._risk_metrics = None  # Will build per-request with actual df
         self._market_comparison = None  # Construct per-request with current portfolio df
         self._benchmark = Benchmark()
-    
+
+    def _get_risk_free_rate(self) -> tuple[float, str]:
+        """Resolve the risk-free rate for ratio calculations.
+        Tries 3-month T-Bill (^IRX) via yfinance first; falls back to config/config.yaml.
+        Returns (rate as decimal, source label for display).
+        """
+        # Try 3-month T-Bill yield from Yahoo Finance
+        try:
+            ticker = yf.Ticker("^IRX")
+            hist = ticker.history(period="5d")
+            if not hist.empty and "Close" in hist.columns:
+                rate_pct = float(hist["Close"].iloc[-1])
+                if 0 < rate_pct < 25:  # sanity: yield in % should be in this range
+                    return (rate_pct / 100.0, "3-month T-Bill")
+        except Exception as e:
+            logger.debug(f"Could not fetch 3-month T-Bill rate (^IRX): {e}")
+
+        # Fall back to config
+        try:
+            config_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "config", "config.yaml"
+            )
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config = yaml.safe_load(f) or {}
+                rate = config.get("risk_free_rate")
+                if rate is not None:
+                    return (float(rate), "config")
+        except Exception as e:
+            logger.warning(f"Could not load risk_free_rate from config: {e}")
+        return (0.02, "config")  # final fallback
+
     def get_available_portfolios(self) -> List[str]:
         """Get list of available portfolios"""
         if not os.path.exists(self.data_directory):
@@ -183,8 +215,15 @@ class PortfolioController:
 
 
     
-    def get_performance_metrics(self, date: str = None, risk_free_rate: float = 0.02) -> Dict[str, Any]:
-        """Get comprehensive performance metrics"""
+    def get_performance_metrics(
+        self, date: str = None, risk_free_rate: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """Get comprehensive performance metrics.
+        risk_free_rate: If None, uses 3-month T-Bill (^IRX) via yfinance, then config fallback.
+        """
+        risk_free_rate_source: Optional[str] = None
+        if risk_free_rate is None:
+            risk_free_rate, risk_free_rate_source = self._get_risk_free_rate()
         portfolio_total_df = self._data_service.get_portfolio_total_data()
         
         if portfolio_total_df.empty:
@@ -253,7 +292,9 @@ class PortfolioController:
             'risk_metrics': risk_metrics,
             'ratios': ratios,
             'market_metrics': market_metrics,
-            'as_of_date': date
+            'as_of_date': date,
+            'risk_free_rate': risk_free_rate,
+            'risk_free_rate_source': risk_free_rate_source,
         }
     
     def get_cash_data(self, as_of_date: str = None) -> Dict[str, float]:
