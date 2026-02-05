@@ -68,6 +68,72 @@ class ReturnsCalculator:
         average_daily_return = daily_returns.mean()
         return (1 + average_daily_return) ** 252 - 1 
     
+    def annualized_return(self, as_of_date=None):
+        """
+        Calculate annualized return since inception.
+        
+        Args:
+            as_of_date: Date to calculate as of (defaults to latest date in dataframe or self.date)
+        
+        Returns:
+            Annualized return as a percentage (e.g., 10.5 for 10.5%)
+        """
+        if self.df is None or self.df.empty:
+            return None
+        
+        df = self.df.copy()
+        df = df.sort_values('Date').reset_index(drop=True)
+        
+        if self.portfolio_column not in df.columns:
+            return None
+        
+        # Determine end date - normalize to date only (remove time component)
+        if as_of_date is not None:
+            end_date = pd.to_datetime(as_of_date).normalize()
+        elif self.date is not None:
+            end_date = pd.to_datetime(self.date).normalize()
+        else:
+            end_date = df['Date'].max()
+        
+        # Normalize all dates in dataframe for comparison
+        df['Date'] = pd.to_datetime(df['Date']).dt.normalize()
+        end_date = pd.to_datetime(end_date).normalize()
+        
+        # Get start date (inception)
+        start_date = df['Date'].min()
+        
+        # Get start value
+        start_value = df[self.portfolio_column].iloc[0]
+        if start_value == 0 or pd.isna(start_value):
+            return None
+        
+        # Find end value - try exact match first, then closest date <= end_date
+        end_row = df[df['Date'] == end_date]
+        if end_row.empty:
+            # Fall back to closest date <= end_date
+            end_row = df[df['Date'] <= end_date]
+            if end_row.empty:
+                return None
+        
+        end_value = end_row[self.portfolio_column].iloc[-1]
+        actual_end_date = end_row['Date'].iloc[-1]
+        
+        if pd.isna(end_value):
+            return None
+        
+        # Calculate total return
+        total_return = (end_value / start_value) - 1.0
+        
+        # Calculate days held using actual end date found
+        days_held = (actual_end_date - start_date).days
+        if days_held <= 0:
+            return None
+        
+        # Annualize: (1 + total_return) ^ (365 / days_held) - 1
+        annualized_return = ((1.0 + total_return) ** (365.0 / days_held) - 1.0) * 100.0
+        
+        return annualized_return
+    
     def cumulative_return_series(self) -> pd.DataFrame:
         """
         Compute cumulative return since inception as a percentage time series.
