@@ -23,7 +23,7 @@ def render_portfolio_summary(summary_data: Dict[str, Any], total_portfolio_value
     st.subheader("📊 Portfolio Overview")
     
     # Main dashboard metrics
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         st.metric(
@@ -33,21 +33,13 @@ def render_portfolio_summary(summary_data: Dict[str, Any], total_portfolio_value
         )
     
     with col2:
-        holdings_value = summary_data['total_holdings_value']
-        st.metric(
-            "Holdings Value",
-            f"${holdings_value:,.0f}",
-            help="Total value of all holdings (excluding cash)"
-        )
-    
-    with col3:
         st.metric(
             "Total Holdings",
             summary_data['total_holdings'],
             help="Number of individual positions"
         )
     
-    with col4:
+    with col3:
         inception_val = summary_data.get('inception_return_pct')
         if inception_val is None:
             inception_display = "N/A"
@@ -55,7 +47,7 @@ def render_portfolio_summary(summary_data: Dict[str, Any], total_portfolio_value
             inception_display = f"{inception_val:.2f}%"
         st.metric("Return Since Inception", inception_display, help="Cumulative return since inception (total return including dividends/cash)")
 
-    with col5:
+    with col4:
         annualized_val = summary_data.get('annualized_return_pct')
         if annualized_val is None:
             annualized_display = "N/A"
@@ -65,7 +57,7 @@ def render_portfolio_summary(summary_data: Dict[str, Any], total_portfolio_value
         # Debug: uncomment to see the value
         # st.caption(f"Debug: {annualized_val}")
 
-    with col6:
+    with col5:
         st.metric(
             "As of Date",
             summary_data['as_of_date'].strftime('%Y-%m-%d'),
