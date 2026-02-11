@@ -139,6 +139,17 @@ class PortfolioController:
         except Exception as e:
             logger.warning(f"Could not compute inception cumulative return: {e}")
             inception_return_pct = None
+
+        # Annualized return since inception (%)
+        try:
+            annualized_return_pct = ReturnsCalculator(totals_df, as_of_dt).annualized_return(as_of_dt)
+            if annualized_return_pct is not None:
+                annualized_return_pct = float(annualized_return_pct)
+            else:
+                logger.debug(f"Annualized return calculation returned None for date {as_of_dt}")
+        except Exception as e:
+            logger.warning(f"Could not compute annualized return: {e}", exc_info=True)
+            annualized_return_pct = None
         
         return {
             'total_holdings_value': total_holdings_value,
@@ -150,7 +161,8 @@ class PortfolioController:
             'usd_holdings_mv': usd_holdings_mv,
             'cad_cash': cad_cash,
             'usd_cash': usd_cash,
-            'inception_return_pct': inception_return_pct
+            'inception_return_pct': inception_return_pct,
+            'annualized_return_pct': annualized_return_pct
         }
     
     def get_holdings_data(self, as_of_date: str = None) -> pd.DataFrame:

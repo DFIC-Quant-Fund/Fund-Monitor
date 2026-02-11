@@ -33,28 +33,30 @@ def render_portfolio_summary(summary_data: Dict[str, Any], total_portfolio_value
         )
     
     with col2:
-        holdings_value = summary_data['total_holdings_value']
-        st.metric(
-            "Holdings Value",
-            f"${holdings_value:,.0f}",
-            help="Total value of all holdings (excluding cash)"
-        )
-    
-    with col3:
         st.metric(
             "Total Holdings",
             summary_data['total_holdings'],
             help="Number of individual positions"
         )
     
-    with col4:
+    with col3:
         inception_val = summary_data.get('inception_return_pct')
         if inception_val is None:
             inception_display = "N/A"
         else:
             inception_display = f"{inception_val:.2f}%"
         st.metric("Return Since Inception", inception_display, help="Cumulative return since inception (total return including dividends/cash)")
-    
+
+    with col4:
+        annualized_val = summary_data.get('annualized_return_pct')
+        if annualized_val is None:
+            annualized_display = "N/A"
+        else:
+            annualized_display = f"{annualized_val:.2f}%"
+        st.metric("Annualized Return", annualized_display, help="Annualized return since inception")
+        # Debug: uncomment to see the value
+        # st.caption(f"Debug: {annualized_val}")
+
     with col5:
         st.metric(
             "As of Date",
@@ -93,7 +95,7 @@ def render_portfolio_breakdown(summary_data: Dict[str, Any], total_portfolio_val
         cash_data: Dictionary containing cash information
     """
     st.subheader("📊 Portfolio Breakdown")
-    breakdown_col1, breakdown_col2, breakdown_col3, breakdown_col4 = st.columns(4)
+    breakdown_col1, breakdown_col2, breakdown_col3, breakdown_col4, breakdown_col5, breakdown_col6 = st.columns(6)
     
     holdings_value = summary_data['total_holdings_value']
     
@@ -125,6 +127,20 @@ def render_portfolio_breakdown(summary_data: Dict[str, Any], total_portfolio_val
             "Cash Value",
             f"${cash_data['Total_CAD']:,.0f}",
             help="Total cash balance in CAD"
+        )
+
+    with breakdown_col5:
+        st.metric(
+            "Annualized Return",
+            f"{summary_data['annualized_return_pct']:.2f}%",
+            help="Annualized return since inception"
+        )
+
+    with breakdown_col6:
+        st.metric(
+            "As of Date",
+            summary_data['as_of_date'].strftime('%Y-%m-%d'),
+            help="Date of portfolio snapshot"
         )
     
     # Add note about total portfolio value
