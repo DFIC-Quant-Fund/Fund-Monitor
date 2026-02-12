@@ -27,7 +27,8 @@ from src.views import (
     render_holdings_table,
     render_allocation_charts,
     render_performance_metrics,
-    render_returns_chart
+    render_returns_chart,
+    render_fama_french_factors
 )
 
 # Page configuration
@@ -144,6 +145,17 @@ def main():
     with tab3:
         # Render performance metrics using component
         render_performance_metrics(performance_data)
+        
+        # Add Fama-French 3-Factor Analysis
+        st.markdown("---")
+        try:
+            ff_data = portfolio_controller.get_fama_french_factors(selected_date.strftime('%Y-%m-%d'))
+            if ff_data:
+                render_fama_french_factors(ff_data)
+            else:
+                st.info("📊 Fama-French 3-Factor analysis requires at least 30 days of historical data.")
+        except Exception as e:
+            st.warning(f"Could not calculate Fama-French factors: {e}")
 
 if __name__ == "__main__":
     main()

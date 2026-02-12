@@ -420,3 +420,55 @@ class PortfolioController:
             logger.warning(f"Could not load SPY data: {e}")
             
         return portfolio_returns
+    
+    def get_fama_french_factors(self, as_of_date: str = None) -> Dict[str, float]:
+        """
+        Get Fama-French 3-factor model loadings for the portfolio.
+        
+        Args:
+            as_of_date: Optional date string. Factors are calculated using all data up to this date.
+        
+        Returns:
+            Dictionary containing:
+            - market_factor: Market beta (sensitivity to market movements)
+            - size_factor: SMB beta (small minus big)
+            - value_factor: HML beta (high minus low)
+            - alpha: Jensen's alpha from regression (if calculable)
+            - r_squared: Model fit (if calculable)
+        """
+        try:
+            portfolio_total_df = self._data_service.get_portfolio_total_data()
+            
+            if portfolio_total_df.empty:
+                logger.warning("No portfolio data available for Fama-French analysis")
+                return {}
+            
+            # Filter data up to as_of_date if provided
+            if as_of_date:
+                as_of_dt = pd.to_datetime(as_of_date)
+                portfolio_total_df = portfolio_total_df[portfolio_total_df['Date'] <= as_of_dt]
+            
+            if len(portfolio_total_df) < 30:  # Need at least ~1 month of daily data
+                logger.warning("Insufficient data for Fama-French analysis (need at least 30 days)")
+                return {}
+            
+            # Initialize market comparison with portfolio data
+            market_comp = MarketComparison(portfolio_total_df, useSpy=True)
+            
+            # Calculate the three factors
+            market_factor = market_comp.market_factor()
+            size_factor = market_comp.size_factor()
+            value_factor = market_comp.value_factor()
+            
+            result = {
+                'market_factor': market_factor,
+                'size_factor': size_factor,
+                'value_factor': value_factor
+            }
+            
+            logger.info(f"Fama-French factors calculated: Market={market_factor:.3f}, Size={size_factor:.3f}, Value={value_factor:.3f}")
+            return result
+            
+        except Exception as e:
+            logger.exception(f"Error calculating Fama-French factors: {e}")
+            return {}

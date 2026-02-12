@@ -26,6 +26,10 @@ from .performance_metrics import (
 from .returns_chart import (
 	render_returns_chart,
 )
+from .fama_french_view import (
+	render_fama_french_factors,
+	render_fama_french_summary_card,
+)
 
 __all__ = [
 	'render_portfolio_summary',
@@ -42,4 +46,6 @@ __all__ = [
 	'render_market_metrics',
 	'render_performance_summary',
 	'render_returns_chart',
+	'render_fama_french_factors',
+	'render_fama_french_summary_card',
 ]
