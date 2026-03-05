@@ -128,15 +128,6 @@ class DataService:
 
         self._update_cache(cache_key, df, [source_file])
         return df
-    
-
-    def get_allocation_data(self) -> pd.DataFrame:
-        """Get allocation data from Portfolio class securities list"""
-        source_file = os.path.join(self.output_folder, "holdings.csv")
-        df = pd.read_csv(source_file)
-        df = df[df['status'] == 'open']
-
-        return df
         
     
     def get_holdings_data(self) -> pd.DataFrame:
