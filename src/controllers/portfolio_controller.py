@@ -181,7 +181,6 @@ class PortfolioController:
                 row = portfolio_total_df.sort_values('Date').iloc[[-1]]
         else:
             row = portfolio_total_df.sort_values('Date').iloc[[-1]]
-        total_value = float(row.iloc[0]['Total_Holdings_CAD'])
         
         return holdings_df
 

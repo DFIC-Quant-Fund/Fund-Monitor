@@ -153,3 +153,93 @@ class ReturnsCalculator:
         
         df['Cumulative_Return_Pct'] = (df[self.portfolio_column] / starting_value - 1.0) * 100.0
         return df[['Date', 'Cumulative_Return_Pct']]
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(
+        description="Run portfolio return calculations from a CSV file."
+    )
+    parser.add_argument(
+        "csv_path",
+        help="Path to CSV file with at least 'Date' and 'Total_Portfolio_Value' columns.",
+    )
+    parser.add_argument(
+        "--date",
+        help="As-of date in YYYY-MM-DD format (defaults to latest date in the file).",
+        default=None,
+    )
+    parser.add_argument(
+        "--portfolio-column",
+        help="Name of the column containing portfolio values.",
+        default="Total_Portfolio_Value",
+    )
+
+    args = parser.parse_args()
+
+    csv_path = Path(args.csv_path)
+    if not csv_path.is_file():
+        print(f"CSV file not found: {csv_path}")
+        sys.exit(1)
+
+    # Load data
+    df = pd.read_csv(csv_path)
+    if "Date" not in df.columns:
+        print("CSV must contain a 'Date' column.")
+        sys.exit(1)
+
+    df["Date"] = pd.to_datetime(df["Date"])
+
+    portfolio_col = args.portfolio_column
+    if portfolio_col not in df.columns:
+        print(f"CSV must contain a '{portfolio_col}' column.")
+        sys.exit(1)
+
+    # Ensure pct_change column exists for average-return methods
+    if "pct_change" not in df.columns:
+        df["pct_change"] = df[portfolio_col].pct_change()
+
+    # Determine as-of date
+    as_of_date = args.date if args.date else df["Date"].max()
+
+    calc = ReturnsCalculator(
+        portfolio_data=df,
+        date=as_of_date,
+        portfolio_column=portfolio_col,
+    )
+
+    print(f"Using data from: {csv_path}")
+    print(f"As-of date: {pd.to_datetime(as_of_date).date()}")
+    print()
+
+    performance = calc.calculate_performance()
+    print("Period performance (%):")
+    for period, value in performance.items():
+        if value is None:
+            print(f"  {period:>10}: N/A")
+        else:
+            print(f"  {period:>10}: {value:8.3f}%")
+
+    total_ret = calc.total_return()
+    daily_avg = calc.daily_average_return()
+    annualized_avg = calc.annualized_average_return()
+    annualized = calc.annualized_return(as_of_date=as_of_date)
+
+    print()
+    print(f"Total return (since inception): {total_ret * 100:.3f}%")
+    print(f"Average daily return:          {daily_avg * 100:.5f}%")
+    print(f"Annualized avg daily return:   {annualized_avg * 100:.3f}%")
+    if annualized is not None:
+        print(f"Annualized return (CAGR):      {annualized:.3f}%")
+    else:
+        print("Annualized return (CAGR):      N/A")
+
+    # Show last few rows of cumulative return series as a quick sanity check
+    cum_df = calc.cumulative_return_series()
+    if not cum_df.empty:
+        print()
+        print("Last 5 rows of cumulative return series (%):")
+        print(cum_df.tail().to_string(index=False))
