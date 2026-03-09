@@ -37,7 +37,7 @@ class ReturnsCalculator:
             "one_day": self.date - timedelta(days=1),
             "one_week": self.date - timedelta(days=7),
             "one_month": self.date - timedelta(days=30),
-            "qtd": self.date.replace(month=self.date.month - ((self.date.month - 1) % 3), day=1),
+            "qtd": pd.Timestamp(year=self.date.year, month=((self.date.month - 1) // 3) * 3 + 1, day=1),
             "ytd": pd.Timestamp(year=self.date.year, month=1, day=1),
             "one_year": self.date - timedelta(days=365),
             "inception": self.df['Date'].min()
@@ -47,7 +47,8 @@ class ReturnsCalculator:
         current_value = self._get_value_by_date(self.date)
 
         for key, period_date in periods.items():
-            closest_date = self._closest_date(period_date, side='right' if key == 'ytd' else 'left')
+            side = 'right' if key in ('ytd', 'qtd') else 'left'
+            closest_date = self._closest_date(period_date, side=side)
             previous_value = self._get_value_by_date(closest_date)
 
             # Calculate return only if both values exist
