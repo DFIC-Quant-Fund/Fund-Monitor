@@ -69,10 +69,19 @@ class RiskMetrics:
         return annualized_downside_volatility
 
     def maximum_drawdown(self):
-        # calculate the maximum drawdown
-        daily_return = self.df['pct_change'].dropna()
-        
-        return daily_return.min()
+        daily_returns = self.df['pct_change'].dropna()
+        if daily_returns.empty:
+            return 0.0
+
+        # Value change in portfolio over time
+        cumulative = (1 + daily_returns).cumprod()
+        running_max = cumulative.cummax()
+
+        # Drawdown at each point: percentage drop from the running peak
+        drawdowns = cumulative / running_max - 1
+        max_drawdown = drawdowns.min()
+
+        return max_drawdown
 
     def sharpe_ratio(self, risk_free_rate: float):
         daily_return = self.df['pct_change'].dropna()
