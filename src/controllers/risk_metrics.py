@@ -73,11 +73,9 @@ class RiskMetrics:
         if daily_returns.empty:
             return 0.0
 
-        # Value change in portfolio over time
         cumulative = (1 + daily_returns).cumprod()
         running_max = cumulative.cummax()
 
-        # Drawdown at each point: percentage drop from the running peak
         drawdowns = cumulative / running_max - 1
         max_drawdown = drawdowns.min()
 
