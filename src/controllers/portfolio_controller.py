@@ -181,49 +181,8 @@ class PortfolioController:
                 row = portfolio_total_df.sort_values('Date').iloc[[-1]]
         else:
             row = portfolio_total_df.sort_values('Date').iloc[[-1]]
-        total_value = float(row.iloc[0]['Total_Holdings_CAD'])
-
-        denom = total_value if total_value > 0 else 0.0
-        if denom > 0:
-            # Prefer CAD-based weighting if available
-            numer = holdings_df['market_value_cad'] if 'market_value_cad' in holdings_df.columns else holdings_df['market_value']
-            holdings_df['holdings_weight_percent'] = (numer / denom) * 100.0
-        else:
-            holdings_df['holdings_weight_percent'] = 0.0
         
         return holdings_df
-    
-    def get_allocation_data(self) -> pd.DataFrame:
-        """Get allocation data as DataFrame"""
-        df = self._data_service.get_allocation_data()
-        if df.empty:
-            logger.error("Allocation data is empty")
-            return df
-        
-        # Need: ticker, sector, geography, currency, holding_weight, market_value
-        # Then need allocation chart for only equities (exclude cash, fixed income and gold)
-        # and another chart for cash and fixed income only
-        # Another chart for all holdings including cash, gold and fixed income
-
-        # Calculate per-ticker weights directly on df
-        sector_norm = df['sector'].astype(str).str.lower()
-        is_equity = (sector_norm != 'fixed income') & (sector_norm != 'absolute return')
-        is_fixed_income = (sector_norm == 'fixed income')
-
-        total_equity_mv = df.loc[is_equity, 'market_value_cad'].sum()
-        total_fi_mv = df.loc[is_fixed_income, 'market_value_cad'].sum()
-
-        df['equity_weight_percent'] = 0.0
-        df.loc[is_equity & (total_equity_mv > 0), 'equity_weight_percent'] = (
-            df.loc[is_equity, 'market_value_cad'] / total_equity_mv * 100.0
-        )
-
-        df['fi_weight_percent'] = 0.0
-        df.loc[is_fixed_income & (total_fi_mv > 0), 'fi_weight_percent'] = (
-            df.loc[is_fixed_income, 'market_value_cad'] / total_fi_mv * 100.0
-        )
-
-        return df
 
 
     

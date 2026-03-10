@@ -116,7 +116,6 @@ def main():
     try:
         portfolio_summary = portfolio_controller.get_portfolio_summary(selected_date.strftime('%Y-%m-%d'))
         holdings_data = portfolio_controller.get_holdings_data()
-        # allocations_data = portfolio_controller.get_allocation_data()
         performance_data = portfolio_controller.get_performance_metrics(selected_date.strftime('%Y-%m-%d'))
         # Use cash breakdown from cash.csv and totals from portfolio_total.csv
         cash_data = portfolio_controller.get_cash_data(selected_date.strftime('%Y-%m-%d'))
