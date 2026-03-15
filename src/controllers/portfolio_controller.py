@@ -379,3 +379,54 @@ class PortfolioController:
             logger.warning(f"Could not load SPY data: {e}")
             
         return portfolio_returns
+    
+    def get_fama_french_factors(self, as_of_date: str = None) -> Dict[str, float]:
+        """
+        Get Fama-French 3-factor model loadings for the portfolio.
+        
+        Args:
+            as_of_date: Optional date string. Factors are calculated using all data up to this date.
+        
+        Returns:
+            Dictionary containing:
+            - market_factor: Market beta (sensitivity to market movements)
+            - size_factor: SMB beta (small minus big)
+            - value_factor: HML beta (high minus low)
+            - alpha: Jensen's alpha from monthly regression (decimal)
+            - r_squared: Model fit
+            - observations: Number of monthly observations used
+        """
+        try:
+            portfolio_total_df = self._data_service.get_portfolio_total_data()
+            
+            if portfolio_total_df.empty:
+                logger.warning("No portfolio data available for Fama-French analysis")
+                return {}
+            
+            # Filter data up to as_of_date if provided
+            if as_of_date:
+                as_of_dt = pd.to_datetime(as_of_date)
+                portfolio_total_df = portfolio_total_df[portfolio_total_df['Date'] <= as_of_dt]
+            
+            # Initialize market comparison with portfolio data
+            market_comp = MarketComparison(portfolio_total_df, useSpy=True)
+
+            result = market_comp.fama_french_3factor_regression()
+            if not result:
+                logger.warning("Insufficient data for Fama-French analysis (need at least 12 monthly observations)")
+                return {}
+
+            logger.info(
+                "Fama-French factors calculated: "
+                f"Market={result['market_factor']:.3f}, "
+                f"Size={result['size_factor']:.3f}, "
+                f"Value={result['value_factor']:.3f}, "
+                f"Alpha={result['alpha']:.4f}, "
+                f"R2={result['r_squared']:.3f}, "
+                f"N={result['observations']}"
+            )
+            return result
+            
+        except Exception as e:
+            logger.exception(f"Error calculating Fama-French factors: {e}")
+            return {}
