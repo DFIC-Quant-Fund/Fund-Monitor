@@ -15,7 +15,11 @@ def render_performance_metrics(performance_data: Dict[str, Any]):
     if 'risk_metrics' in performance_data:
         render_risk_metrics(performance_data['risk_metrics'])
     if 'ratios' in performance_data:
-        render_risk_ratios(performance_data['ratios'])
+        render_risk_ratios(
+            performance_data['ratios'],
+            performance_data.get('risk_free_rate'),
+            performance_data.get('risk_free_rate_source'),
+        )
     if 'market_metrics' in performance_data:
         render_market_metrics(performance_data['market_metrics'])
 
@@ -58,8 +62,17 @@ def render_risk_metrics(risk_data: Dict[str, Any]):
             st.metric("Annualized Downside Vol", f"{risk_data['annualized_downside_volatility']:.2%}")
     st.markdown("---")
 
-def render_risk_ratios(ratios_data: Dict[str, Any]):
+def render_risk_ratios(
+    ratios_data: Dict[str, Any],
+    risk_free_rate: float = None,
+    risk_free_rate_source: str = None,
+):
     st.subheader("Risk-Adjusted Ratios")
+    if risk_free_rate is not None:
+        source_label = f" ({risk_free_rate_source})" if risk_free_rate_source else ""
+        st.caption(
+            f"Risk-free rate used in calculations: **{risk_free_rate:.2%}**{source_label} (annualized)"
+        )
     col1, col2, col3 = st.columns(3)
     with col1:
         if 'annualized_sharpe_ratio' in ratios_data:

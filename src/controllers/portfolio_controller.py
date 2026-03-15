@@ -11,9 +11,10 @@ This controller handles all portfolio operations including:
 import os
 import sys
 import pandas as pd
+import yaml
 import yfinance as yf
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -47,7 +48,38 @@ class PortfolioController:
         self._risk_metrics = None  # Will build per-request with actual df
         self._market_comparison = None  # Construct per-request with current portfolio df
         self._benchmark = Benchmark()
-    
+
+    def _get_risk_free_rate(self) -> tuple[float, str]:
+        """Resolve the risk-free rate for ratio calculations.
+        Tries 3-month T-Bill (^IRX) via yfinance first; falls back to config/config.yaml.
+        Returns (rate as decimal, source label for display).
+        """
+        # Try 3-month T-Bill yield from Yahoo Finance
+        try:
+            ticker = yf.Ticker("^IRX")
+            hist = ticker.history(period="5d")
+            if not hist.empty and "Close" in hist.columns:
+                rate_pct = float(hist["Close"].iloc[-1])
+                if 0 < rate_pct < 25:  # sanity: yield in % should be in this range
+                    return (rate_pct / 100.0, "3-month T-Bill")
+        except Exception as e:
+            logger.debug(f"Could not fetch 3-month T-Bill rate (^IRX): {e}")
+
+        # Fall back to config
+        try:
+            config_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "config", "config.yaml"
+            )
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config = yaml.safe_load(f) or {}
+                rate = config.get("risk_free_rate")
+                if rate is not None:
+                    return (float(rate), "config")
+        except Exception as e:
+            logger.warning(f"Could not load risk_free_rate from config: {e}")
+        return (0.02, "config")  # final fallback
+
     def get_available_portfolios(self) -> List[str]:
         """Get list of available portfolios"""
         if not os.path.exists(self.data_directory):
@@ -107,6 +139,17 @@ class PortfolioController:
         except Exception as e:
             logger.warning(f"Could not compute inception cumulative return: {e}")
             inception_return_pct = None
+
+        # Annualized return since inception (%)
+        try:
+            annualized_return_pct = ReturnsCalculator(totals_df, as_of_dt).annualized_return(as_of_dt)
+            if annualized_return_pct is not None:
+                annualized_return_pct = float(annualized_return_pct)
+            else:
+                logger.debug(f"Annualized return calculation returned None for date {as_of_dt}")
+        except Exception as e:
+            logger.warning(f"Could not compute annualized return: {e}", exc_info=True)
+            annualized_return_pct = None
         
         return {
             'total_holdings_value': total_holdings_value,
@@ -118,7 +161,8 @@ class PortfolioController:
             'usd_holdings_mv': usd_holdings_mv,
             'cad_cash': cad_cash,
             'usd_cash': usd_cash,
-            'inception_return_pct': inception_return_pct
+            'inception_return_pct': inception_return_pct,
+            'annualized_return_pct': annualized_return_pct
         }
     
     def get_holdings_data(self, as_of_date: str = None) -> pd.DataFrame:
@@ -137,54 +181,20 @@ class PortfolioController:
                 row = portfolio_total_df.sort_values('Date').iloc[[-1]]
         else:
             row = portfolio_total_df.sort_values('Date').iloc[[-1]]
-        total_value = float(row.iloc[0]['Total_Holdings_CAD'])
-
-        denom = total_value if total_value > 0 else 0.0
-        if denom > 0:
-            # Prefer CAD-based weighting if available
-            numer = holdings_df['market_value_cad'] if 'market_value_cad' in holdings_df.columns else holdings_df['market_value']
-            holdings_df['holdings_weight_percent'] = (numer / denom) * 100.0
-        else:
-            holdings_df['holdings_weight_percent'] = 0.0
         
         return holdings_df
-    
-    def get_allocation_data(self) -> pd.DataFrame:
-        """Get allocation data as DataFrame"""
-        df = self._data_service.get_allocation_data()
-        if df.empty:
-            logger.error("Allocation data is empty")
-            return df
-        
-        # Need: ticker, sector, geography, currency, holding_weight, market_value
-        # Then need allocation chart for only equities (exclude cash, fixed income and gold)
-        # and another chart for cash and fixed income only
-        # Another chart for all holdings including cash, gold and fixed income
-
-        # Calculate per-ticker weights directly on df
-        sector_norm = df['sector'].astype(str).str.lower()
-        is_equity = (sector_norm != 'fixed income') & (sector_norm != 'absolute return')
-        is_fixed_income = (sector_norm == 'fixed income')
-
-        total_equity_mv = df.loc[is_equity, 'market_value_cad'].sum()
-        total_fi_mv = df.loc[is_fixed_income, 'market_value_cad'].sum()
-
-        df['equity_weight_percent'] = 0.0
-        df.loc[is_equity & (total_equity_mv > 0), 'equity_weight_percent'] = (
-            df.loc[is_equity, 'market_value_cad'] / total_equity_mv * 100.0
-        )
-
-        df['fi_weight_percent'] = 0.0
-        df.loc[is_fixed_income & (total_fi_mv > 0), 'fi_weight_percent'] = (
-            df.loc[is_fixed_income, 'market_value_cad'] / total_fi_mv * 100.0
-        )
-
-        return df
 
 
     
-    def get_performance_metrics(self, date: str = None, risk_free_rate: float = 0.02) -> Dict[str, Any]:
-        """Get comprehensive performance metrics"""
+    def get_performance_metrics(
+        self, date: str = None, risk_free_rate: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """Get comprehensive performance metrics.
+        risk_free_rate: If None, uses 3-month T-Bill (^IRX) via yfinance, then config fallback.
+        """
+        risk_free_rate_source: Optional[str] = None
+        if risk_free_rate is None:
+            risk_free_rate, risk_free_rate_source = self._get_risk_free_rate()
         portfolio_total_df = self._data_service.get_portfolio_total_data()
         
         if portfolio_total_df.empty:
@@ -217,7 +227,7 @@ class PortfolioController:
             risk_metrics_inst = RiskMetrics(portfolio_total_df)
             daily_sharpe, annualized_sharpe = risk_metrics_inst.sharpe_ratio(risk_free_rate)
             daily_sortino, annualized_sortino = risk_metrics_inst.sortino_ratio(risk_free_rate)
-            market_comp = MarketComparison(portfolio_total_df, useSpy=True, risk_free_rate=risk_free_rate)
+            market_comp = MarketComparison(portfolio_total_df, useSpy=False, risk_free_rate=risk_free_rate)
             daily_info, annualized_info = market_comp.information_ratio()
             
             ratios = {
@@ -234,7 +244,7 @@ class PortfolioController:
         
         # Add market comparison metrics - use in-memory portfolio data
         try:
-            market_comp = market_comp if 'market_comp' in locals() else MarketComparison(portfolio_total_df, useSpy=True, risk_free_rate=risk_free_rate)
+            market_comp = market_comp if 'market_comp' in locals() else MarketComparison(portfolio_total_df, useSpy=False, risk_free_rate=risk_free_rate)
             beta = market_comp.beta()
             alpha = market_comp.alpha()
             risk_premium = market_comp.portfolio_risk_premium()
@@ -253,7 +263,9 @@ class PortfolioController:
             'risk_metrics': risk_metrics,
             'ratios': ratios,
             'market_metrics': market_metrics,
-            'as_of_date': date
+            'as_of_date': date,
+            'risk_free_rate': risk_free_rate,
+            'risk_free_rate_source': risk_free_rate_source,
         }
     
     def get_cash_data(self, as_of_date: str = None) -> Dict[str, float]:
