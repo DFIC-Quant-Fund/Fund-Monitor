@@ -392,8 +392,9 @@ class PortfolioController:
             - market_factor: Market beta (sensitivity to market movements)
             - size_factor: SMB beta (small minus big)
             - value_factor: HML beta (high minus low)
-            - alpha: Jensen's alpha from regression (if calculable)
-            - r_squared: Model fit (if calculable)
+            - alpha: Jensen's alpha from monthly regression (decimal)
+            - r_squared: Model fit
+            - observations: Number of monthly observations used
         """
         try:
             portfolio_total_df = self._data_service.get_portfolio_total_data()
@@ -407,25 +408,23 @@ class PortfolioController:
                 as_of_dt = pd.to_datetime(as_of_date)
                 portfolio_total_df = portfolio_total_df[portfolio_total_df['Date'] <= as_of_dt]
             
-            if len(portfolio_total_df) < 30:  # Need at least ~1 month of daily data
-                logger.warning("Insufficient data for Fama-French analysis (need at least 30 days)")
-                return {}
-            
             # Initialize market comparison with portfolio data
             market_comp = MarketComparison(portfolio_total_df, useSpy=True)
-            
-            # Calculate the three factors
-            market_factor = market_comp.market_factor()
-            size_factor = market_comp.size_factor()
-            value_factor = market_comp.value_factor()
-            
-            result = {
-                'market_factor': market_factor,
-                'size_factor': size_factor,
-                'value_factor': value_factor
-            }
-            
-            logger.info(f"Fama-French factors calculated: Market={market_factor:.3f}, Size={size_factor:.3f}, Value={value_factor:.3f}")
+
+            result = market_comp.fama_french_3factor_regression()
+            if not result:
+                logger.warning("Insufficient data for Fama-French analysis (need at least 12 monthly observations)")
+                return {}
+
+            logger.info(
+                "Fama-French factors calculated: "
+                f"Market={result['market_factor']:.3f}, "
+                f"Size={result['size_factor']:.3f}, "
+                f"Value={result['value_factor']:.3f}, "
+                f"Alpha={result['alpha']:.4f}, "
+                f"R2={result['r_squared']:.3f}, "
+                f"N={result['observations']}"
+            )
             return result
             
         except Exception as e:

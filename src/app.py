@@ -152,7 +152,7 @@ def main():
             if ff_data:
                 render_fama_french_factors(ff_data)
             else:
-                st.info("📊 Fama-French 3-Factor analysis requires at least 30 days of historical data.")
+                st.info("📊 Fama-French 3-Factor analysis requires at least 12 monthly observations.")
         except Exception as e:
             st.warning(f"Could not calculate Fama-French factors: {e}")
 

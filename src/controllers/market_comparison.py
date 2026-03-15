@@ -13,6 +13,7 @@ This module focuses on comparative analysis and assumes benchmark data is availa
 """
 
 import pandas as pd
+import numpy as np
 import getFamaFrenchFactors as gff
 from .benchmark import Benchmark
 from .returns_calculator import ReturnsCalculator
@@ -138,7 +139,8 @@ class MarketComparison:
         try:
             # Get Fama-French 3-factor monthly data
             ff3_df = gff.famaFrench3Factor(frequency='m')
-            ff3_df.rename(columns={'date_ff_factors': 'Date'}, inplace=True)
+            if 'date_ff_factors' in ff3_df.columns and 'Date' not in ff3_df.columns:
+                ff3_df.rename(columns={'date_ff_factors': 'Date'}, inplace=True)
             ff3_df['Date'] = pd.to_datetime(ff3_df['Date'])
             
             # Convert daily portfolio data to monthly
@@ -163,6 +165,22 @@ class MarketComparison:
             
             # Merge with FF3 factors on Date
             merged_df = pd.merge(monthly_portfolio_df, ff3_df, on='Date', how='inner')
+
+            # Keep only required columns and coerce to numeric
+            required_cols = ['portfolio_return', 'Mkt-RF', 'SMB', 'HML', 'RF']
+            for col in required_cols:
+                if col not in merged_df.columns:
+                    logger.warning(f"Missing expected FF3 column: {col}")
+                    return pd.DataFrame()
+                merged_df[col] = pd.to_numeric(merged_df[col], errors='coerce')
+            merged_df = merged_df.dropna(subset=required_cols)
+
+            # Factor feeds can come in either decimal (0.01) or percent (1.0) units.
+            # Normalize to decimals so portfolio and factors use consistent units.
+            factor_cols = ['Mkt-RF', 'SMB', 'HML', 'RF']
+            max_abs_factor = merged_df[factor_cols].abs().max().max()
+            if pd.notna(max_abs_factor) and max_abs_factor > 1:
+                merged_df[factor_cols] = merged_df[factor_cols] / 100.0
             
             logger.debug(f"Aligned {len(merged_df)} months of data for FF3 analysis")
             return merged_df
@@ -170,6 +188,60 @@ class MarketComparison:
         except Exception as e:
             logger.exception(f"Could not align monthly returns with FF3 factors: {e}")
             return pd.DataFrame()
+
+    @lru_cache(maxsize=1)
+    def _ff3_regression_results(self):
+        """
+        Fit the canonical Fama-French 3-factor regression:
+            (Rp - Rf) = alpha + b_m*(Mkt-RF) + b_s*SMB + b_h*HML + e
+
+        Returns:
+            dict with keys:
+                market_factor, size_factor, value_factor, alpha, r_squared, observations
+            or {} when data is insufficient.
+        """
+        try:
+            merged_df = self._get_monthly_returns_aligned_with_ff3()
+            if merged_df.empty:
+                return {}
+
+            min_observations = 12
+            if len(merged_df) < min_observations:
+                logger.warning(
+                    f"Insufficient data for FF3 regression: {len(merged_df)} observations "
+                    f"(need at least {min_observations})"
+                )
+                return {}
+
+            y = (merged_df['portfolio_return'] - merged_df['RF']).to_numpy(dtype=float)
+            x_factors = merged_df[['Mkt-RF', 'SMB', 'HML']].to_numpy(dtype=float)
+            x = np.column_stack([np.ones(len(x_factors)), x_factors])  # intercept + 3 factors
+
+            # OLS coefficients via least squares
+            coefs, _, _, _ = np.linalg.lstsq(x, y, rcond=None)
+            alpha, beta_mkt, beta_smb, beta_hml = coefs
+
+            y_hat = x @ coefs
+            residuals = y - y_hat
+            ss_res = float(np.sum(residuals ** 2))
+            ss_tot = float(np.sum((y - y.mean()) ** 2))
+            r_squared = 1.0 - (ss_res / ss_tot) if ss_tot > 0 else 0.0
+
+            return {
+                'market_factor': float(beta_mkt),
+                'size_factor': float(beta_smb),
+                'value_factor': float(beta_hml),
+                'alpha': float(alpha),  # monthly alpha (decimal)
+                'r_squared': float(r_squared),
+                'observations': int(len(merged_df))
+            }
+        except Exception as e:
+            logger.exception(f"Could not fit FF3 regression: {e}")
+            return {}
+
+    def fama_french_3factor_regression(self):
+        """Public wrapper returning FF3 regression outputs."""
+        return self._ff3_regression_results()
 
     def market_factor(self):
         """
@@ -184,28 +256,8 @@ class MarketComparison:
                   = 1.0 = Moves with market
         """
         try:
-            # Get aligned monthly data
-            merged_df = self._get_monthly_returns_aligned_with_ff3()
-            
-            if merged_df.empty or len(merged_df) < 12:
-                logger.warning("Insufficient data for market factor calculation")
-                return 0.0
-            
-            # Calculate portfolio excess return
-            merged_df['excess_return'] = merged_df['portfolio_return'] - merged_df['RF']
-            
-            # Calculate covariance and variance
-            covariance = merged_df['excess_return'].cov(merged_df['Mkt-RF'])
-            market_variance = merged_df['Mkt-RF'].var()
-            
-            if market_variance == 0:
-                logger.warning("Market variance is zero, cannot calculate market factor")
-                return 0.0
-            
-            beta_market = covariance / market_variance
-            
-            logger.info(f"Market factor (beta): {beta_market:.4f}")
-            return beta_market
+            results = self._ff3_regression_results()
+            return float(results.get('market_factor', 0.0))
             
         except Exception as e:
             logger.exception(f"Could not calculate market factor: {e}")
@@ -224,28 +276,8 @@ class MarketComparison:
                   ≈ 0 = Neutral to size
         """
         try:
-            # Get aligned monthly data
-            merged_df = self._get_monthly_returns_aligned_with_ff3()
-            
-            if merged_df.empty or len(merged_df) < 12:
-                logger.warning("Insufficient data for size factor calculation")
-                return 0.0
-            
-            # Calculate portfolio excess return
-            merged_df['excess_return'] = merged_df['portfolio_return'] - merged_df['RF']
-            
-            # Calculate covariance and variance
-            covariance = merged_df['excess_return'].cov(merged_df['SMB'])
-            smb_variance = merged_df['SMB'].var()
-            
-            if smb_variance == 0:
-                logger.warning("SMB variance is zero, cannot calculate size factor")
-                return 0.0
-            
-            beta_smb = covariance / smb_variance
-            
-            logger.info(f"Size factor (SMB): {beta_smb:.4f}")
-            return beta_smb
+            results = self._ff3_regression_results()
+            return float(results.get('size_factor', 0.0))
             
         except Exception as e:
             logger.exception(f"Could not calculate size factor: {e}")
@@ -264,28 +296,8 @@ class MarketComparison:
                   ≈ 0 = Neutral to value/growth
         """
         try:
-            # Get aligned monthly data
-            merged_df = self._get_monthly_returns_aligned_with_ff3()
-            
-            if merged_df.empty or len(merged_df) < 12:
-                logger.warning("Insufficient data for value factor calculation")
-                return 0.0
-            
-            # Calculate portfolio excess return
-            merged_df['excess_return'] = merged_df['portfolio_return'] - merged_df['RF']
-            
-            # Calculate covariance and variance
-            covariance = merged_df['excess_return'].cov(merged_df['HML'])
-            hml_variance = merged_df['HML'].var()
-            
-            if hml_variance == 0:
-                logger.warning("HML variance is zero, cannot calculate value factor")
-                return 0.0
-            
-            beta_hml = covariance / hml_variance
-            
-            logger.info(f"Value factor (HML): {beta_hml:.4f}")
-            return beta_hml
+            results = self._ff3_regression_results()
+            return float(results.get('value_factor', 0.0))
             
         except Exception as e:
             logger.exception(f"Could not calculate value factor: {e}")
