@@ -257,33 +257,18 @@ class Portfolio:
         else:
             return value
 
-    def _calculate_original_weights(self):
-        """Calculate original portfolio weights from initial transactions.
-        """
-        if self.trades is None or self.trades.empty:
+    def _load_benchmark_target_weights(self):
+        """Target weights from `benchmark.yaml` (same source as derive_trades_from_yaml)."""
+        if self.folder_prefix != 'benchmark':
             return {}
-        
-        first_trade_date = self.trades.index.min()
-        initial_trades = self.trades.loc[first_trade_date]
-        
-        # Handle single trade vs multiple trades
-        if isinstance(initial_trades, pd.Series):
-            initial_trades = initial_trades.to_frame().T
-        
-        initial_values = {}
-        total_value_cad = 0.0
-        
-        for _, row in initial_trades.iterrows():
-            ticker = row['Ticker']
-            quantity = abs(row['Quantity'])  # Use absolute value for buys
-            price = row['Price']
-            
-            value_cad = self._calculate_ticker_value_in_cad(ticker, quantity, price, first_trade_date)
-            initial_values[ticker] = value_cad
-            total_value_cad += value_cad
-        
-        weights = {ticker: value / total_value_cad for ticker, value in initial_values.items()}
-        logger.info(f"Original benchmark weights calculated: {weights}")
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        try:
+            from src.config.benchmark_yaml import load_benchmark_target_weights
+        except ImportError:
+            from config.benchmark_yaml import load_benchmark_target_weights
+        weights = load_benchmark_target_weights(root)
+        if weights:
+            logger.info(f"Benchmark target weights from YAML: {weights}")
         return weights
 
     def _get_quarter_end_dates(self):
@@ -409,10 +394,12 @@ class Portfolio:
             logger.warning("Cannot add rebalancing trades: prices not yet created")
             return
         
-        # Calculate original weights
-        original_weights = self._calculate_original_weights()
+        original_weights = self._load_benchmark_target_weights()
         if not original_weights:
-            logger.warning("Could not calculate original weights for rebalancing")
+            logger.warning(
+                "Benchmark rebalancing skipped: no target_allocation weights in benchmark.yaml "
+                "(or they do not sum to 1.0)"
+            )
             return
         
         # Get quarter-end dates
@@ -1165,7 +1152,7 @@ class Portfolio:
         logger.info(f"Start Date: {self.start_date}")
         logger.info(f"End Date: {(pd.to_datetime(self.end_date) - timedelta(days=1)).strftime('%Y-%m-%d')}")
         logger.info("")
-        logger.info(f"Starting Cash: {STARTING_CASH:.2f}")
+        logger.info(f"Starting Cash: {self.STARTING_CASH:.2f}")
         logger.info("")
         logger.info(f"CAD Cash (including dividends): {self.cash.loc[self.valid_dates[-1], 'CAD_Cash']:.2f}")
         logger.info(f"USD Cash (including dividends): {self.cash.loc[self.valid_dates[-1], 'USD_Cash']:.2f}")
@@ -1175,7 +1162,7 @@ class Portfolio:
         logger.info(f"Total Cash (CAD, including dividends): {cash_total_cad:.2f}")
         logger.info(f"Market Value of holdings: {market_values_total:.2f}")
         logger.info(f"Total Value of portfolio: {(market_values_total + cash_total_cad):.2f}")
-        logger.info(f"Total Return: {((market_values_total + cash_total_cad) / STARTING_CASH - 1) * 100:.2f}%")
+        logger.info(f"Total Return: {((market_values_total + cash_total_cad) / self.STARTING_CASH - 1) * 100:.2f}%")
 
     def get_valid_dates(self):
         sp500 = yf.Ticker('^GSPC').history(start=self.start_date, end=self.end_date)
@@ -1191,7 +1178,6 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         sys.exit("Usage: python3 Portfolio.py <folder_prefix>")
     folder_prefix = sys.argv[1]
-    # initlialze instance of portfolio main function  - all parameters are global variables 
     portfolio = Portfolio(start_date, end_date, STARTING_CASH, folder_prefix)
 
     # load functions after intial set up - fills all output CSVs 

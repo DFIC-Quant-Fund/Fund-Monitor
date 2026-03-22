@@ -15,7 +15,7 @@ transactions:
   date: 2022-05-05
   ticker: XIU.TO
   price: 31.780000686645508
-  quantity: 959.518471 # 30% of 101644.99 / price
+  target_allocation: 35%
   currency: CAD
   sector: ETF Equity
   geography: CAN
@@ -25,7 +25,7 @@ transactions:
   date: 2022-05-05
   ticker: SPY
   price: 414.4800109863281
-  quantity: 57.239937 # 30% of 101644.99 / (price * 1.2853000164031982)
+  target_allocation: 35%
   currency: USD
   sector: ETF Equity
   geography: US
@@ -35,7 +35,7 @@ transactions:
   date: 2022-05-05
   ticker: AGG
   price: 102.12999725341797
-  quantity: 154.866732 # 20% of 101644.99 / (price * 1.2853000164031982)
+  target_allocation: 15%
   currency: USD
   sector: ETF Fixed Income
   geography: US
@@ -45,7 +45,7 @@ transactions:
   date: 2022-05-05
   ticker: XBB.TO
   price: 28.100000381469727
-  quantity: 723.451886 # 20% of 101644.99 / price
+  target_allocation: 15%
   currency: CAD
   sector: ETF Fixed Income
   geography: CAN
