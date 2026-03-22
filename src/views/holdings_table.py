@@ -25,12 +25,12 @@ def render_holdings_table(holdings_data: pd.DataFrame):
         display_data = holdings_data.copy()
 
     if not holdings_data.empty:
-        # Select columns to show (keep numeric types for proper sorting)
-        # These keys must match the output of create_table_holdings in portfolio_csv_builder.py
+        # Select columns to show
         cols = [
             'ticker', 
             'currency', 
-            'shares', 
+            'shares',
+            'first_purchase_date',   # ✅ ADDED COLUMN
             'holding_weight', 
             'current_price', 
             'avg_price', 
@@ -54,6 +54,7 @@ def render_holdings_table(holdings_data: pd.DataFrame):
             'ticker': 'Ticker',
             'currency': 'Currency',
             'shares': 'Shares',
+            'first_purchase_date': 'First Purchase Date',  # ✅ RENAME
             'holding_weight': 'Weight (%)',
             'current_price': 'Price',
             'avg_price': 'Avg Cost',
@@ -65,12 +66,12 @@ def render_holdings_table(holdings_data: pd.DataFrame):
             'total_return': 'Total Return ($)',
             'total_return_pct': 'Total Return (%)',
             'annualized_return_pct': 'Annualized Return (%)',
-            'sector': 'sector',
+            'sector': 'Sector',
             'asset_class': 'Asset Class',
             'status': 'Status'
         })
 
-        # Use column_config to format while retaining numeric dtype for correct sorting
+        # Render table
         st.dataframe(
             df_show,
             use_container_width=True,
@@ -78,6 +79,7 @@ def render_holdings_table(holdings_data: pd.DataFrame):
                 'Ticker': st.column_config.TextColumn('Ticker'),
                 'Currency': st.column_config.TextColumn('Currency'),
                 'Shares': st.column_config.NumberColumn('Shares', format='%.2f'),
+                'First Purchase Date': st.column_config.DateColumn('First Purchase Date'),  # ✅ CONFIG
                 'Weight (%)': st.column_config.NumberColumn('Weight (%)', format='%.2f%%'),
                 'Price': st.column_config.NumberColumn('Price', format='$%.2f'),
                 'Avg Cost': st.column_config.NumberColumn('Avg Cost', format='$%.2f'),
@@ -89,24 +91,22 @@ def render_holdings_table(holdings_data: pd.DataFrame):
                 'Total Return ($)': st.column_config.NumberColumn('Total Return ($)', format='$%.2f'),
                 'Total Return (%)': st.column_config.NumberColumn('Total Return (%)', format='%.2f%%'),
                 'Annualized Return (%)': st.column_config.NumberColumn('Annualized Return (%)', format='%.2f%%'),
-                'Sector': st.column_config.TextColumn('sector'),
+                'Sector': st.column_config.TextColumn('Sector'),
                 'Asset Class': st.column_config.TextColumn('Asset Class'),
                 'Status': st.column_config.TextColumn('Status'),
             },
             hide_index=True
         )
+
         st.info("💡 **Note**: All values are in the native currency of the asset (CAD or USD). Weights are normalized to portfolio total.")
     else:
         st.info("No holdings data available")
+
 
 def render_holdings_summary(holdings_data: pd.DataFrame):
     if not holdings_data.empty:
         st.subheader("Holdings Summary")
         col1, col2, col3, col4 = st.columns(4)
-        
-        # Calculate summary stats (be careful with mixed currencies - these are rough approximations if not normalized)
-        # Note: If we want strict correctness, we should sum the 'market_value_cad' if it existed, but we dropped it.
-        # For simple metrics like count and size distribution, raw numbers are okayish or we can re-derive if needed.
         
         with col1:
             st.metric("Total Positions", len(holdings_data))

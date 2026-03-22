@@ -987,10 +987,13 @@ class Portfolio:
             
             sec = self.securities.get(ticker)
 
+            first_purchase = first_purchase_dates.get(ticker)
+
             results.append({
                 'ticker': ticker,
                 'shares': qty,
                 'currency': currency,
+                'first_purchase_date': pd.Timestamp(first_purchase).date() if first_purchase else None,
                 
                 # REPORTING COLUMNS (Native)
                 'current_price': current_price,
