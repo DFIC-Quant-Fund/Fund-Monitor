@@ -105,9 +105,19 @@ def main():
         st.info("This usually means the portfolio data hasn't been built yet. Please ensure the data building process has been completed.")
         return
     
-    # Fetch cumulative returns (since inception) and render chart at the top
+    # Fetch cumulative returns (since inception) and render chart at the top.
+    # Always use the core portfolio series so this chart matches the Core view.
     try:
-        returns_df = portfolio_controller.get_cumulative_returns()
+        core_portfolio_name = next(
+            (p for p in available_portfolios if p.lower() == "core"),
+            None,
+        )
+        returns_controller = (
+            PortfolioController(core_portfolio_name)
+            if core_portfolio_name
+            else portfolio_controller
+        )
+        returns_df = returns_controller.get_cumulative_returns()
         render_returns_chart(returns_df)
         st.markdown("---")
     except Exception as e:
