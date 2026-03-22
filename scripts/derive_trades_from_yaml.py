@@ -190,7 +190,9 @@ def derive_trades_for_portfolio(portfolio_name: str) -> str:
         trade_rows.append(_normalize_row(tx, qty))
 
     trade_rows.sort(key=lambda r: (r["Date"], r["Ticker"]))
-    conversion_rows.sort(key=lambda r: (r["Date"], r["Currency_From"], r["Currency_To"]))
+    conversion_rows.sort(
+        key=lambda r: (r["Date"], r["Currency_From"], r["Currency_To"])
+    )
 
     input_dir = os.path.join(PROJECT_ROOT, "data", portfolio_name, "input")
     os.makedirs(input_dir, exist_ok=True)

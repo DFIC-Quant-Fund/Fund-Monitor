@@ -80,33 +80,34 @@ def render_returns_chart(returns_df: pd.DataFrame):
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+
 def render_benchmark_target_allocation_note(project_root: str) -> None:
-	"""Prominent centered benchmark policy line from YAML (below returns chart only)."""
-	text = format_benchmark_target_allocation_caption(project_root)
-	if text:
-		st.markdown(
-			(
-				'<div style="text-align:center;margin:1rem 0 0.75rem 0;padding:0.85rem 1rem;'
-				'background-color:rgba(99,110,250,0.08);border-radius:8px;border:1px solid rgba(99,110,250,0.2);">'
-				f'<p style="margin:0;font-size:1.5rem;font-weight:700;line-height:1.35;letter-spacing:0.01em;">{text}</p>'
-				"</div>"
-			),
-			unsafe_allow_html=True,
-		)
+    """Prominent centered benchmark policy line from YAML (below returns chart only)."""
+    text = format_benchmark_target_allocation_caption(project_root)
+    if text:
+        st.markdown(
+            (
+                '<div style="text-align:center;margin:1rem 0 0.75rem 0;padding:0.85rem 1rem;'
+                'background-color:rgba(99,110,250,0.08);border-radius:8px;border:1px solid rgba(99,110,250,0.2);">'
+                f'<p style="margin:0;font-size:1.5rem;font-weight:700;line-height:1.35;letter-spacing:0.01em;">{text}</p>'
+                "</div>"
+            ),
+            unsafe_allow_html=True,
+        )
 
 
 def render_benchmark_rationale_section() -> None:
-	"""Centered rationale copy for the benchmark portfolio (below target allocation)."""
-	st.markdown(
-		(
-			'<section style="max-width:52rem;margin:1.25rem auto 0.5rem auto;padding:0 1rem;">'
-			'<h3 style="text-align:center;font-size:1.35rem;font-weight:700;margin:0 0 1rem 0;'
-			'letter-spacing:0.02em;">Rationale</h3>'
-			'<p style="text-align:center;font-size:1.08rem;line-height:1.7;margin:0;'
-			'font-weight:400;">'
-			f"{BENCHMARK_ALLOCATION_RATIONALE}"
-			"</p></section>"
-		),
-		unsafe_allow_html=True,
-	)
-
+    """Centered rationale copy for the benchmark portfolio (below target allocation)."""
+    st.markdown(
+        (
+            '<section style="max-width:52rem;margin:1.25rem auto 0.5rem auto;padding:0 1rem;">'
+            '<h3 style="text-align:center;font-size:1.35rem;font-weight:700;margin:0 0 1rem 0;'
+            'letter-spacing:0.02em;">Rationale</h3>'
+            '<p style="text-align:center;font-size:1.08rem;line-height:1.7;margin:0;'
+            'font-weight:400;">'
+            f"{BENCHMARK_ALLOCATION_RATIONALE}"
+            "</p></section>"
+        ),
+        unsafe_allow_html=True,
+    )
