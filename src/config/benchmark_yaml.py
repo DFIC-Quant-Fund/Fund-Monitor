@@ -8,7 +8,8 @@ as the derive script); rebalancing targets come from these YAML weights.
 from __future__ import annotations
 
 import os
-from typing import Any, Dict
+from collections import defaultdict
+from typing import Any, Dict, Optional
 
 import yaml
 
@@ -73,3 +74,52 @@ def load_benchmark_target_weights(project_root: str) -> Dict[str, float]:
     if abs(s - 1.0) > 1e-6:
         weights = {k: v / s for k, v in weights.items()}
     return weights
+
+
+def _display_asset_class_label(asset_class: str) -> str:
+    """Short labels for UI (e.g. ETF Equity -> Equity)."""
+    if not asset_class or not str(asset_class).strip():
+        return "Other"
+    a = str(asset_class).strip()
+    lower = a.lower()
+    if "fixed income" in lower:
+        return "Fixed Income"
+    if "equity" in lower:
+        return "Equity"
+    return a
+
+
+def format_benchmark_target_allocation_caption(project_root: str) -> Optional[str]:
+    """Return a line like 'Target Allocation: 70% Equity, 30% Fixed Income', or None."""
+    try:
+        data = _load_raw(project_root)
+    except OSError:
+        return None
+    txs = data.get("transactions") or []
+    by_class: Dict[str, float] = defaultdict(float)
+    for tx in txs:
+        if str(tx.get("type", "")).strip().lower() != "buy":
+            continue
+        if tx.get("target_allocation") is None:
+            continue
+        ac = tx.get("asset_class") or tx.get("sector") or ""
+        label = _display_asset_class_label(str(ac))
+        by_class[label] += parse_allocation_fraction(tx.get("target_allocation"))
+
+    if not by_class:
+        return None
+
+    total = sum(by_class.values())
+    if total <= 0:
+        return None
+
+    # Descending by weight, then label
+    items = sorted(by_class.items(), key=lambda x: (-x[1], x[0]))
+    parts: list[str] = []
+    for label, frac in items:
+        pct = 100.0 * frac / total
+        if abs(pct - round(pct)) < 0.05:
+            parts.append(f"{int(round(pct))}% {label}")
+        else:
+            parts.append(f"{pct:.1f}% {label}")
+    return "Target Allocation: " + ", ".join(parts)

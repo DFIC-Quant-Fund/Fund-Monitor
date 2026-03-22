@@ -28,6 +28,7 @@ from src.views import (
     render_allocation_charts,
     render_performance_metrics,
     render_returns_chart,
+    render_benchmark_target_allocation_note,
     render_fama_french_factors
 )
 
@@ -109,6 +110,9 @@ def main():
     try:
         returns_df = portfolio_controller.get_cumulative_returns()
         render_returns_chart(returns_df)
+        if selected_portfolio.lower() == "benchmark":
+            _project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            render_benchmark_target_allocation_note(_project_root)
         st.markdown("---")
     except Exception as e:
         st.warning(f"Could not render returns chart: {e}")

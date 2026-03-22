@@ -2,9 +2,14 @@
 Returns Chart Component - Interactive Plotly chart for cumulative returns since inception.
 """
 
-import streamlit as st
-import plotly.express as px
 import pandas as pd
+import plotly.express as px
+import streamlit as st
+
+try:
+    from src.config.benchmark_yaml import format_benchmark_target_allocation_caption
+except ImportError:
+    from config.benchmark_yaml import format_benchmark_target_allocation_caption
 
 
 def render_returns_chart(returns_df: pd.DataFrame):
@@ -64,4 +69,18 @@ def render_returns_chart(returns_df: pd.DataFrame):
 
 	st.plotly_chart(fig, use_container_width=True)
 
+
+def render_benchmark_target_allocation_note(project_root: str) -> None:
+	"""Prominent centered benchmark policy line from YAML (below returns chart only)."""
+	text = format_benchmark_target_allocation_caption(project_root)
+	if text:
+		st.markdown(
+			(
+				'<div style="text-align:center;margin:1rem 0 0.75rem 0;padding:0.85rem 1rem;'
+				'background-color:rgba(99,110,250,0.08);border-radius:8px;border:1px solid rgba(99,110,250,0.2);">'
+				f'<p style="margin:0;font-size:1.5rem;font-weight:700;line-height:1.35;letter-spacing:0.01em;">{text}</p>'
+				"</div>"
+			),
+			unsafe_allow_html=True,
+		)
 
