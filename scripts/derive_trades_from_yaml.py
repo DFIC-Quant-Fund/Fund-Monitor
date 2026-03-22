@@ -62,7 +62,9 @@ def _load_portfolio_yaml(portfolio_name: str) -> dict:
         f"{portfolio_name}.yaml",
     )
     if not os.path.exists(yaml_path):
-        raise FileNotFoundError(f"YAML not found for portfolio '{portfolio_name}': {yaml_path}")
+        raise FileNotFoundError(
+            f"YAML not found for portfolio '{portfolio_name}': {yaml_path}"
+        )
 
     with open(yaml_path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
@@ -139,7 +141,9 @@ def _normalize_conversion_row(tx: Dict[str, Any]) -> Dict[str, Any]:
     rate_val = tx.get("conversion_rate")
     rate = float(rate_val) if rate_val is not None else float("nan")
 
-    logger.info(f"Conversion parsed: {amount} {currency_from} -> {currency_to} at rate {rate}")
+    logger.info(
+        f"Conversion parsed: {amount} {currency_from} -> {currency_to} at rate {rate}"
+    )
 
     return {
         "Date": date,
@@ -186,7 +190,9 @@ def derive_trades_for_portfolio(portfolio_name: str) -> str:
         trade_rows.append(_normalize_row(tx, qty))
 
     trade_rows.sort(key=lambda r: (r["Date"], r["Ticker"]))
-    conversion_rows.sort(key=lambda r: (r["Date"], r["Currency_From"], r["Currency_To"]))
+    conversion_rows.sort(
+        key=lambda r: (r["Date"], r["Currency_From"], r["Currency_To"])
+    )
 
     input_dir = os.path.join(PROJECT_ROOT, "data", portfolio_name, "input")
     os.makedirs(input_dir, exist_ok=True)

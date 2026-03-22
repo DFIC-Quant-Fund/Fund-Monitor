@@ -1,5 +1,6 @@
 # ruff: noqa: E402
 """Unit tests for portfolio risk metrics (RiskMetrics)."""
+
 import importlib
 import numbers
 import os
@@ -133,7 +134,7 @@ class TestRiskMetricsSharpeSortino(unittest.TestCase):
         daily_return = self.df["pct_change"].dropna()
         rf_daily = 0.02 / 252
         expected_daily = (daily_return.mean() - rf_daily) / daily_return.std()
-        expected_annual = expected_daily * (252 ** 0.5)
+        expected_annual = expected_daily * (252**0.5)
         daily_sharpe, annualized_sharpe = self.risk_metrics.sharpe_ratio(0.02)
         self.assertAlmostEqual(daily_sharpe, expected_daily, places=10)
         self.assertAlmostEqual(annualized_sharpe, expected_annual, places=10)
@@ -148,7 +149,7 @@ class TestRiskMetricsSharpeSortino(unittest.TestCase):
         downside = daily_return[daily_return < 0]
         rf_daily = 0.02 / 252
         expected_daily = (daily_return.mean() - rf_daily) / downside.std()
-        expected_annual = expected_daily * (252 ** 0.5)
+        expected_annual = expected_daily * (252**0.5)
         daily_sortino, annualized_sortino = self.risk_metrics.sortino_ratio(0.02)
         self.assertAlmostEqual(daily_sortino, expected_daily, places=10)
         self.assertAlmostEqual(annualized_sortino, expected_annual, places=10)

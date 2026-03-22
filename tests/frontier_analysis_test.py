@@ -13,13 +13,13 @@
 # import yfinance as yf
 
 # class TestFrontierAnalysis(unittest.TestCase):
-#     # Runs before each test to create a FrontierAnalysis instance + set up other variables 
+#     # Runs before each test to create a FrontierAnalysis instance + set up other variables
 #     # setup special method in unittest.TestCase
 #     def setUp(self):
 #         print("setting up")
 #         self.portfolio = 'TestPortfolio'
 #         self.tickers = ['AAPL', 'GOOG', 'MSFT']
-#         self.start_date = datetime(2023, 1, 1)  
+#         self.start_date = datetime(2023, 1, 1)
 #         self.end_date = datetime(2024, 1, 1)
 #         self.risk_free_rate = 0.0275
 #         self.num_simulations = 50_000
@@ -37,7 +37,7 @@
 #         # Populate the analyzer's data attribute for testing
 #         self.analyzer.data = self.mock_data['Close']
 
-#     # not actually calling yf download - use of mock data 
+#     # not actually calling yf download - use of mock data
 #     # use of patch to do that - replaces yf.download() with mock_yf_download inside the test
 #     @patch("yfinance.download")  # Corrected the module name to "yfinance.download"
 #     def test_get_data(self, mock_yf_download):
@@ -53,8 +53,8 @@
 
 #     def test_calculate_metrics(self):
 #         print("calc metric test")
-#         # want to compare function with current logic 
-#         # ensure logically output is the same even if new elements/methods added in frontier calc metrics 
+#         # want to compare function with current logic
+#         # ensure logically output is the same even if new elements/methods added in frontier calc metrics
 
 #         # Manually calculate the daily returns
 #         returns = self.analyzer.data.pct_change().dropna()
@@ -84,23 +84,23 @@
 #         mean_returns = [0.1, 0.08, 0.12]  #
 #         cov_matrix = np.array([[0.02, 0.01, 0.015],
 #                             [0.01, 0.03, 0.02],
-#                             [0.015, 0.02, 0.025]])  
-              
+#                             [0.015, 0.02, 0.025]])
+
 #         portfolio_return_manual = np.sum(np.array(mean_returns) * np.array(weights))
 #         portfolio_volatility_manual = np.sqrt(np.dot(np.array(weights).T, np.dot(cov_matrix, np.array(weights))))
 
-#         # Call the method to calculate the portfolio performance with real function 
+#         # Call the method to calculate the portfolio performance with real function
 #         portfolio_return, portfolio_volatility = self.analyzer.portfolio_performance(weights, mean_returns, cov_matrix)
 
 #         # Compare the "manually" calculated return with called
 #         self.assertEqual(portfolio_return, portfolio_return_manual)
 #         self.assertEqual(portfolio_volatility, portfolio_volatility_manual)
 
-#     # don't want to test with real random values - using patch to ensure consistency 
+#     # don't want to test with real random values - using patch to ensure consistency
 #     @patch("numpy.random.random")
 #     def test_monte_carlo_simulation(self, mock_random):
 #         print("monte carlo test")
-#         # Mock "random" weights for during the test - lambda used to ensure behaviour is like random 
+#         # Mock "random" weights for during the test - lambda used to ensure behaviour is like random
 #         mock_random.side_effect = lambda size: np.array([0.5, 0.3, 0.2])[:size]
 
 #         # Mock mean returns and covariance matrix
@@ -110,8 +110,8 @@
 #                                             [0.015, 0.02, 0.025]])
 
 #         # Manually calculate the expected portfolio return and volatility using the weights and the provided cov_matrix
-#         random_weights = np.array([0.5, 0.3, 0.2]) # Mocked weights - same as what was created before 
-#         random_weights /= random_weights.sum()  # Normalize weights - done in frontier so to remain consistent 
+#         random_weights = np.array([0.5, 0.3, 0.2]) # Mocked weights - same as what was created before
+#         random_weights /= random_weights.sum()  # Normalize weights - done in frontier so to remain consistent
 #         simulated_return, simulated_volatility = self.analyzer.portfolio_performance(random_weights, self.analyzer.mean_returns_series, self.analyzer.cov_matrix)
 #         sharpe_ratio = (simulated_return - self.risk_free_rate) / simulated_volatility
 
