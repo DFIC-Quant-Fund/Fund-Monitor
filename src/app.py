@@ -30,7 +30,7 @@ from src.views import (
     render_returns_chart,
     render_benchmark_target_allocation_note,
     render_benchmark_rationale_section,
-    render_fama_french_factors
+    render_fama_french_factors,
 )
 
 # Page configuration

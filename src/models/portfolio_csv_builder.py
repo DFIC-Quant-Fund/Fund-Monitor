@@ -286,9 +286,11 @@ class Portfolio:
 
     def _load_benchmark_target_weights(self):
         """Target weights from `benchmark.yaml` (same source as derive_trades_from_yaml)."""
-        if self.folder_prefix != 'benchmark':
+        if self.folder_prefix != "benchmark":
             return {}
-        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        root = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
         try:
             from src.config.benchmark_yaml import load_benchmark_target_weights
         except ImportError:
@@ -421,7 +423,7 @@ class Portfolio:
         if self.prices is None or self.prices.empty:
             logger.warning("Cannot add rebalancing trades: prices not yet created")
             return
-        
+
         original_weights = self._load_benchmark_target_weights()
         if not original_weights:
             logger.warning(
@@ -1348,8 +1350,12 @@ class Portfolio:
         logger.info(f"Total Dividends (CAD): {total_dividends_cad:.2f}")
         logger.info(f"Total Cash (CAD, including dividends): {cash_total_cad:.2f}")
         logger.info(f"Market Value of holdings: {market_values_total:.2f}")
-        logger.info(f"Total Value of portfolio: {(market_values_total + cash_total_cad):.2f}")
-        logger.info(f"Total Return: {((market_values_total + cash_total_cad) / self.STARTING_CASH - 1) * 100:.2f}%")
+        logger.info(
+            f"Total Value of portfolio: {(market_values_total + cash_total_cad):.2f}"
+        )
+        logger.info(
+            f"Total Return: {((market_values_total + cash_total_cad) / self.STARTING_CASH - 1) * 100:.2f}%"
+        )
 
     def get_valid_dates(self):
         sp500 = yf.Ticker("^GSPC").history(start=self.start_date, end=self.end_date)
