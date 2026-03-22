@@ -1,5 +1,6 @@
 # ruff: noqa: E402
 """Unit tests for the build pipeline: derive_trades_from_yaml and build_all_portfolios."""
+
 import csv
 import os
 import sys
@@ -21,6 +22,7 @@ class TestDeriveTradesFromYaml(unittest.TestCase):
         if scripts_dir not in sys.path:
             sys.path.insert(0, scripts_dir)
         import derive_trades_from_yaml as mod
+
         return mod
 
     def test_load_transactions_from_yaml_missing_file(self):
@@ -165,6 +167,7 @@ class TestBuildAllPortfolios(unittest.TestCase):
         if scripts_dir not in sys.path:
             sys.path.insert(0, scripts_dir)
         import build_all_portfolios as mod
+
         return mod
 
     @patch("subprocess.run")
