@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,5 +23,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install ruff
-      - name: Run Ruff
+      - name: Format code with Ruff (push only)
+        if: github.event_name == 'push'
+        run: ruff format .
+      - name: Commit Ruff formatting changes (push only)
+        if: github.event_name == 'push'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: format code with ruff"
+      - name: Check Ruff formatting (pull request only)
+        if: github.event_name == 'pull_request'
+        run: ruff format --check .
+      - name: Run Ruff lint
         run: ruff check --output-format=github .
