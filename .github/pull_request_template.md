@@ -15,6 +15,5 @@ Screenshots:
 ## Review request
 Please request review from at least one of:
 - @JadHay8
-- @txshah
 - @rajpandya737
 - @Tyler-Yue
