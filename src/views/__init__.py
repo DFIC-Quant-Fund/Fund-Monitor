@@ -26,6 +26,7 @@ from .performance_metrics import (
 from .returns_chart import (
 	render_returns_chart,
 	render_benchmark_target_allocation_note,
+	render_benchmark_rationale_section,
 )
 from .fama_french_view import (
 	render_fama_french_factors,
@@ -48,6 +49,7 @@ __all__ = [
 	'render_performance_summary',
 	'render_returns_chart',
 	'render_benchmark_target_allocation_note',
+	'render_benchmark_rationale_section',
 	'render_fama_french_factors',
 	'render_fama_french_summary_card',
 ]

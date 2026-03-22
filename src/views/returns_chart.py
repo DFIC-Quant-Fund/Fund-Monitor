@@ -11,6 +11,18 @@ try:
 except ImportError:
     from config.benchmark_yaml import format_benchmark_target_allocation_caption
 
+BENCHMARK_ALLOCATION_RATIONALE = (
+    "We shifted the portfolio allocation from 60/40 to 70/30 primarily to capitalize on "
+    "stronger opportunities in equities and leverage the larger number of equity teams "
+    "generating investment ideas. While the fund remains balanced, the higher equity "
+    "allocation allows greater flexibility to deploy capital into alternatives or global "
+    "exposures (e.g., gold or international markets) while keeping a smaller fixed-income "
+    "allocation, particularly since we cannot purchase single-name bonds. Additionally, "
+    "recent asset correlations have reduced the diversification benefits of bonds, making "
+    "a slightly more equity-focused strategy more effective for both performance and "
+    "active portfolio management."
+)
+
 
 def render_returns_chart(returns_df: pd.DataFrame):
 	"""
@@ -83,4 +95,20 @@ def render_benchmark_target_allocation_note(project_root: str) -> None:
 			),
 			unsafe_allow_html=True,
 		)
+
+
+def render_benchmark_rationale_section() -> None:
+	"""Centered rationale copy for the benchmark portfolio (below target allocation)."""
+	st.markdown(
+		(
+			'<section style="max-width:52rem;margin:1.25rem auto 0.5rem auto;padding:0 1rem;">'
+			'<h3 style="text-align:center;font-size:1.35rem;font-weight:700;margin:0 0 1rem 0;'
+			'letter-spacing:0.02em;">Rationale</h3>'
+			'<p style="text-align:center;font-size:1.08rem;line-height:1.7;margin:0;'
+			'font-weight:400;">'
+			f"{BENCHMARK_ALLOCATION_RATIONALE}"
+			"</p></section>"
+		),
+		unsafe_allow_html=True,
+	)
 
