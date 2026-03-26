@@ -5,7 +5,11 @@ import os
 
 
 def render_allocation_charts(portfolio_name: str):
-    st.header("Portfolio Allocation")
+    st.header("Portfolio Allocation*")
+    st.info(
+        "💡 **Note**: Allocation $ values are reported after holdings are converted to CAD. "
+        "Weights are normalized to portfolio total."
+    )
 
     # Construct file paths
     base_path = os.path.join("data", portfolio_name, "output")
