@@ -120,7 +120,16 @@ def main():
 
     # Fetch cumulative returns (since inception) and render chart at the top
     try:
-        returns_df = portfolio_controller.get_cumulative_returns()
+        core_portfolio_name = next(
+            (p for p in available_portfolios if p.lower() == "core"),
+            None,
+        )
+        returns_controller = (
+            PortfolioController(core_portfolio_name)
+            if core_portfolio_name
+            else portfolio_controller
+        )
+        returns_df = returns_controller.get_cumulative_returns()
         render_returns_chart(returns_df)
         if selected_portfolio.lower() == "benchmark":
             _project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
