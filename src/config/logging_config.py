@@ -12,19 +12,21 @@ import sys
 
 # ANSI color codes
 COLORS = {
-    "DEBUG": "\033[94m",   # Blue
-    "INFO": "\033[92m",    # Green
-    "WARNING": "\033[93m", # Yellow
-    "ERROR": "\033[91m",   # Red
-    "CRITICAL": "\033[95m" # Magenta
+    "DEBUG": "\033[94m",  # Blue
+    "INFO": "\033[92m",  # Green
+    "WARNING": "\033[93m",  # Yellow
+    "ERROR": "\033[91m",  # Red
+    "CRITICAL": "\033[95m",  # Magenta
 }
 RESET = "\033[0m"
+
 
 class ColorFormatter(logging.Formatter):
     def format(self, record):
         level_color = COLORS.get(record.levelname, RESET)
         record.levelname = f"{level_color}{record.levelname}{RESET}"
         return super().format(record)
+
 
 def setup_logging():
     root_logger = logging.getLogger()
@@ -38,15 +40,15 @@ def setup_logging():
     )
     console_handler.setFormatter(console_formatter)
     root_logger.addHandler(console_handler)
-    
+
     # Suppress verbose third-party library logs
-    logging.getLogger('yfinance').setLevel(logging.WARNING)
-    logging.getLogger('urllib3').setLevel(logging.WARNING)
-    logging.getLogger('requests').setLevel(logging.WARNING)
-    logging.getLogger('peewee').setLevel(logging.WARNING)
+    logging.getLogger("yfinance").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("requests").setLevel(logging.WARNING)
+    logging.getLogger("peewee").setLevel(logging.WARNING)
 
 
-def get_logger(name: str) -> logging.Logger: 
+def get_logger(name: str) -> logging.Logger:
     """Get a logger instance for the specified module."""
     return logging.getLogger(name)
 

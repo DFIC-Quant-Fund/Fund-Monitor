@@ -16,13 +16,14 @@ from ..config.logging_config import get_logger
 # Set up logger for this module
 logger = get_logger(__name__)
 
+
 class RiskMetrics:
     def __init__(self, df, risk_free_rate: float = 0.02):
         self.df = df
         self.RISK_FREE_RATE = risk_free_rate
 
     def daily_variance(self):
-        daily_returns = self.df['pct_change'].dropna()
+        daily_returns = self.df["pct_change"].dropna()
         daily_variance = daily_returns.var()
 
         return daily_variance
@@ -40,14 +41,14 @@ class RiskMetrics:
     def daily_volatility(self):
         # self.df = pd.read_csv(os.path.join(self.output_folder, 'portfolio_total.csv'))
         # daily_return = self.df['Total_Portfolio_Value'].pct_change()
-        daily_return = self.df['pct_change'].dropna()
+        daily_return = self.df["pct_change"].dropna()
         daily_volatility = daily_return.std()
 
         logger.debug(f"Daily Volatility: {daily_volatility:.4f}")
         return daily_volatility
 
     def daily_downside_variance(self):
-        daily_return = self.df['pct_change'].dropna()
+        daily_return = self.df["pct_change"].dropna()
         downside_returns = daily_return[daily_return < 0]
         downside_variance = downside_returns.var()
         logger.debug(f"Daily Downside Variance: {downside_variance:.4f}")
@@ -55,7 +56,9 @@ class RiskMetrics:
 
     def annualized_downside_variance(self):
         annualized_downside_variance = self.daily_downside_variance() * 252
-        logger.debug(f"Annualized Downside Variance: {annualized_downside_variance:.4f}")
+        logger.debug(
+            f"Annualized Downside Variance: {annualized_downside_variance:.4f}"
+        )
         return annualized_downside_variance
 
     def daily_downside_volatility(self):
@@ -65,11 +68,13 @@ class RiskMetrics:
 
     def annualized_downside_volatility(self):
         annualized_downside_volatility = self.annualized_downside_variance() ** 0.5
-        logger.debug(f"Annualized Downside Volatility: {annualized_downside_volatility:.4f}")
+        logger.debug(
+            f"Annualized Downside Volatility: {annualized_downside_volatility:.4f}"
+        )
         return annualized_downside_volatility
 
     def maximum_drawdown(self):
-        daily_returns = self.df['pct_change'].dropna()
+        daily_returns = self.df["pct_change"].dropna()
         if daily_returns.empty:
             return 0.0
 
@@ -82,14 +87,18 @@ class RiskMetrics:
         return max_drawdown
 
     def sharpe_ratio(self, risk_free_rate: float):
-        daily_return = self.df['pct_change'].dropna()
-        daily_sharpe_ratio = (daily_return.mean() - risk_free_rate/252) / daily_return.std()
-        annualized_sharpe_ratio = daily_sharpe_ratio * (252 ** 0.5)
+        daily_return = self.df["pct_change"].dropna()
+        daily_sharpe_ratio = (
+            daily_return.mean() - risk_free_rate / 252
+        ) / daily_return.std()
+        annualized_sharpe_ratio = daily_sharpe_ratio * (252**0.5)
         return daily_sharpe_ratio, annualized_sharpe_ratio
 
     def sortino_ratio(self, risk_free_rate: float):
-        daily_return = self.df['pct_change'].dropna()
+        daily_return = self.df["pct_change"].dropna()
         downside_returns = daily_return[daily_return < 0]
-        daily_sortino_ratio = (daily_return.mean() - risk_free_rate/252) / downside_returns.std()
-        annualized_sortino_ratio = daily_sortino_ratio * (252 ** 0.5)
+        daily_sortino_ratio = (
+            daily_return.mean() - risk_free_rate / 252
+        ) / downside_returns.std()
+        annualized_sortino_ratio = daily_sortino_ratio * (252**0.5)
         return daily_sortino_ratio, annualized_sortino_ratio
