@@ -81,6 +81,23 @@ def render_returns_chart(returns_df: pd.DataFrame):
 
     st.plotly_chart(fig, use_container_width=True)
 
+    download_cols = [
+        c
+        for c in [
+            "Date",
+            "Cumulative_Return_Pct",
+            "Benchmark_Cumulative_Return_Pct",
+            "SPY_Cumulative_Return_Pct",
+        ]
+        if c in df.columns
+    ]
+    st.download_button(
+        label="⬇️ Download CSV",
+        data=df[download_cols].to_csv(index=False).encode("utf-8"),
+        file_name="cumulative_return_since_inception.csv",
+        mime="text/csv",
+    )
+
 
 def render_benchmark_target_allocation_note(project_root: str) -> None:
     """Prominent centered benchmark policy line from YAML (below returns chart only)."""
