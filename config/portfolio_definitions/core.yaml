@@ -551,3 +551,151 @@ transactions:
     sector: ETF Fixed Income
     geography: US
     asset_class: ETF Fixed Income
+
+  # ---- 2026 activity reconciled against broker export (issue #185) ----
+  - type: Sell
+    date: 2026-03-11
+    ticker: BIL
+    price: 91.46
+    quantity: 310
+    currency: USD
+    sector: ETF Fixed Income
+    geography: US
+    asset_class: ETF Fixed Income
+
+  - type: Conversion
+    date: 2026-03-11
+    amount: 21203.17
+    currency_from: USD
+    currency_to: CAD
+    conversion_rate: 1.336
+
+  - type: Buy
+    date: 2026-03-11
+    ticker: ZMMK.TO
+    price: 49.86
+    quantity: 568
+    currency: CAD
+    sector: ETF Fixed Income
+    geography: CAN
+    asset_class: ETF Fixed Income
+
+  - type: Sell
+    date: 2026-04-21
+    ticker: LUNR
+    price: 28.5012
+    quantity: 160
+    currency: USD
+    sector: Absolute Return
+    geography: US
+    asset_class: Equity
+
+  - type: Sell
+    date: 2026-04-21
+    ticker: APO
+    price: 128.6001
+    quantity: 30
+    currency: USD
+    sector: Financials
+    geography: US
+    asset_class: Equity
+
+  - type: Sell
+    date: 2026-04-21
+    ticker: AMSF
+    price: 33.1601
+    quantity: 45
+    currency: USD
+    sector: Financials
+    geography: US
+    asset_class: Equity
+
+  - type: Sell
+    date: 2026-04-21
+    ticker: TEX
+    price: 61.60
+    quantity: 56
+    currency: USD
+    sector: Industrials
+    geography: US
+    asset_class: Equity
+
+  - type: Sell
+    date: 2026-04-21
+    ticker: WSC
+    price: 21.61
+    quantity: 60
+    currency: USD
+    sector: Industrials
+    geography: US
+    asset_class: Equity
+
+  - type: Sell
+    date: 2026-04-21
+    ticker: WFG.TO
+    price: 90.59
+    quantity: 23
+    currency: CAD
+    sector: Natural Resources
+    geography: CAN
+    asset_class: Equity
+
+  - type: Sell
+    date: 2026-04-21
+    ticker: TMUS
+    price: 196.8601
+    quantity: 4
+    currency: USD
+    sector: Technology, Media, Telecom
+    geography: US
+    asset_class: Equity
+
+  - type: Buy
+    date: 2026-04-21
+    ticker: TMDX
+    price: 109.03
+    quantity: 26
+    currency: USD
+    sector: Consumer and Healthcare
+    geography: US
+    asset_class: Equity
+
+  - type: Buy
+    date: 2026-04-21
+    ticker: GSL
+    price: 37.92
+    quantity: 52
+    currency: USD
+    sector: Industrials
+    geography: US
+    asset_class: Equity
+
+  - type: Buy
+    date: 2026-04-21
+    ticker: GNR
+    price: 74.1599
+    quantity: 27
+    currency: USD
+    sector: Natural Resources
+    geography: US
+    asset_class: ETF Equity
+
+  - type: Buy
+    date: 2026-04-21
+    ticker: PWR
+    price: 606.285
+    quantity: 2
+    currency: USD
+    sector: Industrials
+    geography: US
+    asset_class: Equity
+
+  - type: Buy
+    date: 2026-04-21
+    ticker: ORCL
+    price: 184.395
+    quantity: 6
+    currency: USD
+    sector: Technology, Media, Telecom
+    geography: US
+    asset_class: Equity
